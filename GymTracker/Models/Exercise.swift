@@ -2,19 +2,20 @@ import Foundation
 import SwiftUI
 
 struct Exercise: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     var name: String
     var muscleGroups: [MuscleGroup]
     var description: String
     var instructions: [String]
     var createdAt: Date
 
-    init(name: String, muscleGroups: [MuscleGroup], description: String = "", instructions: [String] = []) {
+    init(id: UUID = UUID(), name: String, muscleGroups: [MuscleGroup], description: String = "", instructions: [String] = [], createdAt: Date = Date()) {
+        self.id = id
         self.name = name
         self.muscleGroups = muscleGroups
         self.description = description
         self.instructions = instructions
-        self.createdAt = Date()
+        self.createdAt = createdAt
     }
 }
 

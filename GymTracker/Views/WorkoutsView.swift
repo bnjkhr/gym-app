@@ -8,7 +8,12 @@ struct WorkoutsView: View {
         NavigationView {
             List {
                 ForEach(workoutStore.workouts) { workout in
-                    WorkoutRowView(workout: workout)
+                    NavigationLink {
+                        WorkoutDetailView(workout: binding(for: workout))
+                            .environmentObject(workoutStore)
+                    } label: {
+                        WorkoutRowView(workout: workout)
+                    }
                 }
                 .onDelete(perform: workoutStore.deleteWorkout)
             }
@@ -57,6 +62,19 @@ struct WorkoutRowView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+private extension WorkoutsView {
+    func binding(for workout: Workout) -> Binding<Workout> {
+        guard let index = workoutStore.workouts.firstIndex(where: { $0.id == workout.id }) else {
+            return .constant(workout)
+        }
+
+        return Binding(
+            get: { workoutStore.workouts[index] },
+            set: { workoutStore.workouts[index] = $0 }
+        )
     }
 }
 

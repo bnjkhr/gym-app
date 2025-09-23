@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct ContentView: View {
     @StateObject private var workoutStore = WorkoutStore()
@@ -25,9 +26,20 @@ struct ContentView: View {
                     Image(systemName: "chart.line.uptrend.xyaxis")
                     Text("Fortschritt")
                 }
+
+            SettingsView()
+                .environmentObject(workoutStore)
+                .tabItem {
+                    Image(systemName: "gearshape")
+                    Text("Einstellungen")
+                }
         }
-        .tint(Color("AccentColor"))
+        .tint(Color.mossGreen)
     }
+}
+
+private struct WorkoutSelection: Identifiable, Hashable {
+    let id: UUID
 }
 
 // MARK: - Workouts Tab
@@ -35,6 +47,10 @@ struct ContentView: View {
 struct WorkoutsHomeView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @State private var showingAddWorkout = false
+    @State private var selectedWorkout: WorkoutSelection?
+    @State private var pendingActionWorkoutID: UUID?
+    @State private var activeSessionID: UUID?
+    @State private var editingWorkoutSelection: WorkoutSelection?
 
     private var weekStart: Date {
         let calendar = Calendar.current
@@ -57,42 +73,62 @@ struct WorkoutsHomeView: View {
             .reduce(0, +)
     }
 
+    private var sortedWorkoutIndices: [Int] {
+        workoutStore.workouts.indices.sorted {
+            workoutStore.workouts[$0].date > workoutStore.workouts[$1].date
+        }
+    }
+
+    private var storedWorkoutIndices: ArraySlice<Int> {
+        let indices = sortedWorkoutIndices
+        guard indices.count > 1 else { return [] }
+        return indices.dropFirst()
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    colors: [
-                        Color("AccentColor").opacity(0.25),
-                        Color(.systemBackground)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         if let workout = highlightWorkout {
-                            WorkoutHighlightCard(workout: workout)
+                            Button {
+                                presentActions(for: workout)
+                            } label: {
+                                WorkoutHighlightCard(workout: workout)
+                            }
+                            .buttonStyle(.plain)
                         } else {
                             EmptyStateCard(action: { showingAddWorkout = true })
                         }
 
-                        WeeklySnapshotCard(workoutsThisWeek: workoutsThisWeek, minutesThisWeek: minutesThisWeek)
+                        WeeklySnapshotCard(
+                            workoutsThisWeek: workoutsThisWeek,
+                            minutesThisWeek: minutesThisWeek,
+                            goal: workoutStore.weeklyGoal
+                        )
 
-                        SectionHeader(title: "Letzte Sessions", subtitle: "Halte deine Routine frisch")
+                        if !storedWorkoutIndices.isEmpty {
+                            SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
 
-                        VStack(spacing: 18) {
-                            ForEach(workoutStore.workouts.sorted { $0.date > $1.date }) { workout in
-                                WorkoutCard(workout: workout)
+                            VStack(spacing: 14) {
+                                ForEach(storedWorkoutIndices, id: \.self) { index in
+                                    let workout = workoutStore.workouts[index]
+                                    Button {
+                                        presentActions(for: workout)
+                                    } label: {
+                                        WorkoutCard(workout: workout)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
                         }
 
-                        AddActionButton(
-                            title: "Workout planen",
-                            subtitle: "Erstelle neue Sessions oder tracke spontane Workouts",
-                            action: { showingAddWorkout = true }
-                        )
+                        SectionHeader(title: "Letzte Sessions", subtitle: "Halte deine Routine frisch")
+
+                        RecentActivityCard(workouts: workoutStore.workouts.sorted { $0.date > $1.date }.prefix(5).map { $0 })
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 28)
@@ -108,13 +144,140 @@ struct WorkoutsHomeView: View {
                             .font(.system(size: 18, weight: .semibold))
                     }
                     .accessibilityLabel("Workout hinzufügen")
+                    .tint(Color("AccentColor"))
                 }
             }
             .sheet(isPresented: $showingAddWorkout) {
                 AddWorkoutView()
                     .environmentObject(workoutStore)
             }
+            .navigationDestination(item: $selectedWorkout) { selection in
+                if let binding = binding(for: selection.id) {
+                    WorkoutDetailView(
+                        workout: binding,
+                        isActiveSession: activeSessionID == selection.id,
+                        onActiveSessionEnd: { endActiveSession() }
+                    )
+                    .environmentObject(workoutStore)
+                } else {
+                    Text("Workout konnte nicht geladen werden")
+                }
+            }
+            .confirmationDialog("Aktion wählen", isPresented: Binding(
+                get: { pendingActionWorkoutID != nil },
+                set: { newValue in
+                    if !newValue { pendingActionWorkoutID = nil }
+                }
+            ), actions: {
+                if let workoutID = pendingActionWorkoutID {
+                    Button("Workout starten") {
+                        startWorkout(with: workoutID)
+                    }
+                    Button("Details ansehen") {
+                        showWorkoutDetails(id: workoutID)
+                    }
+                    Button("Bearbeiten") {
+                        editWorkout(id: workoutID)
+                    }
+                }
+                Button("Abbrechen", role: .cancel) {}
+            })
+            .sheet(item: $editingWorkoutSelection) { selection in
+                if let binding = binding(for: selection.id) {
+                    EditWorkoutView(workout: binding)
+                        .environmentObject(workoutStore)
+                } else {
+                    Text("Workout konnte nicht geladen werden")
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if shouldShowActiveSessionBar, let activeWorkout = currentActiveWorkout {
+                    ActiveWorkoutBar(
+                        workout: activeWorkout,
+                        resumeAction: { resumeActiveWorkout() },
+                        endAction: { endActiveSession() }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+            }
+            .onReceive(workoutStore.$workouts) { workouts in
+                guard let activeID = activeSessionID else { return }
+                if !workouts.contains(where: { $0.id == activeID }) {
+                    activeSessionID = nil
+                }
+            }
         }
+    }
+
+    private func binding(for id: UUID) -> Binding<Workout>? {
+        guard let index = workoutStore.workouts.firstIndex(where: { $0.id == id }) else {
+            return nil
+        }
+        return binding(index: index)
+    }
+
+    private func binding(index: Int) -> Binding<Workout> {
+        Binding(
+            get: { workoutStore.workouts[index] },
+            set: { workoutStore.workouts[index] = $0 }
+        )
+    }
+
+    private func presentActions(for workout: Workout) {
+        pendingActionWorkoutID = workout.id
+    }
+
+    private func startWorkout(with id: UUID) {
+        guard let binding = binding(for: id) else { return }
+        var workout = binding.wrappedValue
+        workout.date = Date()
+        workout.duration = nil
+        for exerciseIndex in workout.exercises.indices {
+            for setIndex in workout.exercises[exerciseIndex].sets.indices {
+                workout.exercises[exerciseIndex].sets[setIndex].completed = false
+            }
+        }
+        binding.wrappedValue = workout
+
+        selectedWorkout = WorkoutSelection(id: id)
+        pendingActionWorkoutID = nil
+        activeSessionID = id
+    }
+
+    private func showWorkoutDetails(id: UUID) {
+        selectedWorkout = WorkoutSelection(id: id)
+        pendingActionWorkoutID = nil
+        activeSessionID = nil
+    }
+
+    private func editWorkout(id: UUID) {
+        pendingActionWorkoutID = nil
+        editingWorkoutSelection = WorkoutSelection(id: id)
+    }
+
+    private var currentActiveWorkout: Workout? {
+        guard let activeID = activeSessionID,
+              let index = workoutStore.workouts.firstIndex(where: { $0.id == activeID }) else {
+            return nil
+        }
+        return workoutStore.workouts[index]
+    }
+
+    private var shouldShowActiveSessionBar: Bool {
+        activeSessionID != nil && selectedWorkout == nil && currentActiveWorkout != nil
+    }
+
+    private func resumeActiveWorkout() {
+        guard let activeID = activeSessionID, binding(for: activeID) != nil else {
+            activeSessionID = nil
+            return
+        }
+        selectedWorkout = WorkoutSelection(id: activeID)
+    }
+
+    private func endActiveSession() {
+        activeSessionID = nil
     }
 }
 
@@ -146,17 +309,17 @@ struct WorkoutHighlightCard: View {
                 Text(dateText.uppercased())
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Color("AccentColor").opacity(0.6))
 
                 Text(workout.name)
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
             }
 
             HStack(spacing: 12) {
-                MetricChip(icon: "clock", text: durationText)
-                MetricChip(icon: "flame.fill", text: "\(workout.exercises.count) Übungen")
+                MetricChip(icon: "clock", text: durationText, tint: .mossGreen)
+                MetricChip(icon: "flame.fill", text: "\(workout.exercises.count) Übungen", tint: .mossGreen)
             }
 
             Wrap(alignment: .leading, spacing: 8) {
@@ -168,19 +331,20 @@ struct WorkoutHighlightCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(26)
         .background(
-            LinearGradient(
-                colors: [Color("AccentColor"), Color("AccentColor").opacity(0.65), .purple.opacity(0.6)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .opacity(0.95)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white, Color.mossGreen.opacity(0.14)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+                .strokeBorder(Color.mossGreen.opacity(0.25), lineWidth: 1)
         )
-        .shadow(color: Color("AccentColor").opacity(0.45), radius: 24, x: 0, y: 18)
+        .shadow(color: Color.mossGreen.opacity(0.18), radius: 20, x: 0, y: 12)
         .accessibilityElement(children: .combine)
     }
 }
@@ -192,7 +356,7 @@ struct EmptyStateCard: View {
         VStack(spacing: 16) {
             Image(systemName: "sparkles")
                 .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(Color("AccentColor"))
+                .foregroundStyle(Color.mossGreen)
 
             Text("Starte deine Trainingsreise")
                 .font(.title2)
@@ -208,24 +372,24 @@ struct EmptyStateCard: View {
                     .fontWeight(.semibold)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .background(Color("AccentColor").opacity(0.12), in: Capsule())
+                    .background(Color("AccentColor").opacity(0.15), in: Capsule())
+                    .foregroundColor(Color.mossGreen)
             }
         }
         .padding(32)
         .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Color("AccentColor").opacity(0.15), lineWidth: 1)
+                .fill(Color.white)
         )
+        .shadow(color: Color.black.opacity(0.04), radius: 18, x: 0, y: 10)
     }
 }
 
 struct WeeklySnapshotCard: View {
     let workoutsThisWeek: Int
     let minutesThisWeek: Int
-
-    private var goal: Int { 5 }
+    let goal: Int
 
     private var progress: Double {
         guard goal > 0 else { return 0 }
@@ -247,23 +411,33 @@ struct WeeklySnapshotCard: View {
 
             Spacer()
 
-            ProgressView(value: progress)
-                .progressViewStyle(.circular)
-                .tint(Color("AccentColor"))
-                .frame(width: 56, height: 56)
-                .overlay {
-                    Text("\(Int(progress * 100))%")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color("AccentColor"))
-                }
+            ZStack {
+                Circle()
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 10)
+                    .frame(width: 64, height: 64)
+
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
+                    .stroke(
+                        Color.mossGreen,
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 64, height: 64)
+                    .animation(.easeInOut(duration: 0.6), value: progress)
+
+                Text("\(Int(progress * 100))%")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.mossGreen)
+            }
         }
         .padding(22)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
+                .fill(Color.white)
         )
+        .shadow(color: Color.black.opacity(0.04), radius: 16, x: 0, y: 8)
     }
 }
 
@@ -335,11 +509,11 @@ struct WorkoutCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                .fill(Color.white)
         )
+        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -364,6 +538,7 @@ struct InfoChip: View {
 struct MetricChip: View {
     let icon: String
     let text: String
+    var tint: Color = Color.mossGreen
 
     var body: some View {
         HStack(spacing: 8) {
@@ -375,8 +550,8 @@ struct MetricChip: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(Color.white.opacity(0.18), in: Capsule())
-        .foregroundStyle(.white)
+        .background(tint.opacity(0.12), in: Capsule())
+        .foregroundStyle(tint)
     }
 }
 
@@ -403,13 +578,7 @@ struct CapsuleTag: View {
     private var background: AnyShapeStyle {
         switch style {
         case .primary:
-            AnyShapeStyle(
-                LinearGradient(
-                    colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            AnyShapeStyle(Color.mossGreen.opacity(0.16))
         case .secondary:
             AnyShapeStyle(Color.primary.opacity(0.05))
         }
@@ -418,7 +587,7 @@ struct CapsuleTag: View {
     private var foreground: Color {
         switch style {
         case .primary:
-            return .white
+            return Color.mossGreen
         case .secondary:
             return .primary
         }
@@ -500,6 +669,74 @@ struct WrapLayout: Layout {
     }
 }
 
+private struct ActiveWorkoutBar: View {
+    let workout: Workout
+    let resumeAction: () -> Void
+    let endAction: () -> Void
+
+    private var completedSets: Int {
+        workout.exercises.flatMap { $0.sets }.filter { $0.completed }.count
+    }
+
+    private var totalSets: Int {
+        workout.exercises.reduce(0) { $0 + $1.sets.count }
+    }
+
+    private var statusText: String {
+        guard totalSets > 0 else { return "Noch keine Sätze" }
+        return "\(completedSets)/\(totalSets) Sätze abgeschlossen"
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Aktives Workout")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(workout.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text(statusText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: resumeAction) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 46, height: 46)
+                    .background(Circle().fill(Color.mossGreen))
+            }
+            .accessibilityLabel("Aktives Workout fortsetzen")
+
+            Button(action: endAction) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(12)
+                    .background(
+                        Circle()
+                            .fill(.regularMaterial)
+                    )
+            }
+            .accessibilityLabel("Aktives Workout beenden")
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.mossGreen.opacity(0.18), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 6)
+    }
+}
+
 struct AddActionButton: View {
     let title: String
     let subtitle: String
@@ -510,7 +747,7 @@ struct AddActionButton: View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(Color("AccentColor").opacity(0.18))
+                        .fill(Color("AccentColor").opacity(0.12))
                         .frame(width: 46, height: 46)
                     Image(systemName: "plus")
                         .font(.system(size: 18, weight: .semibold))
@@ -528,11 +765,11 @@ struct AddActionButton: View {
                 Spacer()
             }
             .padding(20)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(
+            .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                    .fill(Color.white)
             )
+            .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 6)
         }
     }
 }
@@ -556,7 +793,7 @@ struct ExercisesCatalogView: View {
     }
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 160), spacing: 16)]
+        [GridItem(.adaptive(minimum: 140), spacing: 14)]
     }
 
     var body: some View {
@@ -567,7 +804,7 @@ struct ExercisesCatalogView: View {
                         ExerciseTile(exercise: exercise)
                     }
                 }
-                .padding(20)
+                .padding(16)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Übungen")
@@ -630,16 +867,17 @@ struct ExerciseTile: View {
                 }
             }
         }
-        .padding(20)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(primaryColor.opacity(0.18), lineWidth: 1)
+                .strokeBorder(primaryColor.opacity(0.12), lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 5)
     }
 }
 
@@ -647,12 +885,14 @@ struct ExerciseTile: View {
 
 struct ProgressDashboardView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
+    @State private var selectedExerciseID: UUID?
+    @State private var selectedRange: ExerciseRange = .threeMonths
+    @State private var calendarMonth: Date = Date()
 
-    private let weeklyGoal = 5
+    private let calendar = Calendar.current
 
     private var weekStart: Date {
-        let calendar = Calendar.current
-        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+        calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
     }
 
     private var weeklyWorkouts: [Workout] {
@@ -660,26 +900,60 @@ struct ProgressDashboardView: View {
     }
 
     private var progressValue: Double {
-        guard weeklyGoal > 0 else { return 0 }
-        return min(Double(weeklyWorkouts.count) / Double(weeklyGoal), 1)
-    }
-
-    private var uniqueExercisesCount: Int {
-        Set(workoutStore.workouts.flatMap { $0.exercises.map { $0.exercise.id } }).count
-    }
-
-    private var totalSets: Int {
-        workoutStore.workouts.reduce(0) { partialResult, workout in
-            partialResult + workout.exercises.reduce(0) { $0 + $1.sets.count }
-        }
-    }
-
-    private var recentWorkouts: [Workout] {
-        workoutStore.workouts.sorted { $0.date > $1.date }.prefix(5).map { $0 }
+        let goal = workoutStore.weeklyGoal
+        guard goal > 0 else { return 0 }
+        return min(Double(weeklyWorkouts.count) / Double(goal), 1)
     }
 
     private var minutesThisWeek: Int {
         weeklyWorkouts.compactMap { $0.duration }.map { Int($0 / 60) }.reduce(0, +)
+    }
+
+    private var activeExercise: Exercise? {
+        if let id = selectedExerciseID {
+            return workoutStore.exercises.first { $0.id == id }
+        }
+        return workoutStore.exercises.first
+    }
+
+    private var exerciseStats: WorkoutStore.ExerciseStats? {
+        guard let exercise = activeExercise else { return nil }
+        return workoutStore.exerciseStats(for: exercise)
+    }
+
+    private var filteredHistory: [WorkoutStore.ExerciseStats.HistoryPoint] {
+        guard let stats = exerciseStats else { return [] }
+        guard let range = selectedRange.dateRange else { return stats.history }
+        return stats.history.filter { range.contains($0.date) }
+    }
+
+    private var statCards: [StatMetric] {
+        [
+            StatMetric(title: "Workouts", value: "\(workoutStore.totalWorkoutCount)", icon: "dumbbell.fill"),
+            StatMetric(title: "Ø pro Woche", value: String(format: "%.1f", workoutStore.averageWorkoutsPerWeek), icon: "calendar"),
+            StatMetric(title: "Wochen-Serie", value: "\(workoutStore.currentWeekStreak)", icon: "flame.fill"),
+            StatMetric(title: "Ø Dauer", value: "\(workoutStore.averageDurationMinutes) Min", icon: "clock")
+        ]
+    }
+
+    private var currentMonthRange: ClosedRange<Date>? {
+        guard let interval = calendar.dateInterval(of: .month, for: calendarMonth) else { return nil }
+        let start = interval.start
+        let end = calendar.date(byAdding: .second, value: -1, to: interval.end) ?? interval.end
+        return start...end
+    }
+
+    private var calendarData: [Date: [Workout]] {
+        guard let range = currentMonthRange else { return [:] }
+        return workoutStore.workoutsByDay(in: range)
+    }
+
+    private var muscleVolumeData: [(MuscleGroup, Double)] {
+        workoutStore.muscleVolume(byGroupInLastWeeks: 4)
+    }
+
+    private var maxMuscleVolume: Double {
+        muscleVolumeData.map { $0.1 }.max() ?? 0
     }
 
     var body: some View {
@@ -689,32 +963,116 @@ struct ProgressDashboardView: View {
                     WeeklyGoalCard(
                         progress: progressValue,
                         workoutsCount: weeklyWorkouts.count,
-                        goal: weeklyGoal,
+                        goal: workoutStore.weeklyGoal,
                         minutes: minutesThisWeek
                     )
 
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                        StatMetricCard(title: "Gesamte Workouts", value: "\(workoutStore.workouts.count)", icon: "dumbbell.fill", tint: .orange)
-                        StatMetricCard(title: "Übungen", value: "\(uniqueExercisesCount)", icon: "list.number", tint: .blue)
-                        StatMetricCard(title: "Sätze absolviert", value: "\(totalSets)", icon: "checkmark.circle", tint: .green)
-                        StatMetricCard(title: "Ø Dauer", value: averageDurationText, icon: "clock", tint: .purple)
+                    StatMetricsGrid(metrics: statCards)
+
+                    ExerciseAnalyticsSection(
+                        exercise: activeExercise,
+                        stats: exerciseStats,
+                        history: filteredHistory,
+                        selectedRange: $selectedRange
+                    ) {
+                        Menu {
+                            ForEach(workoutStore.exercises) { exercise in
+                                Button {
+                                    selectedExerciseID = exercise.id
+                                } label: {
+                                    HStack {
+                                        Text(exercise.name)
+                                        if selectedExerciseID == exercise.id || (selectedExerciseID == nil && exercise.id == activeExercise?.id) {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(activeExercise?.name ?? "Übung wählen")
+                                    .font(.headline)
+                                Image(systemName: "chevron.down")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
 
-                    RecentActivityCard(workouts: recentWorkouts)
+                    WorkoutCalendarSection(
+                        month: calendarMonth,
+                        calendar: calendar,
+                        workoutsByDay: calendarData,
+                        onPrevious: { adjustMonth(by: -1) },
+                        onNext: { adjustMonth(by: 1) }
+                    )
+
+                    MuscleVolumeSection(data: muscleVolumeData, maxValue: maxMuscleVolume)
+
+                    RecentActivityCard(workouts: workoutStore.workouts.sorted { $0.date > $1.date }.prefix(5).map { $0 })
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 28)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Fortschritt")
+            .onAppear {
+                if selectedExerciseID == nil {
+                    selectedExerciseID = workoutStore.exercises.first?.id
+                }
+                calendarMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+            }
         }
     }
 
-    private var averageDurationText: String {
-        let durations = workoutStore.workouts.compactMap { $0.duration }
-        guard !durations.isEmpty else { return "–" }
-        let average = durations.reduce(0, +) / Double(durations.count)
-        return "\(Int(average / 60)) Min"
+    private func adjustMonth(by value: Int) {
+        calendarMonth = calendar.date(byAdding: .month, value: value, to: calendarMonth) ?? calendarMonth
+    }
+
+    struct StatMetric: Identifiable {
+        let id = UUID()
+        let title: String
+        let value: String
+        let icon: String
+    }
+
+    enum ExerciseRange: String, CaseIterable, Identifiable {
+        case oneMonth = "1M"
+        case threeMonths = "3M"
+        case sixMonths = "6M"
+        case oneYear = "1Y"
+        case all = "All"
+
+        var id: String { rawValue }
+
+        var dateRange: ClosedRange<Date>? {
+            guard self != .all else { return nil }
+            let calendar = Calendar.current
+            let end = Date()
+            let component: Calendar.Component
+            let value: Int
+
+            switch self {
+            case .oneMonth:
+                component = .month
+                value = -1
+            case .threeMonths:
+                component = .month
+                value = -3
+            case .sixMonths:
+                component = .month
+                value = -6
+            case .oneYear:
+                component = .year
+                value = -1
+            case .all:
+                return nil
+            }
+
+            guard let start = calendar.date(byAdding: component, value: value, to: end) else { return nil }
+            return start...end
+        }
     }
 }
 
@@ -724,95 +1082,399 @@ struct WeeklyGoalCard: View {
     let goal: Int
     let minutes: Int
 
+    private var formattedProgress: String {
+        guard goal > 0 else { return "0%" }
+        return String(format: "%.0f%%", progress * 100)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Wöchentliches Ziel")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Wöchentlicher Fortschritt")
                         .font(.headline)
-                    Text("\(workoutsCount) von \(goal) Workouts abgeschlossen")
-                        .font(.subheadline)
+                    Text("\(workoutsCount) von \(goal) Workouts")
+                        .font(.title3.weight(.semibold))
+                    Text("Noch \(max(goal - workoutsCount, 0)) Sessions geplant")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Text("\(Int(progress * 100))%")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(Color.white.opacity(0.2), in: Capsule())
+                ZStack {
+                    Circle()
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 10)
+                        .frame(width: 84, height: 84)
+
+                    Circle()
+                        .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
+                        .stroke(
+                            Color.mossGreen,
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 84, height: 84)
+                        .animation(.easeInOut(duration: 0.6), value: progress)
+
+                    VStack(spacing: 2) {
+                        Text(formattedProgress)
+                            .font(.headline)
+                        Text("Ziel")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
-            ProgressView(value: progress)
-                .tint(.white)
-                .progressViewStyle(.linear)
-                .frame(height: 6)
-                .background(Color.white.opacity(0.25), in: RoundedRectangle(cornerRadius: 3))
-
-            HStack(spacing: 14) {
-                Label("\(minutes) Minuten aktiv", systemImage: "timer")
-                    .foregroundStyle(.white)
+            HStack {
+                Label("\(minutes) Min aktiv", systemImage: "timer")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 Spacer()
-                Label("Noch \(max(goal - workoutsCount, 0)) Sessions", systemImage: "target")
-                    .foregroundStyle(.white.opacity(0.9))
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .tint(Color.mossGreen)
+                    .frame(width: 160)
             }
-            .font(.footnote)
         }
         .padding(24)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            LinearGradient(
-                colors: [Color("AccentColor"), Color("AccentColor").opacity(0.6)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(.white.opacity(0.16), lineWidth: 1)
+                .fill(Color.white)
         )
-        .shadow(color: Color("AccentColor").opacity(0.35), radius: 18, x: 0, y: 14)
+        .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 10)
+    }
+}
+
+struct StatMetricsGrid: View {
+    let metrics: [ProgressDashboardView.StatMetric]
+
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 16) {
+            ForEach(metrics) { metric in
+                StatMetricCard(metric: metric)
+            }
+        }
     }
 }
 
 struct StatMetricCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let tint: Color
+    let metric: ProgressDashboardView.StatMetric
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(tint.opacity(0.15))
+                    .fill(Color.mossGreen.opacity(0.14))
                     .frame(width: 44, height: 44)
-                Image(systemName: icon)
-                    .foregroundStyle(tint)
+                Image(systemName: metric.icon)
+                    .foregroundStyle(Color.mossGreen)
             }
 
-            Text(value)
-                .font(.title3)
-                .fontWeight(.bold)
+            Text(metric.value)
+                .font(.title3.weight(.semibold))
 
-            Text(title)
+            Text(metric.title)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(tint.opacity(0.14), lineWidth: 1)
+        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 6)
+    }
+}
+
+struct ExerciseAnalyticsSection<SelectionControl: View>: View {
+    let exercise: Exercise?
+    let stats: WorkoutStore.ExerciseStats?
+    let history: [WorkoutStore.ExerciseStats.HistoryPoint]
+    @Binding var selectedRange: ProgressDashboardView.ExerciseRange
+    @ViewBuilder var selectionControl: SelectionControl
+
+    private var formatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        return formatter
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Übungsanalyse")
+                        .font(.headline)
+                    Text(exercise?.name ?? "Wähle eine Übung, um Details zu sehen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                selectionControl
+            }
+
+            Picker("Zeitraum", selection: $selectedRange) {
+                ForEach(ProgressDashboardView.ExerciseRange.allCases) { range in
+                    Text(range.rawValue).tag(range)
+                }
+            }
+            .pickerStyle(.segmented)
+            .tint(Color.mossGreen)
+
+            if let stats, !history.isEmpty {
+                Chart(history) { point in
+                    LineMark(
+                        x: .value("Datum", point.date),
+                        y: .value("1RM", point.estimatedOneRepMax)
+                    )
+                    .interpolationMethod(.monotone)
+                    AreaMark(
+                        x: .value("Datum", point.date),
+                        y: .value("1RM", point.estimatedOneRepMax)
+                    )
+                    .foregroundStyle(Color.mossGreen.opacity(0.20))
+                }
+                .frame(height: 200)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(date, format: .dateTime.month(.abbreviated).day())
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let number = value.as(Double.self) {
+                                Text(number.formatted(.number.precision(.fractionLength(0))))
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+
+                AnalyticsMetricsRow(stats: stats)
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    Text("Noch keine Daten verfügbar")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 180)
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white)
         )
+        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
+    }
+}
+
+private struct AnalyticsMetricsRow: View {
+    let stats: WorkoutStore.ExerciseStats
+
+    private var metrics: [(title: String, value: String)] {
+        [
+            ("1RM", stats.estimatedOneRepMax.formatted(.number.precision(.fractionLength(1))) + " kg"),
+            ("Max Gewicht", stats.maxWeight.formatted(.number.precision(.fractionLength(1))) + " kg"),
+            ("Volumen", stats.totalVolume.formatted(.number.precision(.fractionLength(1))) + " kg"),
+            ("Wdh.", "\(stats.totalReps)")
+        ]
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 18) {
+            ForEach(metrics, id: \.title) { metric in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(metric.title)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Text(metric.value)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+struct WorkoutCalendarSection: View {
+    let month: Date
+    let calendar: Calendar
+    let workoutsByDay: [Date: [Workout]]
+    let onPrevious: () -> Void
+    let onNext: () -> Void
+
+    private var monthFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }
+
+    private var daysInMonth: [Date] {
+        guard let interval = calendar.dateInterval(of: .month, for: month) else { return [] }
+        var dates: [Date] = []
+        var day = interval.start
+
+        while day < interval.end {
+            dates.append(day)
+            day = calendar.date(byAdding: .day, value: 1, to: day) ?? day
+        }
+        return dates
+    }
+
+    private var leadingPaddingDays: Int {
+        guard let firstDay = daysInMonth.first else { return 0 }
+        let weekday = calendar.component(.weekday, from: firstDay)
+        let adjusted = weekday - calendar.firstWeekday
+        return adjusted >= 0 ? adjusted : adjusted + 7
+    }
+
+    private var weekdaySymbols: [String] {
+        let symbols = calendar.shortStandaloneWeekdaySymbols
+        let startIndex = max(calendar.firstWeekday - 1, 0)
+        let suffix = Array(symbols[startIndex...])
+        let prefix = Array(symbols[..<startIndex])
+        return suffix + prefix
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Trainingskalender")
+                    .font(.headline)
+                Spacer()
+                Button(action: onPrevious) {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.borderless)
+
+                Text(monthFormatter.string(from: month))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                Button(action: onNext) {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.borderless)
+            }
+
+            HStack {
+                ForEach(weekdaySymbols, id: \.self) { symbol in
+                    Text(symbol.uppercased())
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 12) {
+                ForEach(0..<leadingPaddingDays, id: \.self) { _ in
+                    Spacer()
+                }
+
+                ForEach(daysInMonth, id: \.self) { day in
+                    let startOfDay = calendar.startOfDay(for: day)
+                    let workouts = workoutsByDay[startOfDay] ?? []
+                    VStack(spacing: 6) {
+                        Text("\(calendar.component(.day, from: day))")
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                        Circle()
+                            .fill(workouts.isEmpty ? Color.primary.opacity(0.08) : Color("AccentColor"))
+                            .frame(width: 8, height: 8)
+                            .opacity(workouts.isEmpty ? 0.25 : 1)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
+    }
+}
+
+struct MuscleVolumeSection: View {
+    let data: [(MuscleGroup, Double)]
+    let maxValue: Double
+
+    private var formatter: NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.maximumFractionDigits = 0
+        formatter.minimumFractionDigits = 0
+        return formatter
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Muskelvolumen (letzte 4 Wochen)")
+                .font(.headline)
+
+            if data.isEmpty {
+                Text("Noch keine Trainingsdaten vorhanden.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 14) {
+                    ForEach(data.prefix(5), id: \.0) { entry in
+                        let progress = maxValue == 0 ? 0 : entry.1 / maxValue
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(entry.0.rawValue)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text((formatter.string(from: NSNumber(value: entry.1)) ?? "0") + " kg")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            ProgressView(value: progress)
+                                .progressViewStyle(.linear)
+                                .tint(entry.0.color)
+                                .background(entry.0.color.opacity(0.15), in: Capsule())
+                                .frame(height: 8)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
     }
 }
 
@@ -822,11 +1484,11 @@ struct RecentActivityCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Letzte Aktivität")
+                Text("Letzte Sessions")
                     .font(.headline)
                 Spacer()
-                Text("\(workouts.count) Einträge")
-                    .font(.footnote)
+                Text("\(workouts.count)")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
@@ -841,7 +1503,7 @@ struct RecentActivityCard: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(workout.name)
                                     .fontWeight(.medium)
-                                Text(workout.date, style: .date)
+                                Text(workout.date.formatted(.dateTime.day().month().weekday()))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -868,13 +1530,23 @@ struct RecentActivityCard: View {
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.04), lineWidth: 1)
-        )
+        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func onChangeCompat<Value: Equatable>(of value: Value, perform action: @escaping (Value) -> Void) -> some View {
+        if #available(iOS 17, *) {
+            self.onChange(of: value, initial: false) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            self.onChange(of: value, perform: action)
+        }
     }
 }
 

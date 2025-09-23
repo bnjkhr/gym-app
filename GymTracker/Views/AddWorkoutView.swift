@@ -5,9 +5,9 @@ struct AddWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var workoutName = ""
-    @State private var selectedDate = Date()
+    @State private var creationDate = Date()
     @State private var notes = ""
-    @State private var durationMinutes: Double = 45
+    @State private var restTimeSeconds: Double = 90
     @State private var selectedExercises: [ExerciseSelection] = []
 
     var body: some View {
@@ -16,7 +16,12 @@ struct AddWorkoutView: View {
                 Section("Workout Details") {
                     TextField("Workout Name", text: $workoutName)
 
-                    DatePicker("Datum", selection: $selectedDate, displayedComponents: [.date])
+                    HStack {
+                        Label("Angelegt", systemImage: "calendar")
+                        Spacer()
+                        Text(creationDate, format: .dateTime.day().month().year())
+                            .foregroundStyle(.secondary)
+                    }
 
                     TextField("Notizen (optional)", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
@@ -90,25 +95,26 @@ struct AddWorkoutView: View {
                     }
                 }
 
-                Section("Dauer") {
+                Section("Pause zwischen Sätzen") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Slider(value: $durationMinutes, in: 20...120, step: 5) {
-                            Text("Dauer in Minuten")
+                        Slider(value: $restTimeSeconds, in: 30...240, step: 5) {
+                            Text("Pause in Sekunden")
                         }
 
                         HStack {
-                            Text("\(Int(durationMinutes)) Minuten")
+                            Text(restTimeFormatted)
                                 .font(.headline)
 
                             Spacer()
 
-                            Text("Idealer Bereich: 45-75")
+                            Text("Empfohlen: 60-120 Sekunden")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                     .padding(.vertical, 4)
                 }
+
             }
             .navigationTitle("Neues Workout")
             .navigationBarTitleDisplayMode(.inline)
@@ -132,7 +138,7 @@ struct AddWorkoutView: View {
     private func saveWorkout() {
         let workoutExercises = selectedExercises.map { selection in
             let sets = (0..<selection.setCount).map { _ in
-                ExerciseSet(reps: 0, weight: selection.weight)
+                ExerciseSet(reps: 0, weight: selection.weight, restTime: restTimeSeconds)
             }
 
             return WorkoutExercise(exercise: selection.exercise, sets: sets)
@@ -140,14 +146,26 @@ struct AddWorkoutView: View {
 
         let workout = Workout(
             name: workoutName,
-            date: selectedDate,
+            date: creationDate,
             exercises: workoutExercises,
-            duration: durationMinutes * 60,
+            defaultRestTime: restTimeSeconds,
+            duration: nil,
             notes: notes
         )
 
         workoutStore.addWorkout(workout)
         dismiss()
+    }
+
+    private var restTimeFormatted: String {
+        let totalSeconds = Int(restTimeSeconds)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        if minutes > 0 {
+            return String(format: "Pause: %d:%02d Min", minutes, seconds)
+        } else {
+            return "Pause: \(seconds) Sek"
+        }
     }
 
     private func addExercise(_ exercise: Exercise) {

@@ -4,6 +4,7 @@ struct ExercisesView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @State private var showingAddExercise = false
     @State private var searchText = ""
+    @State private var editingExercise: Exercise?
 
     var filteredExercises: [Exercise] {
         if searchText.isEmpty {
@@ -20,7 +21,12 @@ struct ExercisesView: View {
         NavigationView {
             List {
                 ForEach(filteredExercises) { exercise in
-                    ExerciseRowView(exercise: exercise)
+                    Button {
+                        editingExercise = exercise
+                    } label: {
+                        ExerciseRowView(exercise: exercise)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .onDelete(perform: deleteExercises)
             }
@@ -39,11 +45,27 @@ struct ExercisesView: View {
                 AddExerciseView()
                     .environmentObject(workoutStore)
             }
+            .sheet(item: $editingExercise) { exercise in
+                NavigationStack {
+                    EditExerciseView(exercise: exercise) { updatedExercise in
+                        workoutStore.updateExercise(updatedExercise)
+                    } deleteAction: {
+                        deleteExercise(with: exercise.id)
+                    }
+                }
+            }
         }
     }
 
     private func deleteExercises(at indexSet: IndexSet) {
         workoutStore.deleteExercise(at: indexSet)
+    }
+
+    private func deleteExercise(with id: UUID) {
+        if let index = workoutStore.exercises.firstIndex(where: { $0.id == id }) {
+            workoutStore.deleteExercise(at: IndexSet(integer: index))
+        }
+        editingExercise = nil
     }
 }
 
