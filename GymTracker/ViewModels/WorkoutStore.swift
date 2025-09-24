@@ -8,7 +8,21 @@ class WorkoutStore: ObservableObject {
     @Published var sessionHistory: [WorkoutSession] = []
     @Published var activeSessionID: UUID?
 
+    // Zentrale Rest-Timer-State
+    struct ActiveRestState {
+        let workoutId: UUID
+        let workoutName: String
+        let exerciseIndex: Int
+        let setIndex: Int
+        var remainingSeconds: Int
+        var totalSeconds: Int
+        var isRunning: Bool
+    }
+
+    @Published var activeRestState: ActiveRestState?
+
     private var persistenceTimer: Timer?
+    private var restTimer: Timer?
     private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
     private var weekStreakCache: (date: Date, value: Int)?
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
@@ -150,7 +164,100 @@ class WorkoutStore: ObservableObject {
         schedulePersistence()
     }
 
-    // MARK: - Performance Optimizations
+    // MARK: - Zentrale Rest-Timer Steuerung
+
+    func startRest(for workout: Workout, exerciseIndex: Int, setIndex: Int, totalSeconds: Int) {
+        let total = max(totalSeconds, 0)
+        activeRestState = ActiveRestState(
+            workoutId: workout.id,
+            workoutName: workout.name,
+            exerciseIndex: exerciseIndex,
+            setIndex: setIndex,
+            remainingSeconds: total,
+            totalSeconds: total,
+            isRunning: total > 0
+        )
+        setupRestTimer()
+        updateLiveActivityRest()
+    }
+
+    func pauseRest() {
+        guard var state = activeRestState else { return }
+        state.isRunning = false
+        activeRestState = state
+        updateLiveActivityRest()
+    }
+
+    func resumeRest() {
+        guard var state = activeRestState, state.remainingSeconds > 0 else { return }
+        state.isRunning = true
+        activeRestState = state
+        setupRestTimer()
+        updateLiveActivityRest()
+    }
+
+    func addRest(seconds: Int) {
+        guard var state = activeRestState else { return }
+        state.remainingSeconds = max(0, state.remainingSeconds + seconds)
+        activeRestState = state
+        if state.isRunning { setupRestTimer() }
+        updateLiveActivityRest()
+    }
+
+    func setRest(remaining: Int, total: Int? = nil) {
+        guard var state = activeRestState else { return }
+        state.remainingSeconds = max(0, remaining)
+        if let total { state.totalSeconds = max(1, total) }
+        activeRestState = state
+        if state.isRunning { setupRestTimer() }
+        updateLiveActivityRest()
+    }
+
+    func stopRest() {
+        restTimer?.invalidate()
+        restTimer = nil
+        if let state = activeRestState {
+            WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
+        }
+        activeRestState = nil
+    }
+
+    private func setupRestTimer() {
+        restTimer?.invalidate()
+        guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else { return }
+        restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.tickRest()
+            }
+        }
+        RunLoop.main.add(restTimer!, forMode: .common)
+    }
+
+    private func tickRest() {
+        guard var state = activeRestState, state.isRunning else { return }
+        if state.remainingSeconds > 0 {
+            state.remainingSeconds -= 1
+            activeRestState = state
+            updateLiveActivityRest()
+            if state.remainingSeconds <= 0 {
+                SoundPlayer.playBoxBell()
+                stopRest()
+            }
+        } else {
+            stopRest()
+        }
+    }
+
+    private func updateLiveActivityRest() {
+        guard let state = activeRestState else { return }
+        WorkoutLiveActivityController.shared.updateRest(
+            workoutName: state.workoutName,
+            remainingSeconds: state.remainingSeconds,
+            totalSeconds: max(state.totalSeconds, 1)
+        )
+    }
+
+    // MARK: - Persistence Sammellogik
 
     private func schedulePersistence() {
         persistenceTimer?.invalidate()
@@ -653,11 +760,11 @@ extension WorkoutStore {
         let compoundRatio: Double
         switch preferences.experience {
         case .beginner:
-            compoundRatio = 0.8  // 80% Grundübungen
+            compoundRatio = 0.8
         case .intermediate:
-            compoundRatio = 0.6  // 60% Grundübungen
+            compoundRatio = 0.6
         case .advanced:
-            compoundRatio = 0.4  // 40% Grundübungen
+            compoundRatio = 0.4
         }
 
         let compoundCount = Int(Double(targetExerciseCount) * compoundRatio)
@@ -683,8 +790,8 @@ extension WorkoutStore {
 
         // Stelle sicher, dass wir genug Übungen haben
         while selectedExercises.count < targetExerciseCount && selectedExercises.count < availableExercises.count {
-            if let nextExercise = availableExercises.first(where: { exercise in
-                !selectedExercises.contains(where: { $0.id == exercise.id })
+            if let nextExercise = availableExercises.first(where: { candidate in
+                !selectedExercises.contains(where: { $0.id == candidate.id })
             }) {
                 selectedExercises.append(nextExercise)
             } else {
@@ -754,7 +861,6 @@ extension WorkoutStore {
         case .advanced: baseSetCount = 4
         }
 
-        // Compound-Übungen bekommen mehr Sätze
         let isCompound = exercise.muscleGroups.count >= 2
         return isCompound ? baseSetCount + 1 : baseSetCount
     }
@@ -777,15 +883,15 @@ extension WorkoutStore {
     private func calculateRestTime(for preferences: WorkoutPreferences) -> Double {
         switch preferences.goal {
         case .strength:
-            return 120 // 2 Minuten für Kraft
+            return 120
         case .muscleBuilding:
-            return 90  // 90 Sekunden für Hypertrophie
+            return 90
         case .endurance:
-            return 60  // 1 Minute für Ausdauer
+            return 60
         case .weightLoss:
-            return 45  // 45 Sekunden für Fettabbau
+            return 45
         case .general:
-            return 75  // 75 Sekunden allgemein
+            return 75
         }
     }
 
@@ -833,4 +939,3 @@ extension WorkoutStore {
         return notes.joined(separator: "\n")
     }
 }
-

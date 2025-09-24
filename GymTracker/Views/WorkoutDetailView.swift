@@ -7,21 +7,22 @@ struct WorkoutDetailView: View {
     var isActiveSession: Bool = false
     var onActiveSessionEnd: (() -> Void)? = nil
 
-    @State private var activeRest: ActiveRest?
-    @State private var remainingSeconds: Int = 0
-    @State private var isTimerRunning = false
+    // Lokaler Timer-State entfernt – wir nutzen den zentralen Store
     @State private var showingCompletionSheet = false
     @State private var completionDuration: TimeInterval = 0
     @State private var showingCompletionConfirmation = false
     @State private var showingReorderSheet = false
     @State private var reorderExercises: [WorkoutExercise] = []
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         List {
             summarySection
 
-            if let activeRest {
+            // Fortschritt
+            progressOverviewSection
+            progressInfoBoxSection
+
+            if let activeRest = activeRestForThisWorkout {
                 restTimerSection(activeRest: activeRest)
             }
 
@@ -44,43 +45,6 @@ struct WorkoutDetailView: View {
         .onAppear {
             if isActiveSession {
                 WorkoutLiveActivityController.shared.start(workoutName: workout.name)
-                if let activeRest,
-                   workout.exercises.indices.contains(activeRest.exerciseIndex),
-                   workout.exercises[activeRest.exerciseIndex].sets.indices.contains(activeRest.setIndex) {
-                    WorkoutLiveActivityController.shared.updateRest(
-                        workoutName: workout.name,
-                        remainingSeconds: remainingSeconds,
-                        totalSeconds: Int(workout.exercises[activeRest.exerciseIndex].sets[activeRest.setIndex].restTime)
-                    )
-                } else {
-                    WorkoutLiveActivityController.shared.clearRest(workoutName: workout.name)
-                }
-            }
-        }
-        .onDisappear {
-            isTimerRunning = false
-        }
-        .onReceive(timer) { _ in
-            guard isTimerRunning else { return }
-            if remainingSeconds > 0 {
-                remainingSeconds -= 1
-                if isActiveSession,
-                   let activeRest,
-                   workout.exercises.indices.contains(activeRest.exerciseIndex),
-                   workout.exercises[activeRest.exerciseIndex].sets.indices.contains(activeRest.setIndex) {
-                    let total = Int(workout.exercises[activeRest.exerciseIndex].sets[activeRest.setIndex].restTime)
-                    WorkoutLiveActivityController.shared.updateRest(
-                        workoutName: workout.name,
-                        remainingSeconds: remainingSeconds,
-                        totalSeconds: max(total, 1)
-                    )
-                }
-                if remainingSeconds <= 0 {
-                    SoundPlayer.playBoxBell()
-                    stopRestTimer()
-                }
-            } else {
-                stopRestTimer()
             }
         }
         .sheet(isPresented: $showingCompletionSheet) {
@@ -140,6 +104,58 @@ struct WorkoutDetailView: View {
         }
     }
 
+    // MARK: - Fortschritt
+
+    private var progressOverviewSection: some View {
+        Section("Fortschritt") {
+            VStack(spacing: 12) {
+                HStack {
+                    summaryRow(title: "Letztes Gewicht", value: previousVolumeValueText)
+                    summaryRow(title: "Letztes Datum", value: previousDateText)
+                    summaryRow(title: "Übungen zuletzt", value: previousExerciseCountText)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private var progressInfoBoxSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .foregroundStyle(Color.mossGreen)
+                    Text("Veränderungen seit letzter Session")
+                        .font(.subheadline.weight(.semibold))
+                }
+
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Gewicht")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(progressDeltaText)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    HStack {
+                        Text("Wiederholungen")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(repsDeltaText)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+        }
+    }
+
     private func summaryRow(title: String, value: String) -> some View {
         VStack(spacing: 4) {
             Text(title)
@@ -151,43 +167,42 @@ struct WorkoutDetailView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    private func restTimerSection(activeRest: ActiveRest) -> some View {
+    private func restTimerSection(activeRest: WorkoutStore.ActiveRestState) -> some View {
         Section("Pause") {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Aktive Pause: Satz \(activeRest.setIndex + 1) • \(workout.exercises[activeRest.exerciseIndex].exercise.name)")
+                Text("Aktive Pause: \(activeRest.setIndex + 1) • \(workout.exercises[safe: activeRest.exerciseIndex]?.exercise.name ?? "Übung")")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                Text(formatTime(remainingSeconds))
+                Text(formatTime(activeRest.remainingSeconds))
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .monospacedDigit()
 
                 HStack(spacing: 12) {
-                    if isTimerRunning {
+                    if activeRest.isRunning {
                         Button(role: .cancel) {
-                            pauseRestTimer()
+                            workoutStore.pauseRest()
                         } label: {
                             Label("Anhalten", systemImage: "pause.circle.fill")
                         }
                     } else {
                         Button {
-                            resumeRestTimer()
+                            workoutStore.resumeRest()
                         } label: {
                             Label("Fortsetzen", systemImage: "play.circle.fill")
                         }
-                        .disabled(remainingSeconds == 0)
+                        .disabled(activeRest.remainingSeconds == 0)
                     }
 
                     Button {
-                        remainingSeconds += 15
-                        isTimerRunning = true
+                        workoutStore.addRest(seconds: 15)
                     } label: {
                         Label("+15s", systemImage: "plus.circle")
                     }
 
-                    if remainingSeconds == 0 {
+                    if activeRest.remainingSeconds == 0 {
                         Button {
-                            stopRestTimer()
+                            workoutStore.stopRest()
                         } label: {
                             Label("Zurücksetzen", systemImage: "gobackward")
                         }
@@ -215,19 +230,20 @@ struct WorkoutDetailView: View {
                     WorkoutSetCard(
                         index: setIndex,
                         set: setBinding,
-                        isActiveRest: activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) && isTimerRunning,
-                        remainingSeconds: remainingSeconds,
+                        isActiveRest: isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex),
+                        remainingSeconds: activeRestForThisWorkout?.remainingSeconds ?? 0,
                         previousReps: previous.reps,
                         previousWeight: previous.weight,
                         onRestTimeUpdated: { newValue in
-                            if activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
-                                remainingSeconds = Int(newValue)
+                            if isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
+                                workoutStore.setRest(remaining: Int(newValue), total: Int(newValue))
                             }
                         },
                         onToggleCompletion: {
                             toggleCompletion(for: exerciseIndex, setIndex: setIndex)
                         }
                     )
+                    .listRowSeparator(.hidden)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             removeSet(at: setIndex, for: exerciseIndex)
@@ -332,6 +348,30 @@ struct WorkoutDetailView: View {
         return volume
     }
 
+    private var previousVolumeValueText: String {
+        guard let previousVolume else { return "–" }
+        return previousVolume.formatted(.number.precision(.fractionLength(1))) + " kg"
+    }
+
+    private var previousDateText: String {
+        guard let previous = workoutStore.previousWorkout(before: workout) else { return "–" }
+        return previous.date.formatted(.dateTime.day().month().year())
+    }
+
+    private var previousExerciseCountText: String {
+        guard let previous = workoutStore.previousWorkout(before: workout) else { return "–" }
+        return "\(previous.exercises.count)"
+    }
+
+    private var currentTotalReps: Int {
+        workout.exercises.reduce(0) { $0 + $1.sets.reduce(0) { $0 + $1.reps } }
+    }
+
+    private var previousTotalReps: Int? {
+        guard let previous = workoutStore.previousWorkout(before: workout) else { return nil }
+        return previous.exercises.reduce(0) { $0 + $1.sets.reduce(0) { $0 + $1.reps } }
+    }
+
     private var progressDeltaText: String {
         guard let previousVolume else {
             return "Neu: kein Vergleich"
@@ -349,8 +389,32 @@ struct WorkoutDetailView: View {
         }
     }
 
+    private var repsDeltaText: String {
+        guard let prevReps = previousTotalReps else {
+            return "Neu: kein Vergleich"
+        }
+        let delta = currentTotalReps - prevReps
+        if delta == 0 {
+            return "Gleich wie zuletzt"
+        } else if delta > 0 {
+            return "+\(delta) Wdh. vs. letzte Session"
+        } else {
+            return "\(delta) Wdh. vs. letzte Session"
+        }
+    }
+
     private var hasExercises: Bool {
         workout.exercises.contains { !$0.sets.isEmpty }
+    }
+
+    private var activeRestForThisWorkout: WorkoutStore.ActiveRestState? {
+        guard let state = workoutStore.activeRestState, state.workoutId == workout.id else { return nil }
+        return state
+    }
+
+    private func isActiveRest(exerciseIndex: Int, setIndex: Int) -> Bool {
+        guard let state = activeRestForThisWorkout else { return false }
+        return state.exerciseIndex == exerciseIndex && state.setIndex == setIndex && state.isRunning
     }
 
     private func toggleCompletion(for exerciseIndex: Int, setIndex: Int) {
@@ -358,9 +422,12 @@ struct WorkoutDetailView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if workout.exercises[exerciseIndex].sets[setIndex].completed {
-                startRest(for: exerciseIndex, setIndex: setIndex)
-            } else if activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
-                stopRestTimer()
+                let rest = Int(workout.exercises[exerciseIndex].sets[setIndex].restTime.rounded())
+                workoutStore.startRest(for: workout, exerciseIndex: exerciseIndex, setIndex: setIndex, totalSeconds: rest)
+            } else if let state = activeRestForThisWorkout,
+                      state.exerciseIndex == exerciseIndex,
+                      state.setIndex == setIndex {
+                workoutStore.stopRest()
             }
         }
     }
@@ -380,47 +447,8 @@ struct WorkoutDetailView: View {
         return "\(seconds) s"
     }
 
-    private func startRest(for exerciseIndex: Int, setIndex: Int) {
-        let restValue = workout.exercises[exerciseIndex].sets[setIndex].restTime
-        activeRest = ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex)
-        remainingSeconds = max(Int(restValue.rounded()), 0)
-        isTimerRunning = remainingSeconds > 0
-        if isActiveSession {
-            WorkoutLiveActivityController.shared.updateRest(
-                workoutName: workout.name,
-                remainingSeconds: remainingSeconds,
-                totalSeconds: Int(restValue.rounded())
-            )
-        }
-    }
-
-    private func pauseRestTimer() {
-        isTimerRunning = false
-    }
-
-    private func resumeRestTimer() {
-        guard remainingSeconds > 0 else { return }
-        isTimerRunning = true
-        if isActiveSession {
-            WorkoutLiveActivityController.shared.updateRest(
-                workoutName: workout.name,
-                remainingSeconds: remainingSeconds,
-                totalSeconds: remainingSeconds
-            )
-        }
-    }
-
-    private func stopRestTimer() {
-        activeRest = nil
-        remainingSeconds = 0
-        isTimerRunning = false
-        if isActiveSession {
-            WorkoutLiveActivityController.shared.clearRest(workoutName: workout.name)
-        }
-    }
-
     private func finalizeCompletion() {
-        stopRestTimer()
+        workoutStore.stopRest()
         let elapsed = max(Date().timeIntervalSince(workout.date), 0)
         workout.duration = elapsed
         workoutStore.updateWorkout(workout)
@@ -448,13 +476,16 @@ struct WorkoutDetailView: View {
         guard workout.exercises.indices.contains(exerciseIndex) else { return }
         guard workout.exercises[exerciseIndex].sets.indices.contains(setIndex) else { return }
 
-        let wasActiveRest = activeRest?.exerciseIndex == exerciseIndex && activeRest?.setIndex == setIndex
+        let isActive = activeRestForThisWorkout?.exerciseIndex == exerciseIndex &&
+                       activeRestForThisWorkout?.setIndex == setIndex
         workout.exercises[exerciseIndex].sets.remove(at: setIndex)
 
-        if wasActiveRest {
-            stopRestTimer()
-        } else if let active = activeRest, active.exerciseIndex == exerciseIndex, active.setIndex >= workout.exercises[exerciseIndex].sets.count {
-            stopRestTimer()
+        if isActive {
+            workoutStore.stopRest()
+        } else if let state = activeRestForThisWorkout,
+                  state.exerciseIndex == exerciseIndex,
+                  state.setIndex >= workout.exercises[exerciseIndex].sets.count {
+            workoutStore.stopRest()
         }
     }
 
@@ -487,10 +518,11 @@ struct WorkoutDetailView: View {
             return (nil, nil)
         }
     }
+}
 
-    private struct ActiveRest: Equatable {
-        let exerciseIndex: Int
-        let setIndex: Int
+private extension Array {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 
@@ -511,7 +543,6 @@ private struct WorkoutSetCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Kompakte Zeile: Nummer | Wiederholungen | Gewicht | ✓
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("\(index + 1)")
                     .font(.title3.weight(.semibold))
@@ -589,7 +620,6 @@ private struct WorkoutSetCard: View {
                 .buttonStyle(.plain)
             }
 
-            // Pause-Zeile darunter (klein), editierbar
             HStack(spacing: 6) {
                 Image(systemName: "hourglass")
                     .font(.caption2)

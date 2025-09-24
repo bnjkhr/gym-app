@@ -59,6 +59,7 @@ struct ContentView: View {
                         resumeAction: { resumeActiveWorkout() },
                         endAction: { endActiveSession() }
                     )
+                    .environmentObject(workoutStore)
                     .padding(Edge.Set.horizontal, 16)
                     .padding(Edge.Set.vertical, 12)
                     .padding(.bottom, 44) // noch weiter hoch
@@ -93,6 +94,7 @@ struct ContentView: View {
     }
 
     private func endActiveSession() {
+        workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
         navigateToActiveWorkout = false
@@ -460,6 +462,7 @@ struct WorkoutsHomeView: View {
     }
 
     private func endActiveSession() {
+        workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
     }
@@ -563,13 +566,78 @@ struct EmptyStateCard: View {
     }
 }
 
-// MARK: - Minimal placeholder implementations to compile
+// Minimal Wrap placeholder (no true wrapping; lays out vertically)
+struct Wrap<Content: View>: View {
+    var alignment: HorizontalAlignment = .leading
+    var spacing: CGFloat = 8
+    @ViewBuilder var content: () -> Content
 
+    var body: some View {
+        VStack(alignment: alignment, spacing: spacing) {
+            content()
+        }
+    }
+}
+
+struct RecentActivityCard: View {
+    let workouts: [WorkoutSession]
+    let startAction: (WorkoutSession) -> Void
+    let detailAction: (WorkoutSession) -> Void
+    let deleteSessionAction: (WorkoutSession) -> Void
+    let enableActions: Bool
+    let showHeader: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if showHeader {
+                Text("Letzte Sessions")
+                    .font(.headline)
+            }
+            ForEach(workouts) { session in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(session.name)
+                            .font(.subheadline.weight(.semibold))
+                        Text(session.date, style: .date)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if enableActions {
+                        Menu {
+                            Button("Starten") { startAction(session) }
+                            Button("Details") { detailAction(session) }
+                            Button("Löschen", role: .destructive) { deleteSessionAction(session) }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+}
+
+// ActiveWorkoutBar updated to show the rest timer
 struct ActiveWorkoutBar: View {
     let workout: Workout
     let resumeAction: () -> Void
     let endAction: () -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var workoutStore: WorkoutStore
+
+    private var restText: String? {
+        guard let state = workoutStore.activeRestState, state.workoutId == workout.id else { return nil }
+        let m = state.remainingSeconds / 60
+        let s = state.remainingSeconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -577,9 +645,19 @@ struct ActiveWorkoutBar: View {
                 Text("Aktives Workout")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(workout.name)
-                    .font(.headline)
-                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Text(workout.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if let rest = restText {
+                        Label(rest, systemImage: "timer")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.12), in: Capsule())
+                    }
+                }
             }
             Spacer()
             Button(action: resumeAction) {
@@ -724,64 +802,7 @@ struct CapsuleTag: View {
     }
 }
 
-// Minimal Wrap placeholder (no true wrapping; lays out vertically)
-struct Wrap<Content: View>: View {
-    var alignment: HorizontalAlignment = .leading
-    var spacing: CGFloat = 8
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(alignment: alignment, spacing: spacing) {
-            content()
-        }
-    }
-}
-
-struct RecentActivityCard: View {
-    let workouts: [WorkoutSession]
-    let startAction: (WorkoutSession) -> Void
-    let detailAction: (WorkoutSession) -> Void
-    let deleteSessionAction: (WorkoutSession) -> Void
-    let enableActions: Bool
-    let showHeader: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if showHeader {
-                Text("Letzte Sessions")
-                    .font(.headline)
-            }
-            ForEach(workouts) { session in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(session.name)
-                            .font(.subheadline.weight(.semibold))
-                        Text(session.date, style: .date)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if enableActions {
-                        Menu {
-                            Button("Starten") { startAction(session) }
-                            Button("Details") { detailAction(session) }
-                            Button("Löschen", role: .destructive) { deleteSessionAction(session) }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                        }
-                    }
-                }
-                .padding(.vertical, 6)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-}
-
+// Re-add SessionDetailView to fix missing type
 struct SessionDetailView: View {
     let session: WorkoutSession
 
@@ -829,10 +850,6 @@ struct SessionDetailView: View {
     }
 }
 
-// Die restlichen Unter-Views (WeeklySnapshotCard, SectionHeader, WorkoutRow, InfoChip, MetricChip, CapsuleTag, Wrap,
-// ActiveWorkoutBar, ExercisesCatalogView, ProgressDashboardView, WeeklyGoalCard, StatMetricsGrid, StatMetricCard,
-// ExerciseAnalyticsSection, AnalyticsMetricsRow, WorkoutCalendarSection, MuscleVolumeSection, RecentActivityCard,
-// SessionDetailView, BottomSearchBar) bleiben wie in deiner aktuellen Datei oben.
 #Preview {
     ContentView()
 }
