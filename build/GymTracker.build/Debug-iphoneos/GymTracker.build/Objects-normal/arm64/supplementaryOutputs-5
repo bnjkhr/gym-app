@@ -1,0 +1,23 @@
+{
+  "/Users/benkohler/Projekte/gym-app/GymTracker/GymTrackerApp.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/GymTrackerApp.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/GymTrackerApp.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/GymTrackerApp.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/GymTrackerApp.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/GymTrackerApp.swiftdeps"
+  },
+  "/Users/benkohler/Projekte/gym-app/GymTracker/Views/SettingsView.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SettingsView.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SettingsView.swiftdeps"
+  },
+  "/Users/benkohler/Projekte/gym-app/GymTracker/Views/WorkoutsView.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutsView.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutsView.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutsView.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutsView.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutsView.swiftdeps"
+  }
+}

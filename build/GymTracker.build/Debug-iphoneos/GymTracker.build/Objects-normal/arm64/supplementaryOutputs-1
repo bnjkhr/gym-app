@@ -1,0 +1,23 @@
+{
+  "/Users/benkohler/Projekte/gym-app/GymTracker/Color+Theme.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Color+Theme.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Color+Theme.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Color+Theme.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Color+Theme.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Color+Theme.swiftdeps"
+  },
+  "/Users/benkohler/Projekte/gym-app/GymTracker/LiveActivities/WorkoutActivityAttributes.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutActivityAttributes.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutActivityAttributes.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutActivityAttributes.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutActivityAttributes.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/WorkoutActivityAttributes.swiftdeps"
+  },
+  "/Users/benkohler/Projekte/gym-app/GymTracker/SoundPlayer.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SoundPlayer.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SoundPlayer.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SoundPlayer.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SoundPlayer.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SoundPlayer.swiftdeps"
+  }
+}

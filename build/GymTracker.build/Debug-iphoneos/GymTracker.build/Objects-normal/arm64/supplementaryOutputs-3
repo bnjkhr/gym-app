@@ -1,0 +1,23 @@
+{
+  "/Users/benkohler/Projekte/gym-app/GymTracker/Models/Workout.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Workout.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Workout.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Workout.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Workout.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/Workout.swiftdeps"
+  },
+  "/Users/benkohler/Projekte/gym-app/GymTracker/Views/AddExerciseView.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/AddExerciseView.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/AddExerciseView.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/AddExerciseView.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/AddExerciseView.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/AddExerciseView.swiftdeps"
+  },
+  "/Users/benkohler/Projekte/gym-app/GymTracker/Views/SessionActionButton.swift" : {
+    "const-values" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SessionActionButton.swiftconstvalues",
+    "dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SessionActionButton.d",
+    "diagnostics" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SessionActionButton.dia",
+    "object" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SessionActionButton.o",
+    "swift-dependencies" : "/Users/benkohler/Projekte/gym-app/build/GymTracker.build/Debug-iphoneos/GymTracker.build/Objects-normal/arm64/SessionActionButton.swiftdeps"
+  }
+}

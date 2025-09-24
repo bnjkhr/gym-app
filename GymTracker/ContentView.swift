@@ -5,36 +5,49 @@ struct ContentView: View {
     @StateObject private var workoutStore = WorkoutStore()
 
     var body: some View {
-        TabView {
-            WorkoutsHomeView()
-                .environmentObject(workoutStore)
-                .tabItem {
-                    Image(systemName: "dumbbell")
-                    Text("Workouts")
-                }
+        VStack(spacing: 0) {
+            // Workout Timer am oberen Bildschirmrand
+            if let activeWorkout = workoutStore.activeWorkout {
+                WorkoutTimerView(
+                    workoutName: activeWorkout.name,
+                    startDate: activeWorkout.date
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            }
 
-            ExercisesCatalogView()
-                .environmentObject(workoutStore)
-                .tabItem {
-                    Image(systemName: "list.bullet.rectangle")
-                    Text("Übungen")
-                }
+            TabView {
+                WorkoutsHomeView()
+                    .environmentObject(workoutStore)
+                    .tabItem {
+                        Image(systemName: "dumbbell")
+                        Text("Workouts")
+                    }
 
-            ProgressDashboardView()
-                .environmentObject(workoutStore)
-                .tabItem {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                    Text("Fortschritt")
-                }
+                ExercisesCatalogView()
+                    .environmentObject(workoutStore)
+                    .tabItem {
+                        Image(systemName: "list.bullet.rectangle")
+                        Text("Übungen")
+                    }
 
-            SettingsView()
-                .environmentObject(workoutStore)
-                .tabItem {
-                    Image(systemName: "gearshape")
-                    Text("Einstellungen")
-                }
+                ProgressDashboardView()
+                    .environmentObject(workoutStore)
+                    .tabItem {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                        Text("Fortschritt")
+                    }
+
+                SettingsView()
+                    .environmentObject(workoutStore)
+                    .tabItem {
+                        Image(systemName: "gearshape")
+                        Text("Einstellungen")
+                    }
+            }
+            .tint(Color.mossGreen)
         }
-        .tint(Color.mossGreen)
     }
 }
 
@@ -50,7 +63,6 @@ struct WorkoutsHomeView: View {
     @State private var showingWorkoutWizard = false
     @State private var showingManualAdd = false
     @State private var selectedWorkout: WorkoutSelection?
-    @State private var activeSessionID: UUID?
     @State private var editingWorkoutSelection: WorkoutSelection?
     @State private var viewingSession: WorkoutSession?
     @State private var missingTemplateName: String?
@@ -243,7 +255,7 @@ struct WorkoutsHomeView: View {
                 if let binding = binding(for: selection.id) {
                     WorkoutDetailView(
                         workout: binding,
-                        isActiveSession: activeSessionID == selection.id,
+                        isActiveSession: workoutStore.activeSessionID == selection.id,
                         onActiveSessionEnd: { endActiveSession() }
                     )
                     .environmentObject(workoutStore)
@@ -271,9 +283,9 @@ struct WorkoutsHomeView: View {
                 }
             }
             .onReceive(workoutStore.$workouts) { workouts in
-                guard let activeID = activeSessionID else { return }
+                guard let activeID = workoutStore.activeSessionID else { return }
                 if !workouts.contains(where: { $0.id == activeID }) {
-                    activeSessionID = nil
+                    workoutStore.activeSessionID = nil
                     WorkoutLiveActivityController.shared.end()
                 }
             }
@@ -323,13 +335,13 @@ struct WorkoutsHomeView: View {
         binding.wrappedValue = workout
 
         selectedWorkout = WorkoutSelection(id: id)
-        activeSessionID = id
+        workoutStore.activeSessionID = id
         WorkoutLiveActivityController.shared.start(workoutName: workout.name)
     }
 
     private func showWorkoutDetails(id: UUID) {
         selectedWorkout = WorkoutSelection(id: id)
-        activeSessionID = nil
+        workoutStore.activeSessionID = nil
     }
 
     private func editWorkout(id: UUID) {
@@ -342,8 +354,8 @@ struct WorkoutsHomeView: View {
             if selectedWorkout?.id == id {
                 selectedWorkout = nil
             }
-            if activeSessionID == id {
-                activeSessionID = nil
+            if workoutStore.activeSessionID == id {
+                workoutStore.activeSessionID = nil
                 WorkoutLiveActivityController.shared.end()
             }
             if editingWorkoutSelection?.id == id {
@@ -354,8 +366,8 @@ struct WorkoutsHomeView: View {
 
     private func removeSession(id: UUID) {
         workoutStore.removeSession(with: id)
-        if activeSessionID == id {
-            activeSessionID = nil
+        if workoutStore.activeSessionID == id {
+            workoutStore.activeSessionID = nil
             WorkoutLiveActivityController.shared.end()
         }
         if let session = viewingSession, session.id == id {
@@ -379,7 +391,7 @@ struct WorkoutsHomeView: View {
     }
 
     private var currentActiveWorkout: Workout? {
-        guard let activeID = activeSessionID,
+        guard let activeID = workoutStore.activeSessionID,
               let index = workoutStore.workouts.firstIndex(where: { $0.id == activeID }) else {
             return nil
         }
@@ -387,12 +399,12 @@ struct WorkoutsHomeView: View {
     }
 
     private var shouldShowActiveSessionBar: Bool {
-        activeSessionID != nil && selectedWorkout == nil && currentActiveWorkout != nil
+        workoutStore.activeSessionID != nil && selectedWorkout == nil && currentActiveWorkout != nil
     }
 
     private func resumeActiveWorkout() {
-        guard let activeID = activeSessionID, binding(for: activeID) != nil else {
-            activeSessionID = nil
+        guard let activeID = workoutStore.activeSessionID, binding(for: activeID) != nil else {
+            workoutStore.activeSessionID = nil
             return
         }
         selectedWorkout = WorkoutSelection(id: activeID)
@@ -402,7 +414,7 @@ struct WorkoutsHomeView: View {
     }
 
     private func endActiveSession() {
-        activeSessionID = nil
+        workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
     }
 }
@@ -1784,6 +1796,74 @@ private extension View {
             }
         } else {
             self.onChange(of: value, perform: action)
+        }
+    }
+}
+
+struct WorkoutTimerView: View {
+    let workoutName: String
+    let startDate: Date
+    @State private var currentTime = Date()
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private var elapsedTime: TimeInterval {
+        currentTime.timeIntervalSince(startDate)
+    }
+
+    private var formattedElapsedTime: String {
+        let totalSeconds = Int(elapsedTime)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.mossGreen)
+                .frame(width: 8, height: 8)
+                .scaleEffect(1.2)
+                .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: currentTime)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Aktives Workout")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(workoutName)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Text(formattedElapsedTime)
+                .font(.system(.subheadline, design: .monospaced))
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.mossGreen)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.mossGreen.opacity(0.2), lineWidth: 1)
+        )
+        .onAppear {
+            currentTime = Date()
+        }
+        .onReceive(timer) { _ in
+            currentTime = Date()
         }
     }
 }

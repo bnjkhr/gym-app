@@ -5,11 +5,17 @@ class WorkoutStore: ObservableObject {
     @Published var exercises: [Exercise] = []
     @Published var workouts: [Workout] = []
     @Published var sessionHistory: [WorkoutSession] = []
+    @Published var activeSessionID: UUID?
 
     private var persistenceTimer: Timer?
     private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
     private var weekStreakCache: (date: Date, value: Int)?
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
+
+    var activeWorkout: Workout? {
+        guard let activeSessionID else { return nil }
+        return workouts.first { $0.id == activeSessionID }
+    }
 
     init() {
         if !loadFromDisk() {
