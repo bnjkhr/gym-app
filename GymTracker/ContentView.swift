@@ -47,6 +47,8 @@ private struct WorkoutSelection: Identifiable, Hashable {
 struct WorkoutsHomeView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @State private var showingAddWorkout = false
+    @State private var showingWorkoutWizard = false
+    @State private var showingManualAdd = false
     @State private var selectedWorkout: WorkoutSelection?
     @State private var activeSessionID: UUID?
     @State private var editingWorkoutSelection: WorkoutSelection?
@@ -153,8 +155,89 @@ struct WorkoutsHomeView: View {
                 }
             }
             .sheet(isPresented: $showingAddWorkout) {
-                AddWorkoutView()
-                    .environmentObject(workoutStore)
+                NavigationStack {
+                    VStack(spacing: 20) {
+                        Text("Neues Workout erstellen")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .padding(.top)
+
+                        VStack(spacing: 16) {
+                            Button {
+                                showingAddWorkout = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    showingWorkoutWizard = true
+                                }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Workout-Assistent")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        Text("Personalisiertes Workout basierend auf deinen Zielen")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "wand.and.stars")
+                                        .font(.title2)
+                                        .foregroundColor(.blue)
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.blue.opacity(0.1))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                showingAddWorkout = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    showingManualAdd = true
+                                }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Manuell erstellen")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        Text("Selbst zusammengestelltes Workout")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "plus.circle")
+                                        .font(.title2)
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray6))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding()
+
+                        Spacer()
+                    }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Abbrechen") {
+                                showingAddWorkout = false
+                            }
+                        }
+                    }
+                }
             }
             .navigationDestination(item: $selectedWorkout) { selection in
                 if let binding = binding(for: selection.id) {
@@ -201,6 +284,14 @@ struct WorkoutsHomeView: View {
                 Button("OK", role: .cancel) { missingTemplateName = nil }
             } message: { name in
                 Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
+            }
+            .sheet(isPresented: $showingWorkoutWizard) {
+                WorkoutWizardView()
+                    .environmentObject(workoutStore)
+            }
+            .sheet(isPresented: $showingManualAdd) {
+                AddWorkoutView()
+                    .environmentObject(workoutStore)
             }
         }
     }

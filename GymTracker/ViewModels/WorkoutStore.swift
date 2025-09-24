@@ -549,4 +549,236 @@ extension WorkoutStore {
         guard reps > 0 else { return weight }
         return weight * (1 + Double(reps) / 30.0)
     }
+
+    // MARK: - Workout Generation
+
+    func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
+        let muscleGroups = selectMuscleGroups(for: preferences)
+        let selectedExercises = selectExercises(for: preferences, targeting: muscleGroups)
+        let workoutExercises = createWorkoutExercises(from: selectedExercises, preferences: preferences)
+
+        return Workout(
+            name: generateWorkoutName(for: preferences),
+            exercises: workoutExercises,
+            defaultRestTime: calculateRestTime(for: preferences),
+            notes: generateWorkoutNotes(for: preferences)
+        )
+    }
+
+    private func selectMuscleGroups(for preferences: WorkoutPreferences) -> [MuscleGroup] {
+        switch preferences.frequency {
+        case 1, 2:
+            // Ganzkörper-Workouts
+            return [.chest, .back, .shoulders, .legs, .abs]
+        case 3:
+            // 3er Split: Push/Pull/Legs
+            return [.chest, .back, .legs, .shoulders, .abs]
+        case 4, 5:
+            // 4-5er Split: mehr Fokus auf spezifische Gruppen
+            return [.chest, .back, .shoulders, .legs, .biceps, .triceps, .abs]
+        default:
+            // 6+ Split: sehr spezifisch
+            return MuscleGroup.allCases
+        }
+    }
+
+    private func selectExercises(for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup]) -> [Exercise] {
+        var selectedExercises: [Exercise] = []
+        let availableExercises = filterExercisesByEquipment(preferences.equipment)
+
+        // Grundübungen basierend auf Erfahrung
+        let compoundExercises = availableExercises.filter { exercise in
+            exercise.muscleGroups.count >= 2
+        }
+
+        let isolationExercises = availableExercises.filter { exercise in
+            exercise.muscleGroups.count == 1
+        }
+
+        // Anzahl Übungen basierend auf Trainingsdauer
+        let targetExerciseCount = calculateExerciseCount(for: preferences)
+
+        // Compound-zu-Isolation Verhältnis basierend auf Erfahrung
+        let compoundRatio: Double
+        switch preferences.experience {
+        case .beginner:
+            compoundRatio = 0.8  // 80% Grundübungen
+        case .intermediate:
+            compoundRatio = 0.6  // 60% Grundübungen
+        case .advanced:
+            compoundRatio = 0.4  // 40% Grundübungen
+        }
+
+        let compoundCount = Int(Double(targetExerciseCount) * compoundRatio)
+        let isolationCount = targetExerciseCount - compoundCount
+
+        // Wähle Compound-Übungen
+        for muscleGroup in muscleGroups.prefix(compoundCount) {
+            if let exercise = compoundExercises.first(where: { exercise in
+                exercise.muscleGroups.contains(muscleGroup) && !selectedExercises.contains(where: { $0.id == exercise.id })
+            }) {
+                selectedExercises.append(exercise)
+            }
+        }
+
+        // Fülle mit Isolation-Übungen auf
+        for muscleGroup in muscleGroups.prefix(isolationCount) {
+            if let exercise = isolationExercises.first(where: { exercise in
+                exercise.muscleGroups.contains(muscleGroup) && !selectedExercises.contains(where: { $0.id == exercise.id })
+            }) {
+                selectedExercises.append(exercise)
+            }
+        }
+
+        // Stelle sicher, dass wir genug Übungen haben
+        while selectedExercises.count < targetExerciseCount && selectedExercises.count < availableExercises.count {
+            if let nextExercise = availableExercises.first(where: { exercise in
+                !selectedExercises.contains(where: { $0.id == exercise.id })
+            }) {
+                selectedExercises.append(nextExercise)
+            } else {
+                break
+            }
+        }
+
+        return Array(selectedExercises.prefix(targetExerciseCount))
+    }
+
+    private func filterExercisesByEquipment(_ equipment: EquipmentPreference) -> [Exercise] {
+        switch equipment {
+        case .freeWeights:
+            return exercises.filter { exercise in
+                !exercise.name.lowercased().contains("maschine") &&
+                !exercise.name.lowercased().contains("machine")
+            }
+        case .machines:
+            return exercises.filter { exercise in
+                exercise.name.lowercased().contains("maschine") ||
+                exercise.name.lowercased().contains("machine")
+            }
+        case .mixed:
+            return exercises
+        }
+    }
+
+    private func calculateExerciseCount(for preferences: WorkoutPreferences) -> Int {
+        let baseCount: Int
+        switch preferences.duration {
+        case .short: baseCount = 4
+        case .medium: baseCount = 6
+        case .long: baseCount = 8
+        case .extended: baseCount = 10
+        }
+
+        // Anpassung basierend auf Erfahrung
+        switch preferences.experience {
+        case .beginner:
+            return max(3, baseCount - 1)
+        case .intermediate:
+            return baseCount
+        case .advanced:
+            return baseCount + 1
+        }
+    }
+
+    private func createWorkoutExercises(from exercises: [Exercise], preferences: WorkoutPreferences) -> [WorkoutExercise] {
+        return exercises.map { exercise in
+            let setCount = calculateSetCount(for: exercise, preferences: preferences)
+            let reps = calculateReps(for: exercise, preferences: preferences)
+            let restTime = calculateRestTime(for: preferences)
+
+            let sets = (0..<setCount).map { _ in
+                ExerciseSet(reps: reps, weight: 0, restTime: restTime, completed: false)
+            }
+
+            return WorkoutExercise(exercise: exercise, sets: sets)
+        }
+    }
+
+    private func calculateSetCount(for exercise: Exercise, preferences: WorkoutPreferences) -> Int {
+        let baseSetCount: Int
+        switch preferences.experience {
+        case .beginner: baseSetCount = 2
+        case .intermediate: baseSetCount = 3
+        case .advanced: baseSetCount = 4
+        }
+
+        // Compound-Übungen bekommen mehr Sätze
+        let isCompound = exercise.muscleGroups.count >= 2
+        return isCompound ? baseSetCount + 1 : baseSetCount
+    }
+
+    private func calculateReps(for exercise: Exercise, preferences: WorkoutPreferences) -> Int {
+        switch preferences.goal {
+        case .strength:
+            return Int.random(in: 3...6)
+        case .muscleBuilding:
+            return Int.random(in: 8...12)
+        case .endurance:
+            return Int.random(in: 15...20)
+        case .weightLoss:
+            return Int.random(in: 12...15)
+        case .general:
+            return Int.random(in: 10...12)
+        }
+    }
+
+    private func calculateRestTime(for preferences: WorkoutPreferences) -> Double {
+        switch preferences.goal {
+        case .strength:
+            return 120 // 2 Minuten für Kraft
+        case .muscleBuilding:
+            return 90  // 90 Sekunden für Hypertrophie
+        case .endurance:
+            return 60  // 1 Minute für Ausdauer
+        case .weightLoss:
+            return 45  // 45 Sekunden für Fettabbau
+        case .general:
+            return 75  // 75 Sekunden allgemein
+        }
+    }
+
+    private func generateWorkoutName(for preferences: WorkoutPreferences) -> String {
+        let goalPrefix: String
+        switch preferences.goal {
+        case .muscleBuilding: goalPrefix = "Muskelaufbau"
+        case .strength: goalPrefix = "Kraft"
+        case .endurance: goalPrefix = "Ausdauer"
+        case .weightLoss: goalPrefix = "Fettverbrennung"
+        case .general: goalPrefix = "Fitness"
+        }
+
+        let equipmentSuffix: String
+        switch preferences.equipment {
+        case .freeWeights: equipmentSuffix = "Freie Gewichte"
+        case .machines: equipmentSuffix = "Maschinen"
+        case .mixed: equipmentSuffix = "Mixed"
+        }
+
+        return "\(goalPrefix) - \(equipmentSuffix)"
+    }
+
+    private func generateWorkoutNotes(for preferences: WorkoutPreferences) -> String {
+        var notes: [String] = []
+
+        notes.append("🎯 Ziel: \(preferences.goal.displayName)")
+        notes.append("📊 Level: \(preferences.experience.displayName)")
+        notes.append("⏱️ Dauer: ~\(preferences.duration.rawValue) Minuten")
+        notes.append("🔄 Frequenz: \(preferences.frequency)x pro Woche")
+
+        switch preferences.goal {
+        case .strength:
+            notes.append("💡 Tipp: Fokus auf schwere Gewichte, längere Pausen")
+        case .muscleBuilding:
+            notes.append("💡 Tipp: Kontrollierte Bewegungen, Muskel-Geist-Verbindung")
+        case .endurance:
+            notes.append("💡 Tipp: Höhere Wiederholungen, kürzere Pausen")
+        case .weightLoss:
+            notes.append("💡 Tipp: Intensität hoch halten, Supersätze möglich")
+        case .general:
+            notes.append("💡 Tipp: Ausgewogenes Training, auf Körper hören")
+        }
+
+        return notes.joined(separator: "\n")
+    }
 }

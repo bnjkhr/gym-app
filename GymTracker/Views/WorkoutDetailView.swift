@@ -235,6 +235,7 @@ struct WorkoutDetailView: View {
                         } label: {
                             Label("Löschen", systemImage: "trash")
                         }
+                        .tint(.red)
                     }
                 }
 
