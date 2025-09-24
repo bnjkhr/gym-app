@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 class WorkoutStore: ObservableObject {
     @Published var exercises: [Exercise] = []
     @Published var workouts: [Workout] = []
@@ -28,14 +29,14 @@ class WorkoutStore: ObservableObject {
 
     func resetToSampleData() {
         loadSampleData()
-        persistExercises()
-        persistWorkouts()
-        persistSessions()
+        invalidateCaches()
+        schedulePersistence()
     }
 
     func addExercise(_ exercise: Exercise) {
         guard !exercises.contains(where: { $0.id == exercise.id || $0.name.caseInsensitiveCompare(exercise.name) == .orderedSame }) else { return }
         exercises.append(exercise)
+        invalidateCaches()
         schedulePersistence()
     }
 
@@ -54,6 +55,10 @@ class WorkoutStore: ObservableObject {
             }
             return updatedWorkout
         }
+
+        // invalidate cache for this exercise id (name/metadata may be used by UI)
+        exerciseStatsCache[exercise.id] = nil
+        schedulePersistence()
     }
 
     func addWorkout(_ workout: Workout) {
@@ -64,6 +69,7 @@ class WorkoutStore: ObservableObject {
     func updateWorkout(_ workout: Workout) {
         guard let index = workouts.firstIndex(where: { $0.id == workout.id }) else { return }
         workouts[index] = workout
+        schedulePersistence()
     }
 
     func exercise(named name: String) -> Exercise {
@@ -73,6 +79,7 @@ class WorkoutStore: ObservableObject {
 
         let newExercise = Exercise(name: name, muscleGroups: [], description: "")
         exercises.append(newExercise)
+        schedulePersistence()
         return newExercise
     }
 
@@ -109,10 +116,17 @@ class WorkoutStore: ObservableObject {
             }
             return updatedWorkout
         }
+
+        // Invalidate caches for removed exercise IDs
+        for ex in removedExercises {
+            exerciseStatsCache[ex.id] = nil
+        }
+        schedulePersistence()
     }
 
     func deleteWorkout(at indexSet: IndexSet) {
         workouts.remove(atOffsets: indexSet)
+        schedulePersistence()
     }
 
     func recordSession(from workout: Workout) {
@@ -126,6 +140,8 @@ class WorkoutStore: ObservableObject {
             notes: workout.notes
         )
         sessionHistory.insert(session, at: 0)
+        invalidateCaches() // stats/streak may change
+        schedulePersistence()
     }
 
     func removeSession(with id: UUID) {
@@ -138,10 +154,19 @@ class WorkoutStore: ObservableObject {
 
     private func schedulePersistence() {
         persistenceTimer?.invalidate()
-        persistenceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+        persistenceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+            guard let self else { return }
             DispatchQueue.global(qos: .background).async {
                 self.persistAllData()
             }
+        }
+    }
+
+    func flushPersistence() {
+        persistenceTimer?.invalidate()
+        persistenceTimer = nil
+        DispatchQueue.global(qos: .background).async {
+            self.persistAllData()
         }
     }
 
@@ -391,6 +416,19 @@ class WorkoutStore: ObservableObject {
         persist(sessionHistory, to: sessionsURL)
     }
 
+    private func applyFileProtection(to url: URL) {
+        do {
+            try FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: url.path
+            )
+        } catch {
+#if DEBUG
+            print("[WorkoutStore] Failed to set file protection on \(url.lastPathComponent): \(error.localizedDescription)")
+#endif
+        }
+    }
+
     private func persist<T: Encodable>(_ value: T, to url: URL) {
         do {
             let encoder = JSONEncoder()
@@ -398,6 +436,7 @@ class WorkoutStore: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(value)
             try data.write(to: url, options: .atomic)
+            applyFileProtection(to: url)
         } catch {
 #if DEBUG
             print("[WorkoutStore] Failed to persist data to \(url.lastPathComponent): \(error.localizedDescription)")
@@ -498,6 +537,10 @@ extension WorkoutStore {
     }
 
     func exerciseStats(for exercise: Exercise) -> ExerciseStats? {
+        if let cached = exerciseStatsCache[exercise.id] {
+            return cached
+        }
+
         let relevantSessions = sessionHistory.filter { workout in
             workout.exercises.contains { $0.exercise.id == exercise.id }
         }
@@ -534,7 +577,7 @@ extension WorkoutStore {
 
         let bestOneRepMax = history.map { $0.estimatedOneRepMax }.max() ?? maxWeight
 
-        return ExerciseStats(
+        let stats = ExerciseStats(
             exercise: exercise,
             totalVolume: totalVolume,
             totalReps: totalReps,
@@ -542,6 +585,8 @@ extension WorkoutStore {
             estimatedOneRepMax: bestOneRepMax,
             history: history
         )
+        exerciseStatsCache[exercise.id] = stats
+        return stats
     }
 
     func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
@@ -788,3 +833,4 @@ extension WorkoutStore {
         return notes.joined(separator: "\n")
     }
 }
+

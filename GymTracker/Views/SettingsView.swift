@@ -7,6 +7,9 @@ struct SettingsView: View {
     @State private var alertMessage: String?
     @State private var isShowingAlert = false
 
+    // Max. Importgröße (z. B. 2 MB)
+    private let maxImportBytes: Int = 2 * 1024 * 1024
+
     var body: some View {
         NavigationStack {
             Form {
@@ -75,7 +78,13 @@ struct SettingsView: View {
         }
 
         do {
-            let data = try Data(contentsOf: url)
+            // Dateigröße prüfen
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
+            if let size = resourceValues.fileSize, size > maxImportBytes {
+                throw ImportError.tooLarge
+            }
+
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
             guard let content = String(data: data, encoding: .utf8) else {
                 throw ImportError.invalidEncoding
             }
@@ -153,6 +162,7 @@ struct SettingsView: View {
         case invalidEncoding
         case emptyFile
         case invalidRow(String)
+        case tooLarge
 
         var errorDescription: String? {
             switch self {
@@ -162,6 +172,8 @@ struct SettingsView: View {
                 return "Keine gültigen Zeilen gefunden."
             case .invalidRow(let row):
                 return "Ungültige Zeile: \(row)"
+            case .tooLarge:
+                return "Die Datei ist zu groß. Bitte importiere eine kleinere CSV (max. 2 MB)."
             }
         }
     }
