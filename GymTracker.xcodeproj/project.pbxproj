@@ -26,6 +26,10 @@
 		11E7491E2C9E4D1500AB1234 /* SoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E7491D2C9E4D1500AB1234 /* SoundPlayer.swift */; };
 		11E749212C9E4D9300AB1234 /* EditWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E749202C9E4D9300AB1234 /* EditWorkoutView.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
+		3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */; };
+		3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */; };
+		7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */; };
+		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +53,10 @@
 		11E7491D2C9E4D1500AB1234 /* SoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPlayer.swift; sourceTree = "<group>"; };
 		11E749202C9E4D9300AB1234 /* EditWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditWorkoutView.swift; sourceTree = "<group>"; };
 		1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditExerciseView.swift; sourceTree = "<group>"; };
+		6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityController.swift; sourceTree = "<group>"; };
+		BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActionButton.swift; sourceTree = "<group>"; };
+		437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
+		1FFCE41560FA498487D62805 /* SessionActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActionButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +116,7 @@
 			children = (
 				11E749002C9E4B7A00AB1234 /* Exercise.swift */,
 				11E749022C9E4B8900AB1234 /* Workout.swift */,
+				437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -132,6 +141,8 @@
 				11E749152C9E4C4B00AB1234 /* WorkoutDetailView.swift */,
 				11E749202C9E4D9300AB1234 /* EditWorkoutView.swift */,
 				1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */,
+				BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */,
+				1FFCE41560FA498487D62805 /* SessionActionButton.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -140,6 +151,7 @@
 			isa = PBXGroup;
 			children = (
 				11E7491B2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift */,
+				6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */,
 			);
 			path = LiveActivities;
 			sourceTree = "<group>";
@@ -217,6 +229,11 @@
 				11E7491E2C9E4D1500AB1234 /* SoundPlayer.swift in Sources */,
 				11E7491A2C9E4C9E00AB1234 /* Color+Theme.swift in Sources */,
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
+				3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */,
+				3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */,
+				7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */,
+				CDC21A9460B74FFCBA50DE291447D9EC /* Handlers.swift in Sources */,
+				E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */,
 				11E749032C9E4B8900AB1234 /* Workout.swift in Sources */,
 				11E7490D2C9E4BCF00AB1234 /* AddExerciseView.swift in Sources */,
 				11E749092C9E4BB300AB1234 /* ExercisesView.swift in Sources */,
@@ -364,6 +381,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
+				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -392,6 +410,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
+				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

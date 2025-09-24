@@ -5,6 +5,8 @@ struct ExercisesView: View {
     @State private var showingAddExercise = false
     @State private var searchText = ""
     @State private var editingExercise: Exercise?
+    @State private var pendingDeletion: [Exercise] = []
+    @State private var showingDeleteAlert = false
 
     var filteredExercises: [Exercise] {
         if searchText.isEmpty {
@@ -28,7 +30,7 @@ struct ExercisesView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .onDelete(perform: deleteExercises)
+                .onDelete(perform: requestDeletionForList)
             }
             .searchable(text: $searchText, prompt: "Übungen suchen...")
             .navigationTitle("Übungen")
@@ -50,22 +52,57 @@ struct ExercisesView: View {
                     EditExerciseView(exercise: exercise) { updatedExercise in
                         workoutStore.updateExercise(updatedExercise)
                     } deleteAction: {
-                        deleteExercise(with: exercise.id)
+                        requestDeletion(for: [exercise])
                     }
+                }
+            }
+            .alert("Übung löschen?", isPresented: $showingDeleteAlert) {
+                Button("Löschen", role: .destructive) {
+                    performDeletion()
+                }
+                Button("Abbrechen", role: .cancel) {
+                    pendingDeletion = []
+                }
+            } message: {
+                if pendingDeletion.count == 1 {
+                    Text("\(pendingDeletion.first?.name ?? "") wird entfernt.")
+                } else {
+                    Text("\(pendingDeletion.count) Übungen werden entfernt.")
                 }
             }
         }
     }
 
-    private func deleteExercises(at indexSet: IndexSet) {
-        workoutStore.deleteExercise(at: indexSet)
+    private func requestDeletionForList(at indexSet: IndexSet) {
+        let exercises = indexSet.compactMap { filteredExercises[safe: $0] }
+        requestDeletion(for: exercises)
     }
 
-    private func deleteExercise(with id: UUID) {
-        if let index = workoutStore.exercises.firstIndex(where: { $0.id == id }) {
-            workoutStore.deleteExercise(at: IndexSet(integer: index))
+    private func requestDeletion(for exercises: [Exercise]) {
+        guard !exercises.isEmpty else { return }
+        pendingDeletion = exercises
+        showingDeleteAlert = true
+    }
+
+    private func performDeletion() {
+        defer {
+            showingDeleteAlert = false
         }
-        editingExercise = nil
+        for exercise in pendingDeletion {
+            if let index = workoutStore.exercises.firstIndex(where: { $0.id == exercise.id }) {
+                workoutStore.deleteExercise(at: IndexSet(integer: index))
+            }
+            if editingExercise?.id == exercise.id {
+                editingExercise = nil
+            }
+        }
+        pendingDeletion = []
+    }
+}
+
+private extension Array {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 

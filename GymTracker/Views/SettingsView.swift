@@ -28,6 +28,14 @@ struct SettingsView: View {
                         Label("Workouts importieren (CSV)", systemImage: "tray.and.arrow.down")
                     }
 
+                    Button {
+                        workoutStore.resetToSampleData()
+                        showAlert(message: "Sample-Workouts geladen!")
+                    } label: {
+                        Label("Sample-Workouts laden", systemImage: "arrow.clockwise")
+                            .foregroundColor(.orange)
+                    }
+
                     Text("Erstelle eine CSV mit 'Übung,Sätze,Wiederholungen,Gewicht' pro Zeile und importiere sie als Vorlage.")
                         .font(.footnote)
                         .foregroundColor(.secondary)
@@ -59,6 +67,13 @@ struct SettingsView: View {
     }
 
     private func importWorkout(from url: URL) {
+        let shouldStop = url.startAccessingSecurityScopedResource()
+        defer {
+            if shouldStop {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
         do {
             let data = try Data(contentsOf: url)
             guard let content = String(data: data, encoding: .utf8) else {
@@ -95,7 +110,13 @@ struct SettingsView: View {
                 let weightString = parts[3].replacingOccurrences(of: ",", with: ".")
                 let weight = Double(weightString) ?? 0
 
-                guard sets > 0 else { continue }
+                // ✅ Erweiterte Validierung
+                guard sets > 0 && sets <= 50,
+                      reps > 0 && reps <= 500,
+                      weight >= 0 && weight <= 2000,
+                      !name.isEmpty && name.count <= 100 else {
+                    continue
+                }
 
                 let exercise = workoutStore.exercise(named: name)
                 let exerciseSets = (0..<sets).map { _ in

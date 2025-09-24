@@ -6,6 +6,7 @@ struct EditExerciseView: View {
     @State private var name: String
     @State private var description: String
     @State private var selectedMuscleGroups: Set<MuscleGroup>
+    @State private var isConfirmingDelete = false
 
     let originalExercise: Exercise
     let saveAction: (Exercise) -> Void
@@ -34,8 +35,7 @@ struct EditExerciseView: View {
 
             Section {
                 Button(role: .destructive) {
-                    deleteAction()
-                    dismiss()
+                    isConfirmingDelete = true
                 } label: {
                     Label("Übung löschen", systemImage: "trash")
                 }
@@ -50,7 +50,9 @@ struct EditExerciseView: View {
                         id: originalExercise.id,
                         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                         muscleGroups: Array(selectedMuscleGroups),
-                        description: description.trimmingCharacters(in: .whitespacesAndNewlines)
+                        description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                        instructions: originalExercise.instructions,
+                        createdAt: originalExercise.createdAt
                     )
                     saveAction(updated)
                     dismiss()
@@ -63,6 +65,15 @@ struct EditExerciseView: View {
                     dismiss()
                 }
             }
+        }
+        .alert("Übung löschen?", isPresented: $isConfirmingDelete) {
+            Button("Löschen", role: .destructive) {
+                deleteAction()
+                dismiss()
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Die Übung \(originalExercise.name) wird dauerhaft entfernt und aus allen Workouts gelöscht.")
         }
     }
 

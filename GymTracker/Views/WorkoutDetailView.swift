@@ -1,7 +1,4 @@
 import SwiftUI
-#if canImport(ActivityKit)
-import ActivityKit
-#endif
 
 struct WorkoutDetailView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
@@ -18,10 +15,6 @@ struct WorkoutDetailView: View {
     @State private var showingCompletionConfirmation = false
     @State private var showingReorderSheet = false
     @State private var reorderExercises: [WorkoutExercise] = []
-#if canImport(ActivityKit)
-    @State private var liveActivity: Activity<WorkoutActivityAttributes>?
-#endif
-
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -48,13 +41,37 @@ struct WorkoutDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if isActiveSession {
+                WorkoutLiveActivityController.shared.start(workoutName: workout.name)
+                if let activeRest,
+                   workout.exercises.indices.contains(activeRest.exerciseIndex),
+                   workout.exercises[activeRest.exerciseIndex].sets.indices.contains(activeRest.setIndex) {
+                    WorkoutLiveActivityController.shared.updateRest(
+                        workoutName: workout.name,
+                        remainingSeconds: remainingSeconds,
+                        totalSeconds: Int(workout.exercises[activeRest.exerciseIndex].sets[activeRest.setIndex].restTime)
+                    )
+                } else {
+                    WorkoutLiveActivityController.shared.clearRest(workoutName: workout.name)
+                }
+            }
+        }
         .onReceive(timer) { _ in
             guard isTimerRunning else { return }
             if remainingSeconds > 0 {
                 remainingSeconds -= 1
-#if canImport(ActivityKit)
-                updateLiveActivityIfNeeded(remainingSeconds: remainingSeconds)
-#endif
+                if isActiveSession,
+                   let activeRest,
+                   workout.exercises.indices.contains(activeRest.exerciseIndex),
+                   workout.exercises[activeRest.exerciseIndex].sets.indices.contains(activeRest.setIndex) {
+                    let total = Int(workout.exercises[activeRest.exerciseIndex].sets[activeRest.setIndex].restTime)
+                    WorkoutLiveActivityController.shared.updateRest(
+                        workoutName: workout.name,
+                        remainingSeconds: remainingSeconds,
+                        totalSeconds: max(total, 1)
+                    )
+                }
                 if remainingSeconds <= 0 {
                     SoundPlayer.playBoxBell()
                     stopRestTimer()
@@ -63,7 +80,6 @@ struct WorkoutDetailView: View {
                 stopRestTimer()
             }
         }
-        .onDisappear { stopRestTimer() }
         .sheet(isPresented: $showingCompletionSheet) {
             WorkoutCompletionSummaryView(
                 name: workout.name,
@@ -188,24 +204,28 @@ struct WorkoutDetailView: View {
                         get: { workout.exercises[exerciseIndex].sets[setIndex] },
                         set: { workout.exercises[exerciseIndex].sets[setIndex] = $0 }
                     )
+                    let isCompleted = workout.exercises[exerciseIndex].sets[setIndex].completed
 
                     WorkoutSetCard(
                         index: setIndex,
                         set: setBinding,
                         isActiveRest: activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) && isTimerRunning,
                         remainingSeconds: remainingSeconds,
-                        onToggleCompletion: {
-                            toggleCompletion(for: exerciseIndex, setIndex: setIndex)
-                        },
                         onRestTimeUpdated: { newValue in
                             if activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
                                 remainingSeconds = Int(newValue)
                             }
-                        },
-                        onRemove: {
-                            removeSet(at: setIndex, for: exerciseIndex)
                         }
                     )
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        Button {
+                            toggleCompletion(for: exerciseIndex, setIndex: setIndex)
+                        } label: {
+                            Label(isCompleted ? "Zurücksetzen" : "Abschließen",
+                                  systemImage: isCompleted ? "arrow.uturn.backward" : "checkmark.circle")
+                        }
+                        .tint(isCompleted ? .orange : .green)
+                    }
                     .swipeActions(
                         edge: .trailing,
                         allowsFullSwipe: true
@@ -365,9 +385,13 @@ struct WorkoutDetailView: View {
         activeRest = ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex)
         remainingSeconds = max(Int(restValue.rounded()), 0)
         isTimerRunning = remainingSeconds > 0
-#if canImport(ActivityKit)
-        startLiveActivity(totalSeconds: remainingSeconds)
-#endif
+        if isActiveSession {
+            WorkoutLiveActivityController.shared.updateRest(
+                workoutName: workout.name,
+                remainingSeconds: remainingSeconds,
+                totalSeconds: Int(restValue.rounded())
+            )
+        }
     }
 
     private func pauseRestTimer() {
@@ -377,18 +401,22 @@ struct WorkoutDetailView: View {
     private func resumeRestTimer() {
         guard remainingSeconds > 0 else { return }
         isTimerRunning = true
-#if canImport(ActivityKit)
-        startLiveActivity(totalSeconds: remainingSeconds)
-#endif
+        if isActiveSession {
+            WorkoutLiveActivityController.shared.updateRest(
+                workoutName: workout.name,
+                remainingSeconds: remainingSeconds,
+                totalSeconds: remainingSeconds
+            )
+        }
     }
 
     private func stopRestTimer() {
         activeRest = nil
         remainingSeconds = 0
         isTimerRunning = false
-#if canImport(ActivityKit)
-        endLiveActivity()
-#endif
+        if isActiveSession {
+            WorkoutLiveActivityController.shared.clearRest(workoutName: workout.name)
+        }
     }
 
     private func finalizeCompletion() {
@@ -396,6 +424,7 @@ struct WorkoutDetailView: View {
         let elapsed = max(Date().timeIntervalSince(workout.date), 0)
         workout.duration = elapsed
         workoutStore.updateWorkout(workout)
+        workoutStore.recordSession(from: workout)
         completionDuration = elapsed
         showingCompletionSheet = true
         showingCompletionConfirmation = false
@@ -434,65 +463,6 @@ struct WorkoutDetailView: View {
         showingReorderSheet = true
     }
 
-#if canImport(ActivityKit)
-    private func startLiveActivity(totalSeconds: Int) {
-        guard #available(iOS 16.1, *), ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-
-        let initialState = WorkoutActivityAttributes.ContentState(
-            remainingSeconds: totalSeconds,
-            totalSeconds: totalSeconds,
-            title: "Pause"
-        )
-
-        if let existingActivity = liveActivity {
-            updateLiveActivity(existingActivity, remainingSeconds: totalSeconds)
-            return
-        }
-
-        let attributes = WorkoutActivityAttributes(workoutName: workout.name)
-
-        do {
-            liveActivity = try Activity<WorkoutActivityAttributes>.request(attributes: attributes, contentState: initialState, pushType: nil)
-        } catch {
-#if DEBUG
-            print("Failed to start live activity: \(error)")
-#endif
-        }
-    }
-
-    private func updateLiveActivityIfNeeded(remainingSeconds: Int) {
-        guard #available(iOS 16.1, *), let activity = liveActivity else { return }
-        updateLiveActivity(activity, remainingSeconds: remainingSeconds)
-    }
-
-    private func updateLiveActivity(_ activity: Activity<WorkoutActivityAttributes>, remainingSeconds: Int) {
-        Task {
-            let state = WorkoutActivityAttributes.ContentState(
-                remainingSeconds: max(remainingSeconds, 0),
-                totalSeconds: activity.contentState.totalSeconds,
-                title: "Pause"
-            )
-
-            await activity.update(using: state)
-        }
-    }
-
-    private func endLiveActivity() {
-        guard #available(iOS 16.1, *), let activity = liveActivity else { return }
-        Task {
-            let finalState = WorkoutActivityAttributes.ContentState(
-                remainingSeconds: 0,
-                totalSeconds: activity.contentState.totalSeconds,
-                title: "Pause"
-            )
-
-            await activity.end(using: finalState, dismissalPolicy: .immediate)
-
-            self.liveActivity = nil
-        }
-    }
-#endif
-
     private func formatTime(_ seconds: Int) -> String {
         let minutes = seconds / 60
         let remaining = seconds % 60
@@ -510,9 +480,9 @@ private struct WorkoutSetCard: View {
     @Binding var set: ExerciseSet
     var isActiveRest: Bool
     var remainingSeconds: Int
-    var onToggleCompletion: () -> Void
     var onRestTimeUpdated: (Double) -> Void
-    var onRemove: () -> Void
+
+    @State private var weightText: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -520,11 +490,6 @@ private struct WorkoutSetCard: View {
                 Text("Satz \(index + 1)")
                     .fontWeight(.semibold)
                 Spacer()
-                if set.completed {
-                    Label("Abgeschlossen", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.footnote)
-                }
             }
 
             HStack(spacing: 18) {
@@ -540,10 +505,28 @@ private struct WorkoutSetCard: View {
                 HStack(spacing: 6) {
                     Image(systemName: "scalemass.fill")
                         .foregroundStyle(Color.mossGreen)
-                    TextField("0", value: $set.weight, format: .number.precision(.fractionLength(1)))
+                    TextField("0.0", text: $weightText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 70)
+                        .onAppear {
+                            weightText = set.weight > 0 ? String(format: "%.1f", set.weight) : ""
+                        }
+                        .onChangeCompat(of: weightText) { newValue in
+                            if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                set.weight = max(0, min(weight, 999.9))
+                            } else if newValue.isEmpty {
+                                set.weight = 0
+                            }
+                        }
+                        .onChangeCompat(of: set.weight) { newValue in
+                            let formatted = newValue > 0 ? String(format: "%.1f", newValue) : ""
+                            if weightText != formatted && !weightText.isEmpty {
+                                DispatchQueue.main.async {
+                                    weightText = formatted
+                                }
+                            }
+                        }
                     Text("kg")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -557,14 +540,10 @@ private struct WorkoutSetCard: View {
             .onChangeCompat(of: set.restTime, perform: onRestTimeUpdated)
 
             HStack(spacing: 12) {
-                Button {
-                    onToggleCompletion()
-                } label: {
-                    Label(set.completed ? "Zurücksetzen" : "Satz abschließen",
-                          systemImage: set.completed ? "arrow.uturn.backward" : "checkmark.circle")
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(set.completed ? .orange : .green)
+                Label(set.completed ? "Abgeschlossen" : "Bereit",
+                      systemImage: set.completed ? "checkmark.circle.fill" : "circle")
+                    .font(.subheadline)
+                    .foregroundStyle(set.completed ? Color.mossGreen : .secondary)
 
                 if isActiveRest {
                     Label("\(formattedRemaining)", systemImage: "hourglass")
@@ -573,13 +552,7 @@ private struct WorkoutSetCard: View {
                 }
 
                 Spacer()
-
-                Button(role: .destructive, action: onRemove) {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.borderless)
             }
-            .labelStyle(.titleAndIcon)
         }
         .padding(.vertical, 6)
     }
@@ -600,6 +573,7 @@ private struct WorkoutSetCard: View {
         let seconds = remainingSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+
 }
 
 private struct WorkoutCompletionSummaryView: View {
@@ -660,6 +634,7 @@ private struct WorkoutCompletionSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 }
+
 
 private extension View {
     @ViewBuilder

@@ -48,41 +48,27 @@ struct WorkoutsHomeView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @State private var showingAddWorkout = false
     @State private var selectedWorkout: WorkoutSelection?
-    @State private var pendingActionWorkoutID: UUID?
     @State private var activeSessionID: UUID?
     @State private var editingWorkoutSelection: WorkoutSelection?
+    @State private var viewingSession: WorkoutSession?
+    @State private var missingTemplateName: String?
+    @State private var showingMissingTemplateAlert = false
 
     private var weekStart: Date {
         let calendar = Calendar.current
         return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
     }
 
-    private var highlightWorkout: Workout? {
-        workoutStore.workouts.sorted { $0.date > $1.date }.first
-    }
-
     private var workoutsThisWeek: Int {
-        workoutStore.workouts.filter { $0.date >= weekStart }.count
+        workoutStore.sessionHistory.filter { $0.date >= weekStart }.count
     }
 
     private var minutesThisWeek: Int {
-        workoutStore.workouts
+        workoutStore.sessionHistory
             .filter { $0.date >= weekStart }
             .compactMap { $0.duration }
             .map { Int($0 / 60) }
             .reduce(0, +)
-    }
-
-    private var sortedWorkoutIndices: [Int] {
-        workoutStore.workouts.indices.sorted {
-            workoutStore.workouts[$0].date > workoutStore.workouts[$1].date
-        }
-    }
-
-    private var storedWorkoutIndices: ArraySlice<Int> {
-        let indices = sortedWorkoutIndices
-        guard indices.count > 1 else { return [] }
-        return indices.dropFirst()
     }
 
     var body: some View {
@@ -92,16 +78,46 @@ struct WorkoutsHomeView: View {
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        if let workout = highlightWorkout {
-                            Button {
-                                presentActions(for: workout)
-                            } label: {
-                                WorkoutHighlightCard(workout: workout)
+                    let sortedSessions = workoutStore.sessionHistory
+                        .sorted { $0.date > $1.date }
+                    let highlightSession = sortedSessions.first
+                    let storedRoutines = workoutStore.workouts
+
+                    LazyVStack(spacing: 20, pinnedViews: []) {
+                        if let session = highlightSession {
+                            SessionActionButton(
+                                session: session,
+                                startAction: { startSession($0) },
+                                detailAction: { viewSession($0) },
+                                deleteAction: { removeSession(id: $0.id) }
+                            ) {
+                                WorkoutHighlightCard(workout: Workout(session: session))
                             }
-                            .buttonStyle(.plain)
                         } else {
                             EmptyStateCard(action: { showingAddWorkout = true })
+                        }
+
+                        SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
+
+                        if storedRoutines.isEmpty {
+                            Text("Lege ein neues Workout an, um eine Routine zu speichern.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            LazyVStack(spacing: 10) {
+                                ForEach(storedRoutines) { workout in
+                                    WorkoutActionButton(
+                                        workout: workout,
+                                        startAction: { startWorkout(with: $0.id) },
+                                        detailAction: { showWorkoutDetails(id: $0.id) },
+                                        editAction: { editWorkout(id: $0.id) },
+                                        deleteAction: { deleteWorkout(id: $0.id) }
+                                    ) {
+                                        WorkoutCard(workout: workout)
+                                    }
+                                }
+                            }
                         }
 
                         WeeklySnapshotCard(
@@ -110,28 +126,17 @@ struct WorkoutsHomeView: View {
                             goal: workoutStore.weeklyGoal
                         )
 
-                        if !storedWorkoutIndices.isEmpty {
-                            SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
-
-                            VStack(spacing: 14) {
-                                ForEach(storedWorkoutIndices, id: \.self) { index in
-                                    let workout = workoutStore.workouts[index]
-                                    Button {
-                                        presentActions(for: workout)
-                                    } label: {
-                                        WorkoutCard(workout: workout)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-
                         SectionHeader(title: "Letzte Sessions", subtitle: "Halte deine Routine frisch")
 
-                        RecentActivityCard(workouts: workoutStore.workouts.sorted { $0.date > $1.date }.prefix(5).map { $0 })
+                        RecentActivityCard(
+                            workouts: Array(sortedSessions.prefix(5)),
+                            startAction: { startSession($0) },
+                            detailAction: { viewSession($0) },
+                            deleteSessionAction: { removeSession(id: $0.id) }
+                        )
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 28)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 20)
                 }
             }
             .navigationTitle("Workouts")
@@ -163,25 +168,6 @@ struct WorkoutsHomeView: View {
                     Text("Workout konnte nicht geladen werden")
                 }
             }
-            .confirmationDialog("Aktion wählen", isPresented: Binding(
-                get: { pendingActionWorkoutID != nil },
-                set: { newValue in
-                    if !newValue { pendingActionWorkoutID = nil }
-                }
-            ), actions: {
-                if let workoutID = pendingActionWorkoutID {
-                    Button("Workout starten") {
-                        startWorkout(with: workoutID)
-                    }
-                    Button("Details ansehen") {
-                        showWorkoutDetails(id: workoutID)
-                    }
-                    Button("Bearbeiten") {
-                        editWorkout(id: workoutID)
-                    }
-                }
-                Button("Abbrechen", role: .cancel) {}
-            })
             .sheet(item: $editingWorkoutSelection) { selection in
                 if let binding = binding(for: selection.id) {
                     EditWorkoutView(workout: binding)
@@ -205,7 +191,16 @@ struct WorkoutsHomeView: View {
                 guard let activeID = activeSessionID else { return }
                 if !workouts.contains(where: { $0.id == activeID }) {
                     activeSessionID = nil
+                    WorkoutLiveActivityController.shared.end()
                 }
+            }
+            .sheet(item: $viewingSession) { session in
+                SessionDetailView(session: session)
+            }
+            .alert("Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert, presenting: missingTemplateName) { _ in
+                Button("OK", role: .cancel) { missingTemplateName = nil }
+            } message: { name in
+                Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
             }
         }
     }
@@ -224,10 +219,6 @@ struct WorkoutsHomeView: View {
         )
     }
 
-    private func presentActions(for workout: Workout) {
-        pendingActionWorkoutID = workout.id
-    }
-
     private func startWorkout(with id: UUID) {
         guard let binding = binding(for: id) else { return }
         var workout = binding.wrappedValue
@@ -241,19 +232,59 @@ struct WorkoutsHomeView: View {
         binding.wrappedValue = workout
 
         selectedWorkout = WorkoutSelection(id: id)
-        pendingActionWorkoutID = nil
         activeSessionID = id
+        WorkoutLiveActivityController.shared.start(workoutName: workout.name)
     }
 
     private func showWorkoutDetails(id: UUID) {
         selectedWorkout = WorkoutSelection(id: id)
-        pendingActionWorkoutID = nil
         activeSessionID = nil
     }
 
     private func editWorkout(id: UUID) {
-        pendingActionWorkoutID = nil
         editingWorkoutSelection = WorkoutSelection(id: id)
+    }
+
+    private func deleteWorkout(id: UUID) {
+        if let index = workoutStore.workouts.firstIndex(where: { $0.id == id }) {
+            workoutStore.deleteWorkout(at: IndexSet(integer: index))
+            if selectedWorkout?.id == id {
+                selectedWorkout = nil
+            }
+            if activeSessionID == id {
+                activeSessionID = nil
+                WorkoutLiveActivityController.shared.end()
+            }
+            if editingWorkoutSelection?.id == id {
+                editingWorkoutSelection = nil
+            }
+        }
+    }
+
+    private func removeSession(id: UUID) {
+        workoutStore.removeSession(with: id)
+        if activeSessionID == id {
+            activeSessionID = nil
+            WorkoutLiveActivityController.shared.end()
+        }
+        if let session = viewingSession, session.id == id {
+            viewingSession = nil
+        }
+    }
+
+    private func startSession(_ session: WorkoutSession) {
+        viewingSession = nil
+        if let templateId = session.templateId, binding(for: templateId) != nil {
+            missingTemplateName = nil
+            startWorkout(with: templateId)
+        } else {
+            missingTemplateName = session.name
+            showingMissingTemplateAlert = true
+        }
+    }
+
+    private func viewSession(_ session: WorkoutSession) {
+        viewingSession = session
     }
 
     private var currentActiveWorkout: Workout? {
@@ -274,10 +305,14 @@ struct WorkoutsHomeView: View {
             return
         }
         selectedWorkout = WorkoutSelection(id: activeID)
+        if let workout = currentActiveWorkout {
+            WorkoutLiveActivityController.shared.start(workoutName: workout.name)
+        }
     }
 
     private func endActiveSession() {
         activeSessionID = nil
+        WorkoutLiveActivityController.shared.end()
     }
 }
 
@@ -304,47 +339,43 @@ struct WorkoutHighlightCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(dateText.uppercased())
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(Color("AccentColor").opacity(0.6))
+                    .foregroundStyle(Color.mossGreen)
 
                 Text(workout.name)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 MetricChip(icon: "clock", text: durationText, tint: .mossGreen)
                 MetricChip(icon: "flame.fill", text: "\(workout.exercises.count) Übungen", tint: .mossGreen)
             }
 
-            Wrap(alignment: .leading, spacing: 8) {
+            Wrap(alignment: .leading, spacing: 6) {
                 ForEach(tags, id: \.self) { tag in
                     CapsuleTag(text: tag)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(26)
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.white, Color.mossGreen.opacity(0.14)],
+                        colors: [Color.white, Color.mossGreen.opacity(0.08)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Color.mossGreen.opacity(0.25), lineWidth: 1)
-        )
-        .shadow(color: Color.mossGreen.opacity(0.18), radius: 20, x: 0, y: 12)
+        .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
         .accessibilityElement(children: .combine)
     }
 }
@@ -391,21 +422,36 @@ struct WeeklySnapshotCard: View {
     let minutesThisWeek: Int
     let goal: Int
 
-    private var progress: Double {
+    private var progressRatio: Double {
         guard goal > 0 else { return 0 }
-        return min(Double(workoutsThisWeek) / Double(goal), 1)
+        return Double(workoutsThisWeek) / Double(goal)
+    }
+
+    private var clampedProgress: Double {
+        min(max(progressRatio, 0), 1)
+    }
+
+    private var progressPercentageText: String {
+        let percent = Int(round(progressRatio * 100))
+        return "\(percent)%"
+    }
+
+    private var goalSummaryText: String {
+        guard goal > 0 else { return "\(workoutsThisWeek) Workouts" }
+        return "\(workoutsThisWeek)/\(goal) Workouts"
     }
 
     var body: some View {
-        HStack(spacing: 20) {
-            VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Diese Woche")
                     .font(.headline)
-                Text("\(workoutsThisWeek) von \(goal) Sessions")
+                    .fontWeight(.semibold)
+                Text(goalSummaryText)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text("\(minutesThisWeek) Minuten aktiv")
-                    .font(.footnote)
+                Text("\(progressPercentageText) erfüllt • \(minutesThisWeek) Min")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
@@ -413,31 +459,31 @@ struct WeeklySnapshotCard: View {
 
             ZStack {
                 Circle()
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 10)
-                    .frame(width: 64, height: 64)
+                    .stroke(.quaternary, lineWidth: 8)
+                    .frame(width: 56, height: 56)
 
                 Circle()
-                    .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
+                    .trim(from: 0, to: CGFloat(clampedProgress))
                     .stroke(
                         Color.mossGreen,
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
-                    .frame(width: 64, height: 64)
-                    .animation(.easeInOut(duration: 0.6), value: progress)
+                    .frame(width: 56, height: 56)
+                    .animation(.easeInOut(duration: 0.6), value: clampedProgress)
 
-                Text("\(Int(progress * 100))%")
-                    .font(.caption)
-                    .fontWeight(.semibold)
+                Text(progressPercentageText)
+                    .font(.caption2)
+                    .fontWeight(.bold)
                     .foregroundStyle(Color.mossGreen)
             }
         }
-        .padding(22)
+        .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.white)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.white.opacity(0.95))
         )
-        .shadow(color: Color.black.opacity(0.04), radius: 16, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.02), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -471,24 +517,25 @@ struct WorkoutCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(workout.name)
                         .font(.headline)
+                        .fontWeight(.semibold)
                     Text(formattedDate)
-                        .font(.footnote)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tertiary)
             }
 
-            Wrap(alignment: .leading, spacing: 8) {
+            Wrap(alignment: .leading, spacing: 6) {
                 ForEach(workout.exercises.prefix(3)) { workoutExercise in
                     CapsuleTag(text: workoutExercise.exercise.name, style: .secondary)
                 }
@@ -497,7 +544,7 @@ struct WorkoutCard: View {
                 }
             }
 
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 InfoChip(icon: "list.bullet", label: "\(workout.exercises.count) Übungen")
                 if let durationText {
                     InfoChip(icon: "clock", label: durationText)
@@ -508,12 +555,12 @@ struct WorkoutCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.white.opacity(0.95))
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -541,15 +588,15 @@ struct MetricChip: View {
     var tint: Color = Color.mossGreen
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(systemName: icon)
                 .imageScale(.small)
             Text(text)
-                .font(.footnote)
+                .font(.caption)
                 .fontWeight(.semibold)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
         .background(tint.opacity(0.12), in: Capsule())
         .foregroundStyle(tint)
     }
@@ -566,21 +613,20 @@ struct CapsuleTag: View {
 
     var body: some View {
         Text(text)
-            .font(.caption)
+            .font(.caption2)
             .fontWeight(.medium)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(background)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(background, in: Capsule())
             .foregroundStyle(foreground)
-            .clipShape(Capsule())
     }
 
-    private var background: AnyShapeStyle {
+    private var background: Color {
         switch style {
         case .primary:
-            AnyShapeStyle(Color.mossGreen.opacity(0.16))
+            return Color.mossGreen.opacity(0.12)
         case .secondary:
-            AnyShapeStyle(Color.primary.opacity(0.05))
+            return Color.primary.opacity(0.04)
         }
     }
 
@@ -622,16 +668,15 @@ struct WrapLayout: Layout {
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let containerWidth = (proposal.width ?? 320) - spacing
-        var size = CGSize(width: 0, height: 0)
+        let containerWidth = (proposal.width ?? 300) - spacing
+        var size = CGSize(width: containerWidth, height: 0)
         var currentRowWidth: CGFloat = 0
         var currentRowHeight: CGFloat = 0
 
         for subview in subviews {
-            let subviewSize = subview.sizeThatFits(ProposedViewSize(width: containerWidth, height: proposal.height))
+            let subviewSize = subview.sizeThatFits(.init(width: min(containerWidth, 100), height: 40))
 
-            if currentRowWidth + subviewSize.width + spacing > containerWidth {
-                size.width = max(size.width, currentRowWidth)
+            if currentRowWidth + subviewSize.width + spacing > containerWidth && currentRowWidth > 0 {
                 size.height += currentRowHeight + spacing
                 currentRowWidth = subviewSize.width + spacing
                 currentRowHeight = subviewSize.height
@@ -641,7 +686,6 @@ struct WrapLayout: Layout {
             }
         }
 
-        size.width = max(size.width, currentRowWidth)
         size.height += currentRowHeight
         return size
     }
@@ -780,6 +824,7 @@ struct ExercisesCatalogView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @State private var showingAddExercise = false
     @State private var searchText = ""
+    @State private var editingExercise: Exercise?
 
     private var filteredExercises: [Exercise] {
         if searchText.isEmpty {
@@ -793,18 +838,24 @@ struct ExercisesCatalogView: View {
     }
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 140), spacing: 14)]
+        [GridItem(.adaptive(minimum: 140), spacing: 12)]
     }
 
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                LazyVGrid(columns: columns, spacing: 16) {
+                LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(filteredExercises) { exercise in
-                        ExerciseTile(exercise: exercise)
+                        Button {
+                            editingExercise = exercise
+                        } label: {
+                            ExerciseTile(exercise: exercise)
+                        }
+                        .buttonStyle(.plain)
+                        .id(exercise.id)
                     }
                 }
-                .padding(16)
+                .padding(12)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Übungen")
@@ -824,7 +875,24 @@ struct ExercisesCatalogView: View {
                 AddExerciseView()
                     .environmentObject(workoutStore)
             }
+            .sheet(item: $editingExercise) { exercise in
+                NavigationStack {
+                    EditExerciseView(exercise: exercise) { updatedExercise in
+                        workoutStore.updateExercise(updatedExercise)
+                        editingExercise = nil
+                    } deleteAction: {
+                        deleteExercise(with: exercise.id)
+                    }
+                }
+            }
         }
+    }
+
+    private func deleteExercise(with id: UUID) {
+        if let index = workoutStore.exercises.firstIndex(where: { $0.id == id }) {
+            workoutStore.deleteExercise(at: IndexSet(integer: index))
+        }
+        editingExercise = nil
     }
 }
 
@@ -836,48 +904,49 @@ struct ExerciseTile: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(primaryColor.opacity(0.15))
-                    .frame(width: 46, height: 46)
+                    .fill(primaryColor.opacity(0.12))
+                    .frame(width: 40, height: 40)
                 Image(systemName: "figure.strengthtraining.functional")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(primaryColor)
             }
 
-            Text(exercise.name)
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(exercise.name)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
 
-            if !exercise.description.isEmpty {
-                Text(exercise.description)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                if !exercise.description.isEmpty {
+                    Text(exercise.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
 
-            Wrap(alignment: .leading, spacing: 6) {
+            Wrap(alignment: .leading, spacing: 4) {
                 ForEach(exercise.muscleGroups, id: \.self) { muscle in
                     Text(muscle.rawValue)
                         .font(.caption2)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(muscle.color.opacity(0.16), in: Capsule())
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(muscle.color.opacity(0.15), in: Capsule())
                         .foregroundStyle(muscle.color)
                 }
             }
         }
-        .padding(16)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.white.opacity(0.95))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(primaryColor.opacity(0.12), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 5)
+        .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 2)
     }
 }
 
@@ -895,14 +964,14 @@ struct ProgressDashboardView: View {
         calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
     }
 
-    private var weeklyWorkouts: [Workout] {
-        workoutStore.workouts.filter { $0.date >= weekStart }
+    private var weeklyWorkouts: [WorkoutSession] {
+        workoutStore.sessionHistory.filter { $0.date >= weekStart }
     }
 
     private var progressValue: Double {
         let goal = workoutStore.weeklyGoal
         guard goal > 0 else { return 0 }
-        return min(Double(weeklyWorkouts.count) / Double(goal), 1)
+        return Double(weeklyWorkouts.count) / Double(goal)
     }
 
     private var minutesThisWeek: Int {
@@ -943,7 +1012,7 @@ struct ProgressDashboardView: View {
         return start...end
     }
 
-    private var calendarData: [Date: [Workout]] {
+    private var calendarData: [Date: [WorkoutSession]] {
         guard let range = currentMonthRange else { return [:] }
         return workoutStore.workoutsByDay(in: range)
     }
@@ -959,7 +1028,7 @@ struct ProgressDashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
+                VStack(spacing: 18) {
                     WeeklyGoalCard(
                         progress: progressValue,
                         workoutsCount: weeklyWorkouts.count,
@@ -1010,10 +1079,13 @@ struct ProgressDashboardView: View {
 
                     MuscleVolumeSection(data: muscleVolumeData, maxValue: maxMuscleVolume)
 
-                    RecentActivityCard(workouts: workoutStore.workouts.sorted { $0.date > $1.date }.prefix(5).map { $0 })
+                    RecentActivityCard(
+                        workouts: workoutStore.sessionHistory.sorted { $0.date > $1.date }.prefix(5).map { $0 },
+                        enableActions: false
+                    )
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 28)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Fortschritt")
@@ -1084,7 +1156,19 @@ struct WeeklyGoalCard: View {
 
     private var formattedProgress: String {
         guard goal > 0 else { return "0%" }
-        return String(format: "%.0f%%", progress * 100)
+        return String(format: "%.0f%%", max(progress, 0) * 100)
+    }
+
+    private var clampedProgress: Double {
+        min(max(progress, 0), 1)
+    }
+
+    private var remainingText: String {
+        guard goal > 0 else { return "Kein Ziel festgelegt" }
+        if workoutsCount >= goal {
+            return "Ziel übertroffen!"
+        }
+        return "Noch \(goal - workoutsCount) Sessions geplant"
     }
 
     var body: some View {
@@ -1095,7 +1179,7 @@ struct WeeklyGoalCard: View {
                         .font(.headline)
                     Text("\(workoutsCount) von \(goal) Workouts")
                         .font(.title3.weight(.semibold))
-                    Text("Noch \(max(goal - workoutsCount, 0)) Sessions geplant")
+                    Text(remainingText)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -1108,7 +1192,7 @@ struct WeeklyGoalCard: View {
                         .frame(width: 84, height: 84)
 
                     Circle()
-                        .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
+                        .trim(from: 0, to: CGFloat(clampedProgress))
                         .stroke(
                             Color.mossGreen,
                             style: StrokeStyle(lineWidth: 10, lineCap: .round)
@@ -1166,29 +1250,32 @@ struct StatMetricCard: View {
     let metric: ProgressDashboardView.StatMetric
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.mossGreen.opacity(0.14))
-                    .frame(width: 44, height: 44)
+                    .fill(Color.mossGreen.opacity(0.12))
+                    .frame(width: 36, height: 36)
                 Image(systemName: metric.icon)
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.mossGreen)
             }
 
-            Text(metric.value)
-                .font(.title3.weight(.semibold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(metric.value)
+                    .font(.title3.weight(.bold))
 
-            Text(metric.title)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                Text(metric.title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(20)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.white.opacity(0.95))
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -1326,7 +1413,7 @@ private struct AnalyticsMetricsRow: View {
 struct WorkoutCalendarSection: View {
     let month: Date
     let calendar: Calendar
-    let workoutsByDay: [Date: [Workout]]
+    let workoutsByDay: [Date: [WorkoutSession]]
     let onPrevious: () -> Void
     let onNext: () -> Void
 
@@ -1479,7 +1566,11 @@ struct MuscleVolumeSection: View {
 }
 
 struct RecentActivityCard: View {
-    let workouts: [Workout]
+    let workouts: [WorkoutSession]
+    var startAction: (WorkoutSession) -> Void = { _ in }
+    var detailAction: (WorkoutSession) -> Void = { _ in }
+    var deleteSessionAction: (WorkoutSession) -> Void = { _ in }
+    var enableActions: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1498,30 +1589,18 @@ struct RecentActivityCard: View {
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 14) {
-                    ForEach(workouts) { workout in
-                        HStack(spacing: 16) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(workout.name)
-                                    .fontWeight(.medium)
-                                Text(workout.date.formatted(.dateTime.day().month().weekday()))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                    ForEach(workouts) { session in
+                        if enableActions {
+                            SessionActionButton(
+                                session: session,
+                                startAction: startAction,
+                                detailAction: detailAction,
+                                deleteAction: deleteSessionAction
+                            ) {
+                                sessionRow(for: session)
                             }
-
-                            Spacer()
-
-                            if let duration = workout.duration {
-                                Text("\(Int(duration / 60)) Min")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Divider()
-                                .frame(height: 18)
-
-                            Text("\(workout.exercises.count) Übungen")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        } else {
+                            sessionRow(for: session)
                         }
                     }
                 }
@@ -1534,6 +1613,74 @@ struct RecentActivityCard: View {
                 .fill(Color.white)
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
+    }
+
+    @ViewBuilder
+    private func sessionRow(for session: WorkoutSession) -> some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(session.name)
+                    .fontWeight(.medium)
+                Text(session.date.formatted(.dateTime.day().month().weekday()))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if let duration = session.duration {
+                Text("\(Int(duration / 60)) Min")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+                .frame(height: 18)
+
+            Text("\(session.exercises.count) Übungen")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+
+
+struct SessionDetailView: View {
+    let session: WorkoutSession
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Überblick") {
+                    LabeledContent("Datum", value: session.date.formatted(.dateTime.day().month().year().hour().minute()))
+                    if let duration = session.duration {
+                        LabeledContent("Dauer", value: "\(Int(duration / 60)) Min")
+                    }
+                    if !session.notes.isEmpty {
+                        Text(session.notes)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                ForEach(Array(session.exercises.enumerated()), id: \.offset) { index, exercise in
+                    Section("Übung \(index + 1): \(exercise.exercise.name)") {
+                        ForEach(Array(exercise.sets.enumerated()), id: \.offset) { setIndex, set in
+                            HStack {
+                                Text("Satz \(setIndex + 1)")
+                                Spacer()
+                                Text("\(set.reps) Wdh")
+                                Text(String(format: "%.1f kg", set.weight))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.footnote)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(session.name)
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 

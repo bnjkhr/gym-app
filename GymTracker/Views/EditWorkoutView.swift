@@ -77,7 +77,16 @@ struct EditWorkoutView: View {
                                         Text("Gewicht (kg)")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
-                                        TextField("kg", value: $editable.weight, format: .number.precision(.fractionLength(1)))
+                                        TextField("0.0", text: .init(
+                                            get: { editable.weight > 0 ? String(format: "%.1f", editable.weight) : "" },
+                                            set: { newValue in
+                                                if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                                    editable.weight = max(0, min(weight, 999.9))
+                                                } else if newValue.isEmpty {
+                                                    editable.weight = 0
+                                                }
+                                            }
+                                        ))
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
                                     }

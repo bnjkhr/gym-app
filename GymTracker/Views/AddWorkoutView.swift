@@ -67,7 +67,16 @@ struct AddWorkoutView: View {
                                     Label("Gewicht", systemImage: "scalemass.fill")
                                         .labelStyle(.titleAndIcon)
                                     Spacer()
-                                    TextField("kg", value: $selection.weight, format: .number.precision(.fractionLength(1)))
+                                    TextField("0.0", text: .init(
+                                        get: { selection.weight > 0 ? String(format: "%.1f", selection.weight) : "" },
+                                        set: { newValue in
+                                            if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                                selection.weight = max(0, min(weight, 999.9))
+                                            } else if newValue.isEmpty {
+                                                selection.weight = 0
+                                            }
+                                        }
+                                    ))
                                         .multilineTextAlignment(.trailing)
                                         .keyboardType(.decimalPad)
                                         .frame(maxWidth: 120)
