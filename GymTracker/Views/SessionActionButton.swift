@@ -20,7 +20,7 @@ struct SessionActionButton<Label: View>: View {
             label()
         }
         .buttonStyle(.plain)
-        .alert("Session löschen?", isPresented: $isConfirmingDelete) {
+        .alert("Wirklich löschen?", isPresented: $isConfirmingDelete) {
             Button("Löschen", role: .destructive) { deleteAction(session) }
             Button("Abbrechen", role: .cancel) { isConfirmingDelete = false }
         } message: {

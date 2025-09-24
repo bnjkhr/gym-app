@@ -51,6 +51,17 @@ struct ContentView: View {
                     .environmentObject(workoutStore)
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                if let activeWorkout = workoutStore.activeWorkout {
+                    ActiveWorkoutBar(
+                        workout: activeWorkout,
+                        resumeAction: { resumeActiveWorkout() },
+                        endAction: { endActiveSession() }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+            }
         }
     }
 
@@ -62,6 +73,22 @@ struct ContentView: View {
             get: { workoutStore.workouts[index] },
             set: { workoutStore.workouts[index] = $0 }
         )
+    }
+
+    private func resumeActiveWorkout() {
+        guard let active = workoutStore.activeWorkout else {
+            workoutStore.activeSessionID = nil
+            return
+        }
+        // Navigiere über die globale NavigationDestination
+        navigateToActiveWorkout = true
+        WorkoutLiveActivityController.shared.start(workoutName: active.name)
+    }
+
+    private func endActiveSession() {
+        workoutStore.activeSessionID = nil
+        WorkoutLiveActivityController.shared.end()
+        navigateToActiveWorkout = false
     }
 }
 
@@ -82,6 +109,9 @@ struct WorkoutsHomeView: View {
     @State private var missingTemplateName: String?
     @State private var showingMissingTemplateAlert = false
 
+    // Neu: Zustand für Löschbestätigung
+    @State private var workoutToDelete: Workout?
+
     private var weekStart: Date {
         let calendar = Calendar.current
         return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
@@ -100,225 +130,234 @@ struct WorkoutsHomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(.systemGroupedBackground)
-                    .ignoresSafeArea()
+        ZStack {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    let sortedSessions = workoutStore.sessionHistory
-                        .sorted { $0.date > $1.date }
-                    let highlightSession = sortedSessions.first
-                    let storedRoutines = workoutStore.workouts
+            ScrollView(showsIndicators: false) {
+                let sortedSessions = workoutStore.sessionHistory
+                    .sorted { $0.date > $1.date }
+                let highlightSession = sortedSessions.first
+                let storedRoutines = workoutStore.workouts
 
-                    LazyVStack(spacing: 20, pinnedViews: []) {
-                        if let session = highlightSession {
-                            SessionActionButton(
-                                session: session,
-                                startAction: { startSession($0) },
-                                detailAction: { viewSession($0) },
-                                deleteAction: { removeSession(id: $0.id) }
-                            ) {
-                                WorkoutHighlightCard(workout: Workout(session: session))
-                            }
-                        } else {
-                            EmptyStateCard(action: { showingAddWorkout = true })
-                        }
-
-                        SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
-
-                        if storedRoutines.isEmpty {
-                            Text("Lege ein neues Workout an, um eine Routine zu speichern.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            LazyVStack(spacing: 10) {
-                                ForEach(storedRoutines) { workout in
-                                    WorkoutActionButton(
-                                        workout: workout,
-                                        startAction: { startWorkout(with: $0.id) },
-                                        detailAction: { showWorkoutDetails(id: $0.id) },
-                                        editAction: { editWorkout(id: $0.id) },
-                                        deleteAction: { deleteWorkout(id: $0.id) }
-                                    ) {
-                                        WorkoutCard(workout: workout)
-                                    }
-                                }
-                            }
-                        }
-
-                        WeeklySnapshotCard(
-                            workoutsThisWeek: workoutsThisWeek,
-                            minutesThisWeek: minutesThisWeek,
-                            goal: workoutStore.weeklyGoal
-                        )
-
-                        SectionHeader(title: "Letzte Sessions", subtitle: "Halte deine Routine frisch")
-
-                        RecentActivityCard(
-                            workouts: Array(sortedSessions.prefix(5)),
+                LazyVStack(spacing: 20, pinnedViews: []) {
+                    if let session = highlightSession {
+                        SessionActionButton(
+                            session: session,
                             startAction: { startSession($0) },
                             detailAction: { viewSession($0) },
-                            deleteSessionAction: { removeSession(id: $0.id) }
-                        )
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 20)
-                }
-            }
-            .navigationTitle("Workouts")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddWorkout = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .semibold))
-                    }
-                    .accessibilityLabel("Workout hinzufügen")
-                    .tint(Color("AccentColor"))
-                }
-            }
-            .sheet(isPresented: $showingAddWorkout) {
-                NavigationStack {
-                    VStack(spacing: 20) {
-                        Text("Neues Workout erstellen")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .padding(.top)
-
-                        VStack(spacing: 16) {
-                            Button {
-                                showingAddWorkout = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    showingWorkoutWizard = true
-                                }
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Workout-Assistent")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        Text("Personalisiertes Workout basierend auf deinen Zielen")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .multilineTextAlignment(.leading)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "wand.and.stars")
-                                        .font(.title2)
-                                        .foregroundColor(.blue)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.blue.opacity(0.1))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                                        )
-                                )
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                showingAddWorkout = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    showingManualAdd = true
-                                }
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Manuell erstellen")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        Text("Selbst zusammengestelltes Workout")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .multilineTextAlignment(.leading)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "plus.circle")
-                                        .font(.title2)
-                                        .foregroundColor(.gray)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray6))
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            deleteAction: { removeSession(id: $0.id) }
+                        ) {
+                            WorkoutHighlightCard(workout: Workout(session: session))
                         }
-                        .padding()
-
-                        Spacer()
+                    } else {
+                        EmptyStateCard(action: { showingAddWorkout = true })
                     }
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Abbrechen") {
-                                showingAddWorkout = false
+
+                    SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
+
+                    if storedRoutines.isEmpty {
+                        Text("Lege ein neues Workout an, um eine Routine zu speichern.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        LazyVStack(spacing: 6) {
+                            ForEach(storedRoutines) { workout in
+                                // Tippen zeigt Menü (Starten, Bearbeiten, Löschen mit Bestätigung)
+                                Menu {
+                                    Button("Workout starten") {
+                                        startWorkout(with: workout.id)
+                                    }
+                                    Button("Bearbeiten") {
+                                        editWorkout(id: workout.id)
+                                    }
+                                    Button("Löschen", role: .destructive) {
+                                        workoutToDelete = workout
+                                    }
+                                } label: {
+                                    WorkoutRow(workout: workout)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                }
-            }
-            .navigationDestination(item: $selectedWorkout) { selection in
-                if let binding = binding(for: selection.id) {
-                    WorkoutDetailView(
-                        workout: binding,
-                        isActiveSession: workoutStore.activeSessionID == selection.id,
-                        onActiveSessionEnd: { endActiveSession() }
+
+                    WeeklySnapshotCard(
+                        workoutsThisWeek: workoutsThisWeek,
+                        minutesThisWeek: minutesThisWeek,
+                        goal: workoutStore.weeklyGoal
                     )
-                    .environmentObject(workoutStore)
-                } else {
-                    Text("Workout konnte nicht geladen werden")
-                }
-            }
-            .sheet(item: $editingWorkoutSelection) { selection in
-                if let binding = binding(for: selection.id) {
-                    EditWorkoutView(workout: binding)
-                        .environmentObject(workoutStore)
-                } else {
-                    Text("Workout konnte nicht geladen werden")
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                if shouldShowActiveSessionBar, let activeWorkout = currentActiveWorkout {
-                    ActiveWorkoutBar(
-                        workout: activeWorkout,
-                        resumeAction: { resumeActiveWorkout() },
-                        endAction: { endActiveSession() }
+
+                    RecentActivityCard(
+                        workouts: Array(sortedSessions.prefix(5)),
+                        startAction: { startSession($0) },
+                        detailAction: { viewSession($0) },
+                        deleteSessionAction: { removeSession(id: $0.id) },
+                        enableActions: true,
+                        showHeader: false
                     )
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+            }
+        }
+        .navigationTitle("Workouts")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddWorkout = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                }
+                .accessibilityLabel("Workout hinzufügen")
+                .tint(Color("AccentColor"))
+            }
+        }
+        .sheet(isPresented: $showingAddWorkout) {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    Text("Neues Workout erstellen")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .padding(.top)
+
+                    VStack(spacing: 16) {
+                        Button {
+                            showingAddWorkout = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showingWorkoutWizard = true
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Workout-Assistent")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("Personalisiertes Workout basierend auf deinen Zielen")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                Spacer()
+                                Image(systemName: "wand.and.stars")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            showingAddWorkout = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showingManualAdd = true
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Manuell erstellen")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("Selbst zusammengestelltes Workout")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                Spacer()
+                                Image(systemName: "plus.circle")
+                                    .font(.title2)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray6))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding()
+
+                    Spacer()
+                }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Abbrechen") {
+                            showingAddWorkout = false
+                        }
+                    }
                 }
             }
-            .onReceive(workoutStore.$workouts) { workouts in
-                guard let activeID = workoutStore.activeSessionID else { return }
-                if !workouts.contains(where: { $0.id == activeID }) {
-                    workoutStore.activeSessionID = nil
-                    WorkoutLiveActivityController.shared.end()
+        }
+        .navigationDestination(item: $selectedWorkout) { selection in
+            if let binding = binding(for: selection.id) {
+                WorkoutDetailView(
+                    workout: binding,
+                    isActiveSession: workoutStore.activeSessionID == selection.id,
+                    onActiveSessionEnd: { endActiveSession() }
+                )
+                .environmentObject(workoutStore)
+            } else {
+                Text("Workout konnte nicht geladen werden")
+            }
+        }
+        .sheet(item: $editingWorkoutSelection) { selection in
+            if let binding = binding(for: selection.id) {
+                EditWorkoutView(workout: binding)
+                    .environmentObject(workoutStore)
+            } else {
+                Text("Workout konnte nicht geladen werden")
+            }
+        }
+        .onReceive(workoutStore.$workouts) { workouts in
+            guard let activeID = workoutStore.activeSessionID else { return }
+            if !workouts.contains(where: { $0.id == activeID }) {
+                workoutStore.activeSessionID = nil
+                WorkoutLiveActivityController.shared.end()
+            }
+        }
+        .sheet(item: $viewingSession) { session in
+            SessionDetailView(session: session)
+        }
+        .alert("Wirklich löschen?", isPresented: Binding(
+            get: { workoutToDelete != nil },
+            set: { if !$0 { workoutToDelete = nil } }
+        )) {
+            Button("Löschen", role: .destructive) {
+                if let id = workoutToDelete?.id {
+                    deleteWorkout(id: id)
                 }
+                workoutToDelete = nil
             }
-            .sheet(item: $viewingSession) { session in
-                SessionDetailView(session: session)
+            Button("Abbrechen", role: .cancel) {
+                workoutToDelete = nil
             }
-            .alert("Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert, presenting: missingTemplateName) { _ in
-                Button("OK", role: .cancel) { missingTemplateName = nil }
-            } message: { name in
-                Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
-            }
-            .sheet(isPresented: $showingWorkoutWizard) {
-                WorkoutWizardView()
-                    .environmentObject(workoutStore)
-            }
-            .sheet(isPresented: $showingManualAdd) {
-                AddWorkoutView()
-                    .environmentObject(workoutStore)
-            }
+        } message: {
+            Text("\(workoutToDelete?.name ?? "Workout") wird dauerhaft entfernt.")
+        }
+        .alert("Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert, presenting: missingTemplateName) { _ in
+            Button("OK", role: .cancel) { missingTemplateName = nil }
+        } message: { name in
+            Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
+        }
+        .sheet(isPresented: $showingWorkoutWizard) {
+            WorkoutWizardView()
+                .environmentObject(workoutStore)
+        }
+        .sheet(isPresented: $showingManualAdd) {
+            AddWorkoutView()
+                .environmentObject(workoutStore)
         }
     }
 
@@ -339,6 +378,15 @@ struct WorkoutsHomeView: View {
     private func startWorkout(with id: UUID) {
         guard let binding = binding(for: id) else { return }
         var workout = binding.wrappedValue
+
+        // Wenn bereits aktiv: nicht zurücksetzen, nur in Details navigieren
+        if workoutStore.activeSessionID == id {
+            selectedWorkout = WorkoutSelection(id: id)
+            WorkoutLiveActivityController.shared.start(workoutName: workout.name)
+            return
+        }
+
+        // Neu starten: Zeitstempel setzen und Sätze zurücksetzen
         workout.date = Date()
         workout.duration = nil
         for exerciseIndex in workout.exercises.indices {
@@ -355,7 +403,7 @@ struct WorkoutsHomeView: View {
 
     private func showWorkoutDetails(id: UUID) {
         selectedWorkout = WorkoutSelection(id: id)
-        workoutStore.activeSessionID = nil
+        // aktive Session bleibt bestehen
     }
 
     private func editWorkout(id: UUID) {
@@ -404,29 +452,6 @@ struct WorkoutsHomeView: View {
         viewingSession = session
     }
 
-    private var currentActiveWorkout: Workout? {
-        guard let activeID = workoutStore.activeSessionID,
-              let index = workoutStore.workouts.firstIndex(where: { $0.id == activeID }) else {
-            return nil
-        }
-        return workoutStore.workouts[index]
-    }
-
-    private var shouldShowActiveSessionBar: Bool {
-        workoutStore.activeSessionID != nil && selectedWorkout == nil && currentActiveWorkout != nil
-    }
-
-    private func resumeActiveWorkout() {
-        guard let activeID = workoutStore.activeSessionID, binding(for: activeID) != nil else {
-            workoutStore.activeSessionID = nil
-            return
-        }
-        selectedWorkout = WorkoutSelection(id: activeID)
-        if let workout = currentActiveWorkout {
-            WorkoutLiveActivityController.shared.start(workoutName: workout.name)
-        }
-    }
-
     private func endActiveSession() {
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
@@ -435,6 +460,7 @@ struct WorkoutsHomeView: View {
 
 struct WorkoutHighlightCard: View {
     let workout: Workout
+    @Environment(\.colorScheme) private var colorScheme
 
     private var dateText: String {
         workout.date.formatted(.dateTime.weekday(.wide).day().month())
@@ -486,7 +512,10 @@ struct WorkoutHighlightCard: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.white, Color.mossGreen.opacity(0.08)],
+                        colors: [
+                            Color(.secondarySystemBackground),
+                            Color.mossGreen.opacity(colorScheme == .dark ? 0.06 : 0.08)
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -528,7 +557,7 @@ struct EmptyStateCard: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.white)
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.04), radius: 18, x: 0, y: 10)
     }
@@ -598,7 +627,7 @@ struct WeeklySnapshotCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.white.opacity(0.95))
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: .black.opacity(0.02), radius: 6, x: 0, y: 3)
     }
@@ -621,6 +650,54 @@ struct SectionHeader: View {
     }
 }
 
+// Neue, schlichte Zeile ohne Play-Button
+struct WorkoutRow: View {
+    let workout: Workout
+    var onPlay: (() -> Void)? = nil
+
+    private var formattedDate: String {
+        workout.date.formatted(.dateTime.day().month().hour().minute())
+    }
+
+    private var durationText: String? {
+        guard let duration = workout.duration else { return nil }
+        return "\(Int(duration / 60)) Min"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(workout.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                    Text(formattedDate)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+                // Play-Button wird nicht mehr verwendet
+            }
+
+            Wrap(alignment: .leading, spacing: 6) {
+                InfoChip(icon: "list.bullet", label: "\(workout.exercises.count) Übungen")
+                if let durationText {
+                    InfoChip(icon: "clock", label: durationText)
+                }
+                if !workout.notes.isEmpty {
+                    InfoChip(icon: "note.text", label: "Notizen")
+                }
+            }
+
+            Divider()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+}
+
 struct WorkoutCard: View {
     let workout: Workout
 
@@ -640,6 +717,7 @@ struct WorkoutCard: View {
                     Text(workout.name)
                         .font(.headline)
                         .fontWeight(.semibold)
+                        .lineLimit(2)
                     Text(formattedDate)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -652,16 +730,7 @@ struct WorkoutCard: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Wrap(alignment: .leading, spacing: 6) {
-                ForEach(workout.exercises.prefix(3)) { workoutExercise in
-                    CapsuleTag(text: workoutExercise.exercise.name, style: .secondary)
-                }
-                if workout.exercises.count > 3 {
-                    CapsuleTag(text: "+\(workout.exercises.count - 3)", style: .secondary)
-                }
-            }
-
-            HStack(spacing: 12) {
+            Wrap(alignment: .leading, spacing: 8) {
                 InfoChip(icon: "list.bullet", label: "\(workout.exercises.count) Übungen")
                 if let durationText {
                     InfoChip(icon: "clock", label: durationText)
@@ -675,7 +744,7 @@ struct WorkoutCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.white.opacity(0.95))
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
@@ -692,10 +761,12 @@ struct InfoChip: View {
             Text(label)
                 .font(.caption)
                 .fontWeight(.medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.05), in: Capsule())
+        .background(Color(.tertiarySystemFill), in: Capsule())
     }
 }
 
@@ -743,7 +814,7 @@ struct CapsuleTag: View {
         case .primary:
             return Color.mossGreen.opacity(0.12)
         case .secondary:
-            return Color.primary.opacity(0.04)
+            return Color(.tertiarySystemFill)
         }
     }
 
@@ -964,52 +1035,87 @@ struct AddActionButton: View {
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color(.secondarySystemBackground))
             )
             .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 6)
         }
     }
 }
 
-// MARK: - Exercises Tab
+// MARK: - Exercises Tab (Liste + Filter-Chips + Bottom-Search)
 
 struct ExercisesCatalogView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @State private var showingAddExercise = false
     @State private var searchText = ""
-    @State private var editingExercise: Exercise?
+    @State private var selectedMuscle: MuscleGroup? = nil
 
-    private var filteredExercises: [Exercise] {
-        if searchText.isEmpty {
-            return workoutStore.exercises
-        }
-
-        return workoutStore.exercises.filter { exercise in
-            exercise.name.localizedCaseInsensitiveContains(searchText) ||
-            exercise.muscleGroups.contains { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
-        }
+    // verfügbare Muskelgruppen aus dem Store
+    private var availableMuscles: [MuscleGroup] {
+        let all = workoutStore.exercises.flatMap { $0.muscleGroups }
+        return Array(Set(all)).sorted { $0.rawValue < $1.rawValue }
     }
 
-    private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 140), spacing: 12)]
+    private var filteredExercises: [Exercise] {
+        workoutStore.exercises.filter { exercise in
+            // Filter Muskelgruppe
+            let matchesMuscle = selectedMuscle == nil || exercise.muscleGroups.contains(selectedMuscle!)
+            // Filter Suche
+            if searchText.isEmpty {
+                return matchesMuscle
+            }
+            let matchesSearch =
+                exercise.name.localizedCaseInsensitiveContains(searchText) ||
+                exercise.muscleGroups.contains { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
+            return matchesMuscle && matchesSearch
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView(showsIndicators: false) {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(filteredExercises) { exercise in
-                        Button {
-                            editingExercise = exercise
-                        } label: {
-                            ExerciseTile(exercise: exercise)
+            List {
+                if !availableMuscles.isEmpty {
+                    // Filter-Chips unter der Suchleiste
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            FilterChip(
+                                title: "Alle",
+                                isSelected: selectedMuscle == nil,
+                                color: Color.mossGreen
+                            ) {
+                                selectedMuscle = nil
+                            }
+                            ForEach(availableMuscles, id: \.self) { muscle in
+                                FilterChip(
+                                    title: muscle.rawValue,
+                                    isSelected: selectedMuscle == muscle,
+                                    color: muscle.color
+                                ) {
+                                    selectedMuscle = (selectedMuscle == muscle) ? nil : muscle
+                                }
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .id(exercise.id)
+                        .padding(.vertical, 6)
+                    }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                }
+
+                ForEach(filteredExercises) { exercise in
+                    NavigationLink {
+                        EditExerciseView(exercise: exercise) { updated in
+                            workoutStore.updateExercise(updated)
+                        } deleteAction: {
+                            if let index = workoutStore.exercises.firstIndex(where: { $0.id == exercise.id }) {
+                                workoutStore.deleteExercise(at: IndexSet(integer: index))
+                            }
+                        }
+                    } label: {
+                        ExerciseCompactRow(exercise: exercise)
                     }
                 }
-                .padding(12)
             }
+            .listStyle(.insetGrouped)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Übungen")
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Übung oder Muskelgruppe")
@@ -1028,78 +1134,125 @@ struct ExercisesCatalogView: View {
                 AddExerciseView()
                     .environmentObject(workoutStore)
             }
-            .sheet(item: $editingExercise) { exercise in
-                NavigationStack {
-                    EditExerciseView(exercise: exercise) { updatedExercise in
-                        workoutStore.updateExercise(updatedExercise)
-                        editingExercise = nil
-                    } deleteAction: {
-                        deleteExercise(with: exercise.id)
-                    }
-                }
+            .safeAreaInset(edge: .bottom) {
+                BottomSearchBar(text: $searchText)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
             }
         }
-    }
-
-    private func deleteExercise(with id: UUID) {
-        if let index = workoutStore.exercises.firstIndex(where: { $0.id == id }) {
-            workoutStore.deleteExercise(at: IndexSet(integer: index))
-        }
-        editingExercise = nil
     }
 }
 
-struct ExerciseTile: View {
+private struct ExerciseCompactRow: View {
     let exercise: Exercise
 
-    private var primaryColor: Color {
-        exercise.muscleGroups.first?.color ?? Color("AccentColor")
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 12) {
+            // Icon mit Farbe der ersten Muskelgruppe
+            let color = exercise.muscleGroups.first?.color ?? Color("AccentColor")
             ZStack {
                 Circle()
-                    .fill(primaryColor.opacity(0.12))
-                    .frame(width: 40, height: 40)
+                    .fill(color.opacity(0.12))
+                    .frame(width: 34, height: 34)
                 Image(systemName: "figure.strengthtraining.functional")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(primaryColor)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(color)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-
                 if !exercise.description.isEmpty {
                     Text(exercise.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                }
+                if !exercise.muscleGroups.isEmpty {
+                    Wrap(alignment: .leading, spacing: 4) {
+                        ForEach(exercise.muscleGroups, id: \.self) { muscle in
+                            Text(muscle.rawValue)
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(muscle.color.opacity(0.15), in: Capsule())
+                                .foregroundStyle(muscle.color)
+                        }
+                    }
                 }
             }
 
-            Wrap(alignment: .leading, spacing: 4) {
-                ForEach(exercise.muscleGroups, id: \.self) { muscle in
-                    Text(muscle.rawValue)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(muscle.color.opacity(0.15), in: Capsule())
-                        .foregroundStyle(muscle.color)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+private struct FilterChip: View {
+    let title: String
+    let isSelected: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? color.opacity(0.18) : Color(.tertiarySystemFill))
+                )
+                .foregroundStyle(isSelected ? color : .primary)
+                .overlay(
+                    Capsule().stroke(color.opacity(isSelected ? 0.35 : 0), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct BottomSearchBar: View {
+    @Binding var text: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+
+            TextField("Übungen durchsuchen …", text: $text)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .focused($focused)
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Suche löschen")
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.white.opacity(0.95))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule().stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 3)
+        .onAppear {
+            // Optional: Fokus nicht automatisch setzen
+            focused = false
+        }
     }
 }
 
@@ -1379,7 +1532,7 @@ struct WeeklyGoalCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.white)
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 10)
     }
@@ -1426,7 +1579,7 @@ struct StatMetricCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.white.opacity(0.95))
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
@@ -1526,7 +1679,7 @@ struct ExerciseAnalyticsSection<SelectionControl: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.white)
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
     }
@@ -1658,7 +1811,7 @@ struct WorkoutCalendarSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.white)
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
     }
@@ -1712,7 +1865,7 @@ struct MuscleVolumeSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.white)
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
     }
@@ -1724,16 +1877,19 @@ struct RecentActivityCard: View {
     var detailAction: (WorkoutSession) -> Void = { _ in }
     var deleteSessionAction: (WorkoutSession) -> Void = { _ in }
     var enableActions: Bool = true
+    var showHeader: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Letzte Sessions")
-                    .font(.headline)
-                Spacer()
-                Text("\(workouts.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if showHeader {
+                HStack {
+                    Text("Letzte Sessions")
+                        .font(.headline)
+                    Spacer()
+                    Text("\(workouts.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             if workouts.isEmpty {
@@ -1763,7 +1919,7 @@ struct RecentActivityCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.white)
+                .fill(Color(.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
     }

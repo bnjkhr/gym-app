@@ -200,50 +200,46 @@ struct WorkoutDetailView: View {
             Section {
                 ForEach(Array(workout.exercises[exerciseIndex].sets.enumerated()), id: \.element.id) { element in
                     let setIndex = element.offset
+
+                    // Vorherige Werte aus letzter Session ermitteln
+                    let previous = previousValues(for: exerciseIndex, setIndex: setIndex)
+
                     let setBinding = Binding(
                         get: { workout.exercises[exerciseIndex].sets[setIndex] },
                         set: { workout.exercises[exerciseIndex].sets[setIndex] = $0 }
                     )
-                    let isCompleted = workout.exercises[exerciseIndex].sets[setIndex].completed
 
                     WorkoutSetCard(
                         index: setIndex,
                         set: setBinding,
                         isActiveRest: activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) && isTimerRunning,
                         remainingSeconds: remainingSeconds,
+                        previousReps: previous.reps,
+                        previousWeight: previous.weight,
                         onRestTimeUpdated: { newValue in
                             if activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
                                 remainingSeconds = Int(newValue)
                             }
+                        },
+                        onToggleCompletion: {
+                            toggleCompletion(for: exerciseIndex, setIndex: setIndex)
                         }
                     )
-                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                        Button {
-                            toggleCompletion(for: exerciseIndex, setIndex: setIndex)
-                        } label: {
-                            Label(isCompleted ? "Zurücksetzen" : "Abschließen",
-                                  systemImage: isCompleted ? "arrow.uturn.backward" : "checkmark.circle")
-                        }
-                        .tint(isCompleted ? .orange : .green)
-                    }
-                    .swipeActions(
-                        edge: .trailing,
-                        allowsFullSwipe: true
-                    ) {
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             removeSet(at: setIndex, for: exerciseIndex)
                         } label: {
                             Label("Löschen", systemImage: "trash")
                         }
-                        .tint(.red)
                     }
                 }
 
                 Button {
                     addSet(to: exerciseIndex)
                 } label: {
-                    Label("Satz hinzufügen", systemImage: "plus")
+                    Image(systemName: "plus")
                 }
+                .accessibilityLabel("Satz hinzufügen")
                 .buttonStyle(.bordered)
                 .tint(Color.mossGreen)
             } header: {
@@ -357,11 +353,10 @@ struct WorkoutDetailView: View {
     }
 
     private func toggleCompletion(for exerciseIndex: Int, setIndex: Int) {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
-        }
+        // Keine Animationen mehr
+        workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
 
-        // Verzögerung für smooth animation
+        // Rest-Timer wie gehabt starten/stoppen
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if workout.exercises[exerciseIndex].sets[setIndex].completed {
                 startRest(for: exerciseIndex, setIndex: setIndex)
@@ -475,6 +470,26 @@ struct WorkoutDetailView: View {
         return String(format: "%d:%02d", minutes, remaining)
     }
 
+    // Ermittelt die letzten Werte (Reps/Weight) aus der vorherigen Session für die gegebene Übung/Satz
+    private func previousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
+        guard let previousWorkout = workoutStore.previousWorkout(before: workout) else {
+            return (nil, nil)
+        }
+        let currentExercise = workout.exercises[exerciseIndex].exercise
+        guard let previousExercise = previousWorkout.exercises.first(where: { $0.exercise.id == currentExercise.id }) else {
+            return (nil, nil)
+        }
+
+        let sets = previousExercise.sets
+        if sets.indices.contains(setIndex) {
+            return (sets[setIndex].reps, sets[setIndex].weight)
+        } else if let last = sets.last {
+            return (last.reps, last.weight)
+        } else {
+            return (nil, nil)
+        }
+    }
+
     private struct ActiveRest: Equatable {
         let exerciseIndex: Int
         let setIndex: Int
@@ -486,64 +501,93 @@ private struct WorkoutSetCard: View {
     @Binding var set: ExerciseSet
     var isActiveRest: Bool
     var remainingSeconds: Int
+    // Neue Anzeige der letzten Werte
+    var previousReps: Int?
+    var previousWeight: Double?
     var onRestTimeUpdated: (Double) -> Void
+    var onToggleCompletion: () -> Void
 
     @State private var weightText: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(alignment: .top) {
                 Text("Satz \(index + 1)")
                     .fontWeight(.semibold)
-                if set.completed {
-                    Image(systemName: "checkmark")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.mossGreen)
-                        .fontWeight(.semibold)
-                        .transition(.scale.combined(with: .opacity))
-                        .animation(.spring(response: 0.5, dampingFraction: 0.6), value: set.completed)
-                }
+
                 Spacer()
+
+                Button(action: onToggleCompletion) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(set.completed ? Color.white : Color.mossGreen)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(set.completed ? Color.mossGreen : Color.mossGreen.opacity(0.15))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.mossGreen, lineWidth: set.completed ? 0 : 1)
+                        )
+                }
+                .accessibilityLabel(set.completed ? "Satz zurücksetzen" : "Satz abschließen")
+                .buttonStyle(.plain)
             }
 
-            HStack(spacing: 18) {
-                HStack(spacing: 6) {
-                    Image(systemName: "repeat")
-                        .foregroundStyle(Color.mossGreen)
-                    TextField("0", value: $set.reps, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 60)
+            // Eingaben + letzte Werte darunter
+            HStack(alignment: .top, spacing: 18) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "repeat")
+                            .foregroundStyle(Color.mossGreen)
+                        TextField("0", value: $set.reps, format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 60)
+                    }
+                    if let prev = previousReps {
+                        Text("Letztes: \(prev)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
-                HStack(spacing: 6) {
-                    Image(systemName: "scalemass.fill")
-                        .foregroundStyle(Color.mossGreen)
-                    TextField("0.0", text: $weightText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 70)
-                        .onAppear {
-                            weightText = set.weight > 0 ? String(format: "%.1f", set.weight) : ""
-                        }
-                        .onChangeCompat(of: weightText) { newValue in
-                            if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
-                                set.weight = max(0, min(weight, 999.9))
-                            } else if newValue.isEmpty {
-                                set.weight = 0
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "scalemass.fill")
+                            .foregroundStyle(Color.mossGreen)
+                        TextField("0.0", text: $weightText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 70)
+                            .onAppear {
+                                weightText = set.weight > 0 ? String(format: "%.1f", set.weight) : ""
                             }
-                        }
-                        .onChangeCompat(of: set.weight) { newValue in
-                            let formatted = newValue > 0 ? String(format: "%.1f", newValue) : ""
-                            if weightText != formatted && !weightText.isEmpty {
-                                DispatchQueue.main.async {
-                                    weightText = formatted
+                            .onChangeCompat(of: weightText) { newValue in
+                                if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                    set.weight = max(0, min(weight, 999.9))
+                                } else if newValue.isEmpty {
+                                    set.weight = 0
                                 }
                             }
-                        }
-                    Text("kg")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                            .onChangeCompat(of: set.weight) { newValue in
+                                let formatted = newValue > 0 ? String(format: "%.1f", newValue) : ""
+                                if weightText != formatted && !weightText.isEmpty {
+                                    DispatchQueue.main.async {
+                                        weightText = formatted
+                                    }
+                                }
+                            }
+                        Text("kg")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let prevW = previousWeight {
+                        Text(String(format: "Letztes: %.1f kg", prevW))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .font(.subheadline)
@@ -560,13 +604,10 @@ private struct WorkoutSetCard: View {
                         .foregroundStyle(.blue)
                     Spacer()
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.4), value: isActiveRest)
+                .padding(.top, 4)
             }
         }
         .padding(.vertical, 6)
-        .scaleEffect(set.completed ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: set.completed)
     }
 
     private var formattedTime: String {
@@ -585,7 +626,6 @@ private struct WorkoutSetCard: View {
         let seconds = remainingSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
-
 }
 
 private struct WorkoutCompletionSummaryView: View {
@@ -646,7 +686,6 @@ private struct WorkoutCompletionSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 }
-
 
 private extension View {
     @ViewBuilder

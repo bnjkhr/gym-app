@@ -66,7 +66,7 @@ struct EditExerciseView: View {
                 }
             }
         }
-        .alert("Übung löschen?", isPresented: $isConfirmingDelete) {
+        .alert("Wirklich löschen?", isPresented: $isConfirmingDelete) {
             Button("Löschen", role: .destructive) {
                 deleteAction()
                 dismiss()

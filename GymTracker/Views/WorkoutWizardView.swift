@@ -94,61 +94,19 @@ struct WorkoutWizardView: View {
     }
 
     private var experienceSelectionView: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text("Wie viel Erfahrung hast du?")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                Text("Deine Erfahrung hilft uns, die Intensität anzupassen")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            VStack(spacing: 16) {
-                ForEach(ExperienceLevel.allCases) { level in
-                    SelectionCard(
-                        title: level.displayName,
-                        subtitle: level.description,
-                        isSelected: experience == level
-                    ) {
-                        experience = level
-                    }
-                }
-            }
-
-            Spacer()
-        }
-        .padding()
+        WizardSelectionStepView(
+            title: "Wie viel Erfahrung hast du?",
+            subtitle: "Deine Erfahrung hilft uns, die Intensität anzupassen",
+            selection: $experience
+        )
     }
 
     private var goalSelectionView: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text("Was ist dein Hauptziel?")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                Text("Wir passen dein Workout an deine Ziele an")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            VStack(spacing: 16) {
-                ForEach(FitnessGoal.allCases) { goalOption in
-                    SelectionCard(
-                        title: goalOption.displayName,
-                        subtitle: goalOption.description,
-                        isSelected: goal == goalOption
-                    ) {
-                        goal = goalOption
-                    }
-                }
-            }
-
-            Spacer()
-        }
-        .padding()
+        WizardSelectionStepView(
+            title: "Was ist dein Hauptziel?",
+            subtitle: "Wir passen dein Workout an deine Ziele an",
+            selection: $goal
+        )
     }
 
     private var frequencySelectionView: some View {
@@ -186,61 +144,19 @@ struct WorkoutWizardView: View {
     }
 
     private var equipmentSelectionView: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text("Welche Geräte bevorzugst du?")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                Text("Wähle deine bevorzugte Trainingsart")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            VStack(spacing: 16) {
-                ForEach(EquipmentPreference.allCases) { equipmentOption in
-                    SelectionCard(
-                        title: equipmentOption.displayName,
-                        subtitle: equipmentOption.description,
-                        isSelected: equipment == equipmentOption
-                    ) {
-                        equipment = equipmentOption
-                    }
-                }
-            }
-
-            Spacer()
-        }
-        .padding()
+        WizardSelectionStepView(
+            title: "Welche Geräte bevorzugst du?",
+            subtitle: "Wähle deine bevorzugte Trainingsart",
+            selection: $equipment
+        )
     }
 
     private var durationSelectionView: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text("Wie lange soll ein Workout dauern?")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                Text("Inklusive Aufwärmen und Pausen")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            VStack(spacing: 16) {
-                ForEach(WorkoutDuration.allCases) { durationOption in
-                    SelectionCard(
-                        title: durationOption.displayName,
-                        subtitle: durationOption.description,
-                        isSelected: duration == durationOption
-                    ) {
-                        duration = durationOption
-                    }
-                }
-            }
-
-            Spacer()
-        }
-        .padding()
+        WizardSelectionStepView(
+            title: "Wie lange soll ein Workout dauern?",
+            subtitle: "Inklusive Aufwärmen und Pausen",
+            selection: $duration
+        )
     }
 
     private var frequencyDescription: String {

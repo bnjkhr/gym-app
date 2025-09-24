@@ -106,20 +106,13 @@ struct AddWorkoutView: View {
 
                 Section("Pause zwischen Sätzen") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Slider(value: $restTimeSeconds, in: 30...240, step: 5) {
-                            Text("Pause in Sekunden")
-                        }
-
                         HStack {
-                            Text(restTimeFormatted)
-                                .font(.headline)
-
+                            Text("Pause")
                             Spacer()
-
-                            Text("Empfohlen: 60-120 Sekunden")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            Text(restTimeFormatted)
+                                .font(.body.monospacedDigit())
                         }
+                        Slider(value: $restTimeSeconds, in: 30...240, step: 5)
                     }
                     .padding(.vertical, 4)
                 }
@@ -171,9 +164,9 @@ struct AddWorkoutView: View {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         if minutes > 0 {
-            return String(format: "Pause: %d:%02d Min", minutes, seconds)
+            return String(format: "%d:%02d Min", minutes, seconds)
         } else {
-            return "Pause: \(seconds) Sek"
+            return "\(seconds) Sek"
         }
     }
 

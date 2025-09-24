@@ -1,6 +1,13 @@
 import Foundation
 
-enum ExperienceLevel: String, CaseIterable, Identifiable, Codable {
+/// Ein Protokoll, um sicherzustellen, dass alle Enum-Typen für den Workout-Assistenten
+/// die benötigten Eigenschaften für die Auswahl-UI haben.
+protocol WizardSelectableOption: CaseIterable, Identifiable, Equatable where AllCases: RandomAccessCollection {
+    var displayName: String { get }
+    var description: String { get }
+}
+
+enum ExperienceLevel: String, Identifiable, Codable, WizardSelectableOption {
     case beginner = "beginner"
     case intermediate = "intermediate"
     case advanced = "advanced"
@@ -24,7 +31,7 @@ enum ExperienceLevel: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-enum FitnessGoal: String, CaseIterable, Identifiable, Codable {
+enum FitnessGoal: String, Identifiable, Codable, WizardSelectableOption {
     case muscleBuilding = "muscle_building"
     case strength = "strength"
     case endurance = "endurance"
@@ -54,7 +61,7 @@ enum FitnessGoal: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-enum EquipmentPreference: String, CaseIterable, Identifiable, Codable {
+enum EquipmentPreference: String, Identifiable, Codable, WizardSelectableOption {
     case freeWeights = "free_weights"
     case machines = "machines"
     case mixed = "mixed"
@@ -78,7 +85,7 @@ enum EquipmentPreference: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-enum WorkoutDuration: Int, CaseIterable, Identifiable, Codable {
+enum WorkoutDuration: Int, Identifiable, Codable, WizardSelectableOption {
     case short = 30
     case medium = 45
     case long = 60

@@ -33,6 +33,7 @@
 		11E7492A2C9E4E0000AB1234 /* WorkoutPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E749292C9E4E0000AB1234 /* WorkoutPreferences.swift */; };
 		11E7492C2C9E4E1000AB1234 /* WorkoutWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E7492B2C9E4E1000AB1234 /* WorkoutWizardView.swift */; };
 		11E7492E2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E7492D2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift */; };
+		11E749322C9E4E8A00AB1234 /* WizardSelectionStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E749312C9E4E8A00AB1234 /* WizardSelectionStepView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 		11E749292C9E4E0000AB1234 /* WorkoutPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPreferences.swift; sourceTree = "<group>"; };
 		11E7492B2C9E4E1000AB1234 /* WorkoutWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutWizardView.swift; sourceTree = "<group>"; };
 		11E7492D2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedWorkoutPreviewView.swift; sourceTree = "<group>"; };
+		11E749312C9E4E8A00AB1234 /* WizardSelectionStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WizardSelectionStepView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +153,7 @@
 				BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */,
 				1FFCE41560FA498487D62805 /* SessionActionButton.swift */,
 				11E7492B2C9E4E1000AB1234 /* WorkoutWizardView.swift */,
+				11E749312C9E4E8A00AB1234 /* WizardSelectionStepView.swift */,
 				11E7492D2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift */,
 			);
 			path = Views;
@@ -259,6 +262,7 @@
 				11E7490B2C9E4BC100AB1234 /* StatisticsView.swift in Sources */,
 				11E7492A2C9E4E0000AB1234 /* WorkoutPreferences.swift in Sources */,
 				11E7492C2C9E4E1000AB1234 /* WorkoutWizardView.swift in Sources */,
+				11E749322C9E4E8A00AB1234 /* WizardSelectionStepView.swift in Sources */,
 				11E7492E2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

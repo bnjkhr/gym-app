@@ -56,7 +56,7 @@ struct ExercisesView: View {
                     }
                 }
             }
-            .alert("Übung löschen?", isPresented: $showingDeleteAlert) {
+            .alert("Wirklich löschen?", isPresented: $showingDeleteAlert) {
                 Button("Löschen", role: .destructive) {
                     performDeletion()
                 }
