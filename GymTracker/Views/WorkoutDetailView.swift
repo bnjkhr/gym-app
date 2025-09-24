@@ -58,7 +58,6 @@ struct WorkoutDetailView: View {
             }
         }
         .onDisappear {
-            // CPU sparen: lokalen Sekundentimer stoppen (Live Activity bleibt unberührt)
             isTimerRunning = false
         }
         .onReceive(timer) { _ in
@@ -206,7 +205,6 @@ struct WorkoutDetailView: View {
                 ForEach(Array(workout.exercises[exerciseIndex].sets.enumerated()), id: \.element.id) { element in
                     let setIndex = element.offset
 
-                    // Vorherige Werte aus letzter Session ermitteln
                     let previous = previousValues(for: exerciseIndex, setIndex: setIndex)
 
                     let setBinding = Binding(
@@ -299,8 +297,6 @@ struct WorkoutDetailView: View {
         .listRowInsets(EdgeInsets())
     }
 
-    // MARK: - Helpers
-
     private var durationText: String {
         if let duration = workout.duration {
             return "\(Int(duration / 60)) Minuten"
@@ -360,7 +356,6 @@ struct WorkoutDetailView: View {
     private func toggleCompletion(for exerciseIndex: Int, setIndex: Int) {
         workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
 
-        // Rest-Timer wie gehabt starten/stoppen
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if workout.exercises[exerciseIndex].sets[setIndex].completed {
                 startRest(for: exerciseIndex, setIndex: setIndex)
@@ -474,14 +469,13 @@ struct WorkoutDetailView: View {
         return String(format: "%d:%02d", minutes, remaining)
     }
 
-    // Ermittelt die letzten Werte (Reps/Weight) aus der vorherigen Session für die gegebene Übung/Satz
     private func previousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
         guard let previousWorkout = workoutStore.previousWorkout(before: workout) else {
             return (nil, nil)
         }
         let currentExercise = workout.exercises[exerciseIndex].exercise
         guard let previousExercise = previousWorkout.exercises.first(where: { $0.exercise.id == currentExercise.id }) else {
-                       return (nil, nil)
+            return (nil, nil)
         }
 
         let sets = previousExercise.sets
@@ -505,7 +499,6 @@ private struct WorkoutSetCard: View {
     @Binding var set: ExerciseSet
     var isActiveRest: Bool
     var remainingSeconds: Int
-    // Neue Anzeige der letzten Werte
     var previousReps: Int?
     var previousWeight: Double?
     var onRestTimeUpdated: (Double) -> Void
@@ -518,20 +511,19 @@ private struct WorkoutSetCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Neue kompakte Zeile: Satz X | Wiederholungen | Gewicht | ✓
+            // Kompakte Zeile: Nummer | Wiederholungen | Gewicht | ✓
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Satz \(index + 1)")
-                    .font(.subheadline.weight(.semibold))
+                Text("\(index + 1)")
+                    .font(.title3.weight(.semibold))
 
                 verticalSeparator
 
                 HStack(spacing: 6) {
-                    Image(systemName: "repeat")
-                        .foregroundStyle(Color.mossGreen)
                     TextField("0", value: $set.reps, format: .number)
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 56)
+                        .frame(width: 64)
+                        .font(.title3.weight(.semibold))
                     if let prev = previousReps {
                         Text("(\(prev))")
                             .font(.caption2)
@@ -542,12 +534,11 @@ private struct WorkoutSetCard: View {
                 verticalSeparator
 
                 HStack(spacing: 6) {
-                    Image(systemName: "scalemass.fill")
-                        .foregroundStyle(Color.mossGreen)
                     TextField("0.0", text: $weightText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 68)
+                        .frame(width: 80)
+                        .font(.title3.weight(.semibold))
                         .onAppear {
                             weightText = set.weight > 0 ? String(format: "%.1f", set.weight) : ""
                         }
@@ -597,7 +588,6 @@ private struct WorkoutSetCard: View {
                 }
                 .buttonStyle(.plain)
             }
-            .font(.subheadline)
 
             // Pause-Zeile darunter (klein), editierbar
             HStack(spacing: 6) {
