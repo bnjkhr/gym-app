@@ -3,20 +3,10 @@ import Charts
 
 struct ContentView: View {
     @StateObject private var workoutStore = WorkoutStore()
+    @State private var navigateToActiveWorkout = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Workout Timer am oberen Bildschirmrand
-            if let activeWorkout = workoutStore.activeWorkout {
-                WorkoutTimerView(
-                    workoutName: activeWorkout.name,
-                    startDate: activeWorkout.date
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-            }
-
+        NavigationStack {
             TabView {
                 WorkoutsHomeView()
                     .environmentObject(workoutStore)
@@ -47,7 +37,31 @@ struct ContentView: View {
                     }
             }
             .tint(Color.mossGreen)
+            .navigationDestination(isPresented: $navigateToActiveWorkout) {
+                if let activeWorkout = workoutStore.activeWorkout,
+                   let binding = workoutBinding(for: activeWorkout.id) {
+                    WorkoutDetailView(
+                        workout: binding,
+                        isActiveSession: true,
+                        onActiveSessionEnd: {
+                            workoutStore.activeSessionID = nil
+                            WorkoutLiveActivityController.shared.end()
+                        }
+                    )
+                    .environmentObject(workoutStore)
+                }
+            }
         }
+    }
+
+    private func workoutBinding(for id: UUID) -> Binding<Workout>? {
+        guard let index = workoutStore.workouts.firstIndex(where: { $0.id == id }) else {
+            return nil
+        }
+        return Binding(
+            get: { workoutStore.workouts[index] },
+            set: { workoutStore.workouts[index] = $0 }
+        )
     }
 }
 
@@ -821,6 +835,9 @@ private struct ActiveWorkoutBar: View {
     let resumeAction: () -> Void
     let endAction: () -> Void
 
+    @State private var currentTime = Date()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     private var completedSets: Int {
         workout.exercises.flatMap { $0.sets }.filter { $0.completed }.count
     }
@@ -831,7 +848,24 @@ private struct ActiveWorkoutBar: View {
 
     private var statusText: String {
         guard totalSets > 0 else { return "Noch keine Sätze" }
-        return "\(completedSets)/\(totalSets) Sätze abgeschlossen"
+        return "\(completedSets)/\(totalSets) Sätze"
+    }
+
+    private var elapsedTime: TimeInterval {
+        currentTime.timeIntervalSince(workout.date)
+    }
+
+    private var formattedElapsedTime: String {
+        let totalSeconds = Int(elapsedTime)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
     }
 
     var body: some View {
@@ -849,6 +883,16 @@ private struct ActiveWorkoutBar: View {
             }
 
             Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(formattedElapsedTime)
+                    .font(.system(.subheadline, design: .monospaced))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.mossGreen)
+                Text("Dauer")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
 
             Button(action: resumeAction) {
                 Image(systemName: "play.fill")
@@ -881,6 +925,12 @@ private struct ActiveWorkoutBar: View {
                 .stroke(Color.mossGreen.opacity(0.18), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 6)
+        .onAppear {
+            currentTime = Date()
+        }
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
     }
 }
 
@@ -1800,73 +1850,6 @@ private extension View {
     }
 }
 
-struct WorkoutTimerView: View {
-    let workoutName: String
-    let startDate: Date
-    @State private var currentTime = Date()
-
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    private var elapsedTime: TimeInterval {
-        currentTime.timeIntervalSince(startDate)
-    }
-
-    private var formattedElapsedTime: String {
-        let totalSeconds = Int(elapsedTime)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%02d:%02d", minutes, seconds)
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(Color.mossGreen)
-                .frame(width: 8, height: 8)
-                .scaleEffect(1.2)
-                .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: currentTime)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Aktives Workout")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(workoutName)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            Text(formattedElapsedTime)
-                .font(.system(.subheadline, design: .monospaced))
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.mossGreen)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.mossGreen.opacity(0.2), lineWidth: 1)
-        )
-        .onAppear {
-            currentTime = Date()
-        }
-        .onReceive(timer) { _ in
-            currentTime = Date()
-        }
-    }
-}
 
 #Preview {
     ContentView()

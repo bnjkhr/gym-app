@@ -357,12 +357,17 @@ struct WorkoutDetailView: View {
     }
 
     private func toggleCompletion(for exerciseIndex: Int, setIndex: Int) {
-        workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
+        withAnimation(.easeInOut(duration: 0.3)) {
+            workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
+        }
 
-        if workout.exercises[exerciseIndex].sets[setIndex].completed {
-            startRest(for: exerciseIndex, setIndex: setIndex)
-        } else if activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
-            stopRestTimer()
+        // Verzögerung für smooth animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if workout.exercises[exerciseIndex].sets[setIndex].completed {
+                startRest(for: exerciseIndex, setIndex: setIndex)
+            } else if activeRest == ActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
+                stopRestTimer()
+            }
         }
     }
 
@@ -490,6 +495,14 @@ private struct WorkoutSetCard: View {
             HStack {
                 Text("Satz \(index + 1)")
                     .fontWeight(.semibold)
+                if set.completed {
+                    Image(systemName: "checkmark")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.mossGreen)
+                        .fontWeight(.semibold)
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.spring(response: 0.5, dampingFraction: 0.6), value: set.completed)
+                }
                 Spacer()
             }
 
@@ -540,22 +553,20 @@ private struct WorkoutSetCard: View {
             }
             .onChangeCompat(of: set.restTime, perform: onRestTimeUpdated)
 
-            HStack(spacing: 12) {
-                Label(set.completed ? "Abgeschlossen" : "Bereit",
-                      systemImage: set.completed ? "checkmark.circle.fill" : "circle")
-                    .font(.subheadline)
-                    .foregroundStyle(set.completed ? Color.mossGreen : .secondary)
-
-                if isActiveRest {
+            if isActiveRest {
+                HStack(spacing: 12) {
                     Label("\(formattedRemaining)", systemImage: "hourglass")
                         .font(.callout)
                         .foregroundStyle(.blue)
+                    Spacer()
                 }
-
-                Spacer()
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.4), value: isActiveRest)
             }
         }
         .padding(.vertical, 6)
+        .scaleEffect(set.completed ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: set.completed)
     }
 
     private var formattedTime: String {
