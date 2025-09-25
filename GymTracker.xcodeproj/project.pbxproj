@@ -32,6 +32,10 @@
 		3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */; };
 		3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */; };
 		7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */; };
+		AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7802E858AEC0005AE79 /* UserProfile.swift */; };
+		AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7822E858B920005AE79 /* ProfileEditView.swift */; };
+		AD03A7852E858BA40005AE79 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7842E858BA40005AE79 /* ProfileView.swift */; };
+		AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */; };
 		AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */; };
 		AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */; };
 		AD90F2C42E845AFD003D4DE9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C32E845AFD003D4DE9 /* Theme.swift */; };
@@ -68,6 +72,10 @@
 		1FFCE41560FA498487D62805 /* SessionActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActionButton.swift; sourceTree = "<group>"; };
 		437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
 		6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityController.swift; sourceTree = "<group>"; };
+		AD03A7802E858AEC0005AE79 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		AD03A7822E858B920005AE79 /* ProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileEditView.swift; sourceTree = "<group>"; };
+		AD03A7842E858BA40005AE79 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileImageView.swift; sourceTree = "<group>"; };
 		AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconGenerator.swift; sourceTree = "<group>"; };
 		AD90F2C32E845AFD003D4DE9 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -167,6 +175,10 @@
 				11E749312C9E4E8A00AB1234 /* WizardSelectionStepView.swift */,
 				11E7492D2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift */,
 				AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */,
+				AD03A7802E858AEC0005AE79 /* UserProfile.swift */,
+				AD03A7822E858B920005AE79 /* ProfileEditView.swift */,
+				AD03A7842E858BA40005AE79 /* ProfileView.swift */,
+				AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -252,7 +264,9 @@
 			files = (
 				11E7491E2C9E4D1500AB1234 /* SoundPlayer.swift in Sources */,
 				11E7491A2C9E4C9E00AB1234 /* Color+Theme.swift in Sources */,
+				AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */,
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
+				AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */,
 				3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */,
 				3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */,
 				7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */,
@@ -272,8 +286,10 @@
 				AD90F2C62E845B05003D4DE9 /* StartView.swift in Sources */,
 				11E749212C9E4D9300AB1234 /* EditWorkoutView.swift in Sources */,
 				DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */,
+				AD03A7852E858BA40005AE79 /* ProfileView.swift in Sources */,
 				AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */,
 				11E749052C9E4B9700AB1234 /* WorkoutStore.swift in Sources */,
+				AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */,
 				11E7490B2C9E4BC100AB1234 /* StatisticsView.swift in Sources */,
 				11E7492A2C9E4E0000AB1234 /* WorkoutPreferences.swift in Sources */,
 				11E7492C2C9E4E1000AB1234 /* WorkoutWizardView.swift in Sources */,

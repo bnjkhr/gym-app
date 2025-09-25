@@ -8,14 +8,16 @@ struct GeneratedWorkoutPreviewView: View {
     @Binding var workoutName: String
     @State private var isEditing = false
     @State private var editingWorkout: Workout
+    @State private var usedProfileInfo: Bool
 
     let onSave: () -> Void
     let onDismiss: () -> Void
 
-    init(workout: Workout, workoutName: Binding<String>, onSave: @escaping () -> Void, onDismiss: @escaping () -> Void) {
+    init(workout: Workout, workoutName: Binding<String>, usedProfileInfo: Bool = false, onSave: @escaping () -> Void, onDismiss: @escaping () -> Void) {
         self._workout = State(initialValue: workout)
         self._workoutName = workoutName
         self._editingWorkout = State(initialValue: workout)
+        self._usedProfileInfo = State(initialValue: usedProfileInfo)
         self.onSave = onSave
         self.onDismiss = onDismiss
     }
@@ -45,6 +47,31 @@ struct GeneratedWorkoutPreviewView: View {
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(Color.blue.opacity(0.1))
                         )
+
+                        if usedProfileInfo {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "person.text.rectangle")
+                                    .font(.headline)
+                                    .foregroundColor(.blue)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Erstellt mit deinem Profil")
+                                        .font(.subheadline).fontWeight(.semibold)
+                                    Text("Ziel und Trainingsfrequenz wurden aus deinem Profil übernommen.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                                    )
+                            )
+                        }
 
                         // Workout Name Input
                         VStack(alignment: .leading, spacing: 8) {
@@ -336,6 +363,7 @@ struct EditableExerciseCard: View {
     GeneratedWorkoutPreviewView(
         workout: sampleWorkout,
         workoutName: .constant("Mein Workout"),
+        usedProfileInfo: true,
         onSave: {},
         onDismiss: {}
     )

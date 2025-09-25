@@ -25,7 +25,6 @@ struct StatisticsView: View {
             }
             .padding()
         }
-        .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top) {
             HStack(alignment: .center) {
@@ -238,7 +237,7 @@ struct MostUsedExercisesView: View {
                     HStack {
                         Text("\(index + 1).")
                             .fontWeight(.semibold)
-                            .foregroundColor(.orange)
+                            .foregroundColor(.mossGreen)
 
                         Text(exercise.name)
 

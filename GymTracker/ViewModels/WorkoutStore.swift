@@ -7,6 +7,7 @@ class WorkoutStore: ObservableObject {
     @Published var workouts: [Workout] = []
     @Published var sessionHistory: [WorkoutSession] = []
     @Published var activeSessionID: UUID?
+    @Published var userProfile: UserProfile = UserProfile()
 
     // Zentrale Rest-Timer-State
     struct ActiveRestState {
@@ -38,6 +39,7 @@ class WorkoutStore: ObservableObject {
             persistExercises()
             persistWorkouts()
             persistSessions()
+            persistProfile()
         }
     }
 
@@ -161,6 +163,17 @@ class WorkoutStore: ObservableObject {
     func removeSession(with id: UUID) {
         sessionHistory.removeAll { $0.id == id }
         invalidateCaches()
+        schedulePersistence()
+    }
+    
+    // MARK: - Profile Management
+    func updateProfile(name: String, birthDate: Date?, weight: Double?, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration) {
+        userProfile.updateInfo(name: name, birthDate: birthDate, weight: weight, goal: goal, experience: experience, equipment: equipment, preferredDuration: preferredDuration)
+        schedulePersistence()
+    }
+    
+    func updateProfileImage(_ image: UIImage?) {
+        userProfile.updateProfileImage(image)
         schedulePersistence()
     }
 
@@ -291,6 +304,7 @@ class WorkoutStore: ObservableObject {
         persistExercises()
         persistWorkouts()
         persistSessions()
+        persistProfile()
     }
 
     private func invalidateCaches() {
@@ -494,6 +508,7 @@ class WorkoutStore: ObservableObject {
     private var exercisesURL: URL { documentsDirectory.appendingPathComponent("exercises.json") }
     private var workoutsURL: URL { documentsDirectory.appendingPathComponent("workouts.json") }
     private var sessionsURL: URL { documentsDirectory.appendingPathComponent("sessions.json") }
+    private var profileURL: URL { documentsDirectory.appendingPathComponent("profile.json") }
 
     private func loadFromDisk() -> Bool {
         do {
@@ -510,6 +525,13 @@ class WorkoutStore: ObservableObject {
                 sessionHistory = try decoder.decode([WorkoutSession].self, from: sessionData)
             } else {
                 sessionHistory = []
+            }
+            
+            // Load user profile if it exists, otherwise use default
+            if let profileData = try? Data(contentsOf: profileURL) {
+                userProfile = try decoder.decode(UserProfile.self, from: profileData)
+            } else {
+                userProfile = UserProfile()
             }
 
             return true
@@ -531,6 +553,10 @@ class WorkoutStore: ObservableObject {
 
     private func persistSessions() {
         persist(sessionHistory, to: sessionsURL)
+    }
+    
+    private func persistProfile() {
+        persist(userProfile, to: profileURL)
     }
 
     private func applyFileProtection(to url: URL) {

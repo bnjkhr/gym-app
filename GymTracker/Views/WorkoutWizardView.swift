@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct WorkoutWizardView: View {
+    var isManualStart: Bool = false
+
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
 
@@ -14,16 +16,59 @@ struct WorkoutWizardView: View {
     @State private var isGenerating = false
     @State private var workoutName = ""
     @State private var showingPreview = false
+    @State private var usedProfilePrefill = false
+    @State private var usedProfileForGeneration = false
 
     private let totalSteps = 5
 
     var body: some View {
         NavigationStack {
             VStack {
-                // Progress Bar
+                if usedProfilePrefill {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "person.crop.circle.badge.check")
+                            .font(.title3)
+                            .foregroundColor(.blue)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Aus Profil vorausgefüllt")
+                                .font(.subheadline).fontWeight(.semibold)
+                            Text("Wir haben Ziel und Trainingsfrequenz aus deinem Profil übernommen.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.blue.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                            )
+                    )
+                    .padding(.horizontal)
+                }
+
                 ProgressView(value: Double(currentStep), total: Double(totalSteps))
                     .progressViewStyle(.linear)
                     .padding()
+
+                if !isManualStart {
+                    Button {
+                        quickGenerateFromProfile()
+                    } label: {
+                        HStack {
+                            Image(systemName: "wand.and.stars")
+                            Text("Schnellstart mit Profil")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.mossGreen)
+                    .padding(.horizontal)
+                }
 
                 TabView(selection: $currentStep) {
                     experienceSelectionView.tag(0)
@@ -43,6 +88,7 @@ struct WorkoutWizardView: View {
                             }
                         }
                         .buttonStyle(.bordered)
+                        .tint(Color.mossGreen)
                     }
 
                     Spacer()
@@ -54,6 +100,7 @@ struct WorkoutWizardView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(Color.mossGreen)
                     } else {
                         Button(action: generateWorkout) {
                             if isGenerating {
@@ -65,6 +112,7 @@ struct WorkoutWizardView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(Color.mossGreen)
                         .disabled(isGenerating)
                     }
                 }
@@ -79,17 +127,35 @@ struct WorkoutWizardView: View {
                     }
                 }
             }
-        }
-        .sheet(isPresented: $showingPreview) {
-            if let workout = generatedWorkout {
-                GeneratedWorkoutPreviewView(
-                    workout: workout,
-                    workoutName: $workoutName,
-                    onSave: saveWorkout,
-                    onDismiss: { showingPreview = false }
-                )
-                .environmentObject(workoutStore)
+            .onAppear {
+                let profile = workoutStore.userProfile
+                var didPrefill = false
+                // Prefill goal from profile if different
+                if goal != profile.goal {
+                    goal = profile.goal
+                    didPrefill = true
+                }
+                // Prefill frequency from weeklyGoal if available and within 1...7
+                let freq = max(1, min(workoutStore.weeklyGoal, 7))
+                if frequency != freq {
+                    frequency = freq
+                    didPrefill = true
+                }
+                usedProfilePrefill = didPrefill
             }
+        }
+        .sheet(item: $generatedWorkout) { workout in
+            GeneratedWorkoutPreviewView(
+                workout: workout,
+                workoutName: $workoutName,
+                usedProfileInfo: usedProfileForGeneration,
+                onSave: { 
+                    saveWorkout()
+                    generatedWorkout = nil
+                },
+                onDismiss: { generatedWorkout = nil }
+            )
+            .environmentObject(workoutStore)
         }
     }
 
@@ -172,8 +238,30 @@ struct WorkoutWizardView: View {
         }
     }
 
+    private func quickGenerateFromProfile() {
+        isGenerating = true
+        usedProfileForGeneration = true
+
+        // Build preferences using current (prefilled) selections
+        let preferences = WorkoutPreferences(
+            experience: experience, // bleibt wie gewählt
+            goal: goal,             // aus Profil vorbefüllt
+            frequency: frequency,   // aus Profil/Weekly Goal vorbefüllt
+            equipment: equipment,
+            duration: duration
+        )
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            generatedWorkout = workoutStore.generateWorkout(from: preferences)
+            workoutName = "Mein \(goal.displayName) Workout"
+            isGenerating = false
+            showingPreview = true
+        }
+    }
+
     private func generateWorkout() {
         isGenerating = true
+        usedProfileForGeneration = false
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             let preferences = WorkoutPreferences(
@@ -239,6 +327,6 @@ struct SelectionCard: View {
 }
 
 #Preview {
-    WorkoutWizardView()
+    WorkoutWizardView(isManualStart: false)
         .environmentObject(WorkoutStore())
 }

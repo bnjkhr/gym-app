@@ -13,6 +13,12 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                ProfileView()
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+            }
+            
             Section("Trainingsziele") {
                 Stepper(value: $workoutStore.weeklyGoal, in: 1...14) {
                     Text("Wochenziel: \(workoutStore.weeklyGoal) Workouts")
@@ -44,7 +50,6 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top) {
             HStack(alignment: .center) {

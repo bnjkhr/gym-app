@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Ein Protokoll, um sicherzustellen, dass alle Enum-Typen für den Workout-Assistenten
 /// die benötigten Eigenschaften für die Auswahl-UI haben.
@@ -31,7 +32,7 @@ enum ExperienceLevel: String, Identifiable, Codable, WizardSelectableOption {
     }
 }
 
-enum FitnessGoal: String, Identifiable, Codable, WizardSelectableOption {
+enum FitnessGoal: String, Identifiable, Codable, CaseIterable, WizardSelectableOption {
     case muscleBuilding = "muscle_building"
     case strength = "strength"
     case endurance = "endurance"
@@ -57,6 +58,26 @@ enum FitnessGoal: String, Identifiable, Codable, WizardSelectableOption {
         case .endurance: return "Herz-Kreislauf-System und Ausdauer verbessern"
         case .weightLoss: return "Körperfett reduzieren und Körpergewicht senken"
         case .general: return "Gesundheit und allgemeine Fitness verbessern"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .muscleBuilding: return .orange
+        case .strength: return .purple
+        case .endurance: return .green
+        case .weightLoss: return .red
+        case .general: return .blue
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .muscleBuilding: return "dumbbell.fill"
+        case .strength: return "bolt.fill"
+        case .endurance: return "figure.run"
+        case .weightLoss: return "flame.fill"
+        case .general: return "heart.fill"
         }
     }
 }

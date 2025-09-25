@@ -49,7 +49,6 @@ struct ExercisesView: View {
         .transaction { tx in
             tx.animation = nil
         }
-        .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top) {
             HStack(alignment: .center) {
@@ -71,7 +70,7 @@ struct ExercisesView: View {
                             .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
                         Image(systemName: "plus")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.orange)
+                            .foregroundStyle(Color.mossGreen)
                     }
                 }
                 .buttonStyle(.plain)
@@ -80,7 +79,7 @@ struct ExercisesView: View {
             .padding(.top, 8)
             .padding(.bottom, 8)
         }
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .bottom) {
             LiquidGlassSearchBar(text: $searchText)
                 .padding(.horizontal)
                 .padding(.bottom, 12)

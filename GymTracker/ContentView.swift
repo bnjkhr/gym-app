@@ -36,7 +36,7 @@ struct ContentView: View {
                             .environmentObject(workoutStore)
                             .padding(Edge.Set.horizontal, 16)
                             .padding(Edge.Set.vertical, 12)
-                            .padding(.bottom, 44)
+                            .padding(.bottom, 6)
                         }
                     }
             }
@@ -124,6 +124,10 @@ struct WorkoutsHomeView: View {
     @State private var showingAddWorkout = false
     @State private var showingWorkoutWizard = false
     @State private var showingManualAdd = false
+
+    @State private var showingProfileAlert = false
+    @State private var showingProfileEditor = false
+
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
     @State private var viewingSession: WorkoutSession?
@@ -132,6 +136,9 @@ struct WorkoutsHomeView: View {
 
     // Neu: Zustand für Löschbestätigung
     @State private var workoutToDelete: Workout?
+
+    @State private var quickGeneratedWorkout: Workout?
+    @State private var quickWorkoutName: String = ""
 
     private var weekStart: Date {
         let calendar = Calendar.current
@@ -260,7 +267,7 @@ struct WorkoutsHomeView: View {
                             .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
                         Image(systemName: "plus")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.orange)
+                            .foregroundStyle(Color.mossGreen)
                     }
                 }
                 .buttonStyle(.plain)
@@ -339,6 +346,61 @@ struct WorkoutsHomeView: View {
                             )
                         }
                         .buttonStyle(.plain)
+
+                        Button {
+                            // Check if profile exists; if not, prompt
+                            let profile = workoutStore.userProfile
+                            let isProfileMissing = profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && profile.weight == nil && profile.birthDate == nil
+                            if isProfileMissing {
+                                showingProfileAlert = true
+                                return
+                            }
+                            let goal = profile.goal
+                            let freq = max(1, min(workoutStore.weeklyGoal, 7))
+                            let preferences = WorkoutPreferences(
+                                experience: profile.experience,
+                                goal: goal,
+                                frequency: freq,
+                                equipment: profile.equipment,
+                                duration: profile.preferredDuration
+                            )
+                            quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
+                            quickWorkoutName = "Mein \(goal.displayName) Workout"
+                            showingAddWorkout = false
+                        } label: {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("1-Klick-Workout mit Profil erstellen")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    if workoutStore.userProfile.name.isEmpty && workoutStore.userProfile.weight == nil && workoutStore.userProfile.birthDate == nil {
+                                        Text("Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten.")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    } else {
+                                        Text("Ziel und Trainingsfrequenz werden aus deinem Profil übernommen.")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "bolt.badge.a.fill")
+                                    .font(.title2)
+                                    .foregroundColor(Color.mossGreen)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.mossGreen.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.mossGreen.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding()
 
@@ -405,13 +467,39 @@ struct WorkoutsHomeView: View {
         } message: { name in
             Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
         }
+        .alert("Bitte lege zuerst ein Profil an", isPresented: $showingProfileAlert) {
+            Button("Profil anlegen") { showingProfileEditor = true }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Damit wir dein 1‑Klick‑Workout optimal erstellen können.")
+        }
+        .sheet(isPresented: $showingProfileEditor) {
+            ProfileEditView()
+                .environmentObject(workoutStore)
+        }
         .sheet(isPresented: $showingWorkoutWizard) {
-            WorkoutWizardView()
+            WorkoutWizardView(isManualStart: true)
                 .environmentObject(workoutStore)
         }
         .sheet(isPresented: $showingManualAdd) {
             AddWorkoutView()
                 .environmentObject(workoutStore)
+        }
+        .sheet(item: $quickGeneratedWorkout) { workout in
+            GeneratedWorkoutPreviewView(
+                workout: workout,
+                workoutName: $quickWorkoutName,
+                usedProfileInfo: true,
+                onSave: {
+                    if var w = quickGeneratedWorkout {
+                        w.name = quickWorkoutName
+                        workoutStore.addWorkout(w)
+                    }
+                    quickGeneratedWorkout = nil
+                },
+                onDismiss: { quickGeneratedWorkout = nil }
+            )
+            .environmentObject(workoutStore)
         }
     }
 
@@ -703,6 +791,10 @@ struct ActiveWorkoutBar: View {
                     if let rest = restText {
                         Label(rest, systemImage: "timer")
                             .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                            .monospacedDigit()
+                            .fixedSize(horizontal: true, vertical: false)
+                            .minimumScaleFactor(0.8)
                             .contentTransition(.numericText())
                             .foregroundStyle(.blue)
                             .padding(.horizontal, 8)
