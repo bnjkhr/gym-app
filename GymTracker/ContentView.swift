@@ -7,65 +7,75 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        NavigationStack {
-            TabView {
+        TabView {
+            // Workouts Tab
+            NavigationStack {
                 WorkoutsHomeView()
                     .environmentObject(workoutStore)
-                    .tabItem {
-                        Image(systemName: "dumbbell")
-                        Text("Workouts")
+                    .navigationDestination(isPresented: $navigateToActiveWorkout) {
+                        if let activeWorkout = workoutStore.activeWorkout,
+                           let binding = workoutBinding(for: activeWorkout.id) {
+                            WorkoutDetailView(
+                                workout: binding,
+                                isActiveSession: true,
+                                onActiveSessionEnd: {
+                                    workoutStore.activeSessionID = nil
+                                    WorkoutLiveActivityController.shared.end()
+                                }
+                            )
+                            .environmentObject(workoutStore)
+                        }
                     }
+                    .safeAreaInset(edge: .bottom) {
+                        if let activeWorkout = workoutStore.activeWorkout {
+                            ActiveWorkoutBar(
+                                workout: activeWorkout,
+                                resumeAction: { resumeActiveWorkout() },
+                                endAction: { endActiveSession() }
+                            )
+                            .environmentObject(workoutStore)
+                            .padding(Edge.Set.horizontal, 16)
+                            .padding(Edge.Set.vertical, 12)
+                            .padding(.bottom, 44)
+                        }
+                    }
+            }
+            .tabItem {
+                Image(systemName: "dumbbell")
+                Text("Workouts")
+            }
 
+            // Übungen Tab
+            NavigationStack {
                 ExercisesView()
                     .environmentObject(workoutStore)
-                    .tabItem {
-                        Image(systemName: "list.bullet.rectangle")
-                        Text("Übungen")
-                    }
+            }
+            .tabItem {
+                Image(systemName: "list.bullet.rectangle")
+                Text("Übungen")
+            }
 
+            // Fortschritt Tab
+            NavigationStack {
                 StatisticsView()
                     .environmentObject(workoutStore)
-                    .tabItem {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                        Text("Fortschritt")
-                    }
+            }
+            .tabItem {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                Text("Fortschritt")
+            }
 
+            // Einstellungen Tab
+            NavigationStack {
                 SettingsView()
                     .environmentObject(workoutStore)
-                    .tabItem {
-                        Image(systemName: "gearshape")
-                        Text("Einstellungen")
-                    }
             }
-            .tint(AppTheme.purple)
-            .navigationDestination(isPresented: $navigateToActiveWorkout) {
-                if let activeWorkout = workoutStore.activeWorkout,
-                   let binding = workoutBinding(for: activeWorkout.id) {
-                    WorkoutDetailView(
-                        workout: binding,
-                        isActiveSession: true,
-                        onActiveSessionEnd: {
-                            workoutStore.activeSessionID = nil
-                            WorkoutLiveActivityController.shared.end()
-                        }
-                    )
-                    .environmentObject(workoutStore)
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                if let activeWorkout = workoutStore.activeWorkout {
-                    ActiveWorkoutBar(
-                        workout: activeWorkout,
-                        resumeAction: { resumeActiveWorkout() },
-                        endAction: { endActiveSession() }
-                    )
-                    .environmentObject(workoutStore)
-                    .padding(Edge.Set.horizontal, 16)
-                    .padding(Edge.Set.vertical, 12)
-                    .padding(.bottom, 44) // noch weiter hoch
-                }
+            .tabItem {
+                Image(systemName: "gearshape")
+                Text("Einstellungen")
             }
         }
+        .tint(AppTheme.purple)
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 workoutStore.flushPersistence()
@@ -109,6 +119,8 @@ private struct WorkoutSelection: Identifiable, Hashable {
 
 struct WorkoutsHomeView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
+
     @State private var showingAddWorkout = false
     @State private var showingWorkoutWizard = false
     @State private var showingManualAdd = false
@@ -227,18 +239,35 @@ struct WorkoutsHomeView: View {
                 .padding(.vertical, 20)
             }
         }
-        .navigationTitle("Workouts")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top) {
+            HStack(alignment: .center) {
+                Text("Workouts")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.primary)
+                Spacer()
                 Button {
                     showingAddWorkout = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Circle()
+                                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
+                            )
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
+                        Image(systemName: "plus")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.orange)
+                    }
                 }
-                .accessibilityLabel("Workout hinzufügen")
-                .tint(Color("AccentColor"))
+                .buttonStyle(.plain)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
         }
         .sheet(isPresented: $showingAddWorkout) {
             NavigationStack {

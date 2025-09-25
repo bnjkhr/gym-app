@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingImporter = false
     @State private var alertMessage: String?
     @State private var isShowingAlert = false
@@ -11,62 +12,72 @@ struct SettingsView: View {
     private let maxImportBytes: Int = 2 * 1024 * 1024
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Trainingsziele") {
-                    Stepper(value: $workoutStore.weeklyGoal, in: 1...14) {
-                        Text("Wochenziel: \(workoutStore.weeklyGoal) Workouts")
-                    }
-
-                    Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, 4)
+        Form {
+            Section("Trainingsziele") {
+                Stepper(value: $workoutStore.weeklyGoal, in: 1...14) {
+                    Text("Wochenziel: \(workoutStore.weeklyGoal) Workouts")
                 }
 
-                Section("Workouts") {
-                    Button {
-                        showingImporter = true
-                    } label: {
-                        Label("Workouts importieren (CSV)", systemImage: "tray.and.arrow.down")
-                    }
-
-                    Button {
-                        workoutStore.resetToSampleData()
-                        showAlert(message: "Sample-Workouts geladen!")
-                    } label: {
-                        Label("Sample-Workouts laden", systemImage: "arrow.clockwise")
-                            .foregroundColor(.orange)
-                    }
-
-                    Text("Erstelle eine CSV mit 'Übung,Sätze,Wiederholungen,Gewicht' pro Zeile und importiere sie als Vorlage.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                }
+                Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 4)
             }
-            .navigationTitle("Einstellungen")
-            .fileImporter(
-                isPresented: $showingImporter,
-                allowedContentTypes: [.commaSeparatedText, .plainText],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    if let url = urls.first {
-                        importWorkout(from: url)
-                    } else {
-                        showAlert(message: "Keine Datei ausgewählt.")
-                    }
-                case .failure(let error):
-                    showAlert(message: "Import fehlgeschlagen: \(error.localizedDescription)")
+
+            Section("Workouts") {
+                Button {
+                    showingImporter = true
+                } label: {
+                    Label("Workouts importieren (CSV)", systemImage: "tray.and.arrow.down")
                 }
+
+                Button {
+                    workoutStore.resetToSampleData()
+                    showAlert(message: "Sample-Workouts geladen!")
+                } label: {
+                    Label("Sample-Workouts laden", systemImage: "arrow.clockwise")
+                        .foregroundColor(.orange)
+                }
+
+                Text("Erstelle eine CSV mit 'Übung,Sätze,Wiederholungen,Gewicht' pro Zeile und importiere sie als Vorlage.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
-            .alert("Import", isPresented: $isShowingAlert, actions: {
-                Button("OK", role: .cancel) {}
-            }, message: {
-                Text(alertMessage ?? "")
-            })
         }
+        .padding(.bottom, 96)
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top) {
+            HStack(alignment: .center) {
+                Text("Einstellungen")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+        }
+        .fileImporter(
+            isPresented: $showingImporter,
+            allowedContentTypes: [.commaSeparatedText, .plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    importWorkout(from: url)
+                } else {
+                    showAlert(message: "Keine Datei ausgewählt.")
+                }
+            case .failure(let error):
+                showAlert(message: "Import fehlgeschlagen: \(error.localizedDescription)")
+            }
+        }
+        .alert("Import", isPresented: $isShowingAlert, actions: {
+            Button("OK", role: .cancel) {}
+        }, message: {
+            Text(alertMessage ?? "")
+        })
     }
 
     private func importWorkout(from url: URL) {

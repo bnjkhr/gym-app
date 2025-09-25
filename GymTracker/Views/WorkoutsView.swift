@@ -2,35 +2,55 @@ import SwiftUI
 
 struct WorkoutsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingAddWorkout = false
 
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(workoutStore.workouts) { workout in
-                    NavigationLink {
-                        WorkoutDetailView(workout: binding(for: workout))
-                            .environmentObject(workoutStore)
-                    } label: {
-                        WorkoutRowView(workout: workout)
-                    }
+        List {
+            ForEach(workoutStore.workouts) { workout in
+                NavigationLink {
+                    WorkoutDetailView(workout: binding(for: workout))
+                        .environmentObject(workoutStore)
+                } label: {
+                    WorkoutRowView(workout: workout)
                 }
-                .onDelete(perform: workoutStore.deleteWorkout)
             }
-            .navigationTitle("Workouts")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddWorkout = true
-                    } label: {
+            .onDelete(perform: workoutStore.deleteWorkout)
+        }
+        .padding(.bottom, 96)
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top) {
+            HStack(alignment: .center) {
+                Text("Workouts")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.primary)
+                Spacer()
+                Button {
+                    showingAddWorkout = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Circle()
+                                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
+                            )
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
                         Image(systemName: "plus")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.orange)
                     }
                 }
+                .buttonStyle(.plain)
             }
-            .sheet(isPresented: $showingAddWorkout) {
-                AddWorkoutView()
-                    .environmentObject(workoutStore)
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+        }
+        .sheet(isPresented: $showingAddWorkout) {
+            AddWorkoutView()
+                .environmentObject(workoutStore)
         }
     }
 }

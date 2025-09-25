@@ -3,6 +3,7 @@ import Charts
 
 struct StatisticsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
@@ -24,7 +25,19 @@ struct StatisticsView: View {
             }
             .padding()
         }
-        .navigationTitle("Fortschritt")
+        .padding(.bottom, 96)
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top) {
+            HStack(alignment: .center) {
+                Text("Fortschritt")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+        }
     }
 }
 
