@@ -5,28 +5,26 @@ struct StatisticsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
 
     var body: some View {
-        NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 20) {
-                    // Neue Übersicht (letztes Workout)
-                    ProgressOverviewCardView()
-                        .environmentObject(workoutStore)
+        ScrollView {
+            LazyVStack(spacing: 20) {
+                // Neue Übersicht (letztes Workout)
+                ProgressOverviewCardView()
+                    .environmentObject(workoutStore)
 
-                    // Neue Infobox: Veränderungen (Gewicht/Volumen & Wiederholungen)
-                    ProgressDeltaInfoCardView()
-                        .environmentObject(workoutStore)
+                // Neue Infobox: Veränderungen (Gewicht/Volumen & Wiederholungen)
+                ProgressDeltaInfoCardView()
+                    .environmentObject(workoutStore)
 
-                    // Bestehende Bereiche
-                    MostUsedExercisesView()
-                        .environmentObject(workoutStore)
+                // Bestehende Bereiche
+                MostUsedExercisesView()
+                    .environmentObject(workoutStore)
 
-                    RecentActivityView()
-                        .environmentObject(workoutStore)
-                }
-                .padding()
+                RecentActivityView()
+                    .environmentObject(workoutStore)
             }
-            .navigationTitle("Fortschritt")
+            .padding()
         }
+        .navigationTitle("Fortschritt")
     }
 }
 
@@ -67,7 +65,7 @@ private struct ProgressOverviewCardView: View {
                 .font(.headline)
 
             HStack(spacing: 12) {
-                statBox(title: "Gesamtgewicht", value: lastVolumeText, icon: "scalemass.fill", tint: .mossGreen)
+                statBox(title: "Gewicht", value: lastVolumeText, icon: "scalemass.fill", tint: .mossGreen)
                 statBox(title: "Datum", value: lastDateText, icon: "calendar", tint: .blue)
                 statBox(title: "Übungen", value: lastExerciseCountText, icon: "list.bullet", tint: .orange)
             }
@@ -85,6 +83,7 @@ private struct ProgressOverviewCardView: View {
                 .foregroundStyle(tint)
             Text(value)
                 .font(.subheadline.weight(.semibold))
+                .contentTransition(.numericText())
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -163,6 +162,7 @@ private struct ProgressDeltaInfoCardView: View {
                     Spacer()
                     Text(deltaVolumeText)
                         .font(.subheadline.weight(.semibold))
+                        .contentTransition(.numericText())
                 }
                 HStack {
                     Text("Wiederholungen")
@@ -170,6 +170,7 @@ private struct ProgressDeltaInfoCardView: View {
                     Spacer()
                     Text(deltaRepsText)
                         .font(.subheadline.weight(.semibold))
+                        .contentTransition(.numericText())
                 }
             }
             .padding(12)

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct WorkoutDetailView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
@@ -136,6 +137,7 @@ struct WorkoutDetailView: View {
                         Spacer()
                         Text(progressDeltaText)
                             .font(.subheadline.weight(.semibold))
+                            .contentTransition(.numericText())
                     }
                     HStack {
                         Text("Wiederholungen")
@@ -143,6 +145,7 @@ struct WorkoutDetailView: View {
                         Spacer()
                         Text(repsDeltaText)
                             .font(.subheadline.weight(.semibold))
+                            .contentTransition(.numericText())
                     }
                 }
                 .padding(12)
@@ -163,6 +166,7 @@ struct WorkoutDetailView: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.subheadline.weight(.semibold))
+                .contentTransition(.numericText())
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -176,6 +180,7 @@ struct WorkoutDetailView: View {
 
                 Text(formatTime(activeRest.remainingSeconds))
                     .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .contentTransition(.numericText())
                     .monospacedDigit()
 
                 HStack(spacing: 12) {
@@ -454,6 +459,10 @@ struct WorkoutDetailView: View {
         workoutStore.updateWorkout(workout)
         workoutStore.recordSession(from: workout)
         completionDuration = elapsed
+        
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
         showingCompletionSheet = true
         showingCompletionConfirmation = false
         if isActiveSession {
@@ -618,6 +627,7 @@ private struct WorkoutSetCard: View {
                         .accessibilityLabel(set.completed ? "Satz zurücksetzen" : "Satz abschließen")
                 }
                 .buttonStyle(.plain)
+                .sensoryFeedback(.success, trigger: set.completed)
             }
 
             HStack(spacing: 6) {
@@ -640,12 +650,14 @@ private struct WorkoutSetCard: View {
                     Label("\(formattedRemaining)", systemImage: "timer")
                         .font(.caption)
                         .foregroundStyle(.blue)
+                        .contentTransition(.numericText())
                     Spacer()
                 }
                 .padding(.top, 2)
             }
         }
         .padding(.vertical, 6)
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: set.completed)
         .sheet(isPresented: $showingRestEditor) {
             NavigationStack {
                 VStack(spacing: 16) {

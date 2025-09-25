@@ -164,6 +164,16 @@ class WorkoutStore: ObservableObject {
         schedulePersistence()
     }
 
+    // MARK: - Favorites
+
+    func toggleFavorite(for workoutID: UUID) {
+        guard let index = workouts.firstIndex(where: { $0.id == workoutID }) else { return }
+        workouts[index].isFavorite.toggle()
+        // Move favorites to top while preserving relative order
+        workouts = workouts.stablePartition { $0.isFavorite }
+        schedulePersistence()
+    }
+
     // MARK: - Zentrale Rest-Timer Steuerung
 
     func startRest(for workout: Workout, exerciseIndex: Int, setIndex: Int, totalSeconds: Int) {
@@ -937,5 +947,17 @@ extension WorkoutStore {
         }
 
         return notes.joined(separator: "\n")
+    }
+}
+
+extension Array {
+    /// Returns a new array with elements partitioned by the predicate while preserving relative order (stable).
+    fileprivate func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
+        var first: [Element] = []
+        var second: [Element] = []
+        for el in self {
+            if isInFirstPartition(el) { first.append(el) } else { second.append(el) }
+        }
+        return first + second
     }
 }

@@ -37,7 +37,7 @@ struct ContentView: View {
                         Text("Einstellungen")
                     }
             }
-            .tint(Color.mossGreen)
+            .tint(AppTheme.purple)
             .navigationDestination(isPresented: $navigateToActiveWorkout) {
                 if let activeWorkout = workoutStore.activeWorkout,
                    let binding = workoutBinding(for: activeWorkout.id) {
@@ -137,6 +137,10 @@ struct WorkoutsHomeView: View {
             .map { Int($0 / 60) }
             .reduce(0, +)
     }
+    
+    private var sortedWorkouts: [Workout] {
+        workoutStore.workouts.stablePartition { $0.isFavorite }
+    }
 
     var body: some View {
         ZStack {
@@ -172,22 +176,34 @@ struct WorkoutsHomeView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         LazyVStack(spacing: 6) {
-                            ForEach(storedRoutines) { workout in
-                                // Tippen zeigt Menü (Starten, Bearbeiten, Löschen mit Bestätigung)
-                                Menu {
-                                    Button("Workout starten") {
-                                        startWorkout(with: workout.id)
+                            ForEach(sortedWorkouts) { workout in
+                                // Star button outside menu, menu on row only
+                                HStack(spacing: 10) {
+                                    Button {
+                                        workoutStore.toggleFavorite(for: workout.id)
+                                    } label: {
+                                        Image(systemName: workout.isFavorite ? "star.fill" : "star")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundStyle(workout.isFavorite ? AppTheme.purple : Color.secondary)
+                                            .frame(width: 28, height: 28)
                                     }
-                                    Button("Bearbeiten") {
-                                        editWorkout(id: workout.id)
+                                    .buttonStyle(.plain)
+
+                                    Menu {
+                                        Button("Workout starten") {
+                                            startWorkout(with: workout.id)
+                                        }
+                                        Button("Bearbeiten") {
+                                            editWorkout(id: workout.id)
+                                        }
+                                        Button("Löschen", role: .destructive) {
+                                            workoutToDelete = workout
+                                        }
+                                    } label: {
+                                        WorkoutRow(workout: workout)
                                     }
-                                    Button("Löschen", role: .destructive) {
-                                        workoutToDelete = workout
-                                    }
-                                } label: {
-                                    WorkoutRow(workout: workout)
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -490,7 +506,7 @@ struct WorkoutHighlightCard: View {
                 Text(dateText.uppercased())
                     .font(.caption2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(Color.mossGreen)
+                    .foregroundStyle(AppTheme.purple)
 
                 Text(workout.name)
                     .font(.system(size: 24, weight: .bold))
@@ -516,8 +532,8 @@ struct WorkoutHighlightCard: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(.secondarySystemBackground),
-                            Color.mossGreen.opacity(colorScheme == .dark ? 0.06 : 0.08)
+                            Color.mossGreen,
+                            AppTheme.purple
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -536,15 +552,16 @@ struct EmptyStateCard: View {
         VStack(spacing: 16) {
             Image(systemName: "sparkles")
                 .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(Color.mossGreen)
+                .foregroundStyle(.white)
 
             Text("Starte deine Trainingsreise")
                 .font(.title2)
                 .fontWeight(.bold)
+                .foregroundStyle(.white)
 
             Text("Lege Workouts an, beobachte deinen Fortschritt und bleib motiviert mit smarten Insights.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
 
             Button(action: action) {
@@ -552,15 +569,20 @@ struct EmptyStateCard: View {
                     .fontWeight(.semibold)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .background(Color("AccentColor").opacity(0.15), in: Capsule())
-                    .foregroundColor(Color.mossGreen)
+                    .foregroundStyle(.white)
+                    .background(Color.white.opacity(0.18), in: Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.28), lineWidth: 1))
             }
         }
         .padding(32)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
+                .fill(AppTheme.headerGradient)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
         )
         .shadow(color: Color.black.opacity(0.04), radius: 18, x: 0, y: 10)
     }
@@ -652,6 +674,7 @@ struct ActiveWorkoutBar: View {
                     if let rest = restText {
                         Label(rest, systemImage: "timer")
                             .font(.caption.weight(.semibold))
+                            .contentTransition(.numericText())
                             .foregroundStyle(.blue)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -847,6 +870,21 @@ struct SessionDetailView: View {
             .navigationTitle("Session")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+}
+
+private extension Array {
+    func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
+        var first: [Element] = []
+        var second: [Element] = []
+        for el in self {
+            if isInFirstPartition(el) {
+                first.append(el)
+            } else {
+                second.append(el)
+            }
+        }
+        return first + second
     }
 }
 

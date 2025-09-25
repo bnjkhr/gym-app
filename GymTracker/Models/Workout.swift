@@ -8,6 +8,7 @@ struct Workout: Identifiable, Codable {
     var defaultRestTime: TimeInterval
     var duration: TimeInterval?
     var notes: String
+    var isFavorite: Bool
 
     init(
         id: UUID = UUID(),
@@ -16,7 +17,8 @@ struct Workout: Identifiable, Codable {
         exercises: [WorkoutExercise] = [],
         defaultRestTime: TimeInterval = 90,
         duration: TimeInterval? = nil,
-        notes: String = ""
+        notes: String = "",
+        isFavorite: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -25,6 +27,7 @@ struct Workout: Identifiable, Codable {
         self.defaultRestTime = defaultRestTime
         self.duration = duration
         self.notes = notes
+        self.isFavorite = isFavorite
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -35,6 +38,7 @@ struct Workout: Identifiable, Codable {
         case defaultRestTime
         case duration
         case notes
+        case isFavorite
     }
 
     init(from decoder: Decoder) throws {
@@ -46,6 +50,7 @@ struct Workout: Identifiable, Codable {
         self.defaultRestTime = try container.decodeIfPresent(TimeInterval.self, forKey: .defaultRestTime) ?? 90
         self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
         self.notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        self.isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -57,6 +62,7 @@ struct Workout: Identifiable, Codable {
         try container.encode(defaultRestTime, forKey: .defaultRestTime)
         try container.encodeIfPresent(duration, forKey: .duration)
         try container.encode(notes, forKey: .notes)
+        try container.encode(isFavorite, forKey: .isFavorite)
     }
 }
 

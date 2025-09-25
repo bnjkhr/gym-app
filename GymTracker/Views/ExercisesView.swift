@@ -7,7 +7,6 @@ struct ExercisesView: View {
     @State private var editingExercise: Exercise?
     @State private var pendingDeletion: [Exercise] = []
     @State private var showingDeleteAlert = false
-    @FocusState private var searchFocused: Bool
 
     var filteredExercises: [Exercise] {
         if searchText.isEmpty {
@@ -21,67 +20,53 @@ struct ExercisesView: View {
     }
 
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(filteredExercises) { exercise in
-                    Button {
-                        editingExercise = exercise
-                    } label: {
-                        ExerciseRowView(exercise: exercise)
-                    }
-                    .buttonStyle(.plain)
+        List {
+            ForEach(filteredExercises) { exercise in
+                Button {
+                    editingExercise = exercise
+                } label: {
+                    ExerciseRowView(exercise: exercise)
                 }
-                .onDelete(perform: requestDeletionForList)
+                .buttonStyle(.plain)
             }
-            .navigationTitle("Übungen")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddExercise = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+            .onDelete(perform: requestDeletionForList)
+        }
+        .navigationTitle("Übungen")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddExercise = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .sheet(isPresented: $showingAddExercise) {
-                AddExerciseView()
-                    .environmentObject(workoutStore)
-            }
-            .sheet(item: $editingExercise) { exercise in
-                NavigationStack {
-                    EditExerciseView(exercise: exercise) { updatedExercise in
-                        workoutStore.updateExercise(updatedExercise)
-                    } deleteAction: {
-                        requestDeletion(for: [exercise])
-                    }
+        }
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
+        .sheet(isPresented: $showingAddExercise) {
+            AddExerciseView()
+                .environmentObject(workoutStore)
+        }
+        .sheet(item: $editingExercise) { exercise in
+            NavigationStack {
+                EditExerciseView(exercise: exercise) { updatedExercise in
+                    workoutStore.updateExercise(updatedExercise)
+                } deleteAction: {
+                    requestDeletion(for: [exercise])
                 }
             }
-            .alert("Wirklich löschen?", isPresented: $showingDeleteAlert) {
-                Button("Löschen", role: .destructive) {
-                    performDeletion()
-                }
-                Button("Abbrechen", role: .cancel) {
-                    pendingDeletion = []
-                }
-            } message: {
-                if pendingDeletion.count == 1 {
-                    Text("\(pendingDeletion.first?.name ?? "") wird entfernt.")
-                } else {
-                    Text("\(pendingDeletion.count) Übungen werden entfernt.")
-                }
+        }
+        .alert("Wirklich löschen?", isPresented: $showingDeleteAlert) {
+            Button("Löschen", role: .destructive) {
+                performDeletion()
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                BottomSearchBar(
-                    text: $searchText,
-                    isFocused: _searchFocused,
-                    placeholder: "Übungen suchen…",
-                    onClear: { searchText = "" },
-                    onSubmit: { /* optional: trigger analytics or haptics */ }
-                )
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
-                .background(.ultraThinMaterial)
+            Button("Abbrechen", role: .cancel) {
+                pendingDeletion = []
+            }
+        } message: {
+            if pendingDeletion.count == 1 {
+                Text("\(pendingDeletion.first?.name ?? "") wird entfernt.")
+            } else {
+                Text("\(pendingDeletion.count) Übungen werden entfernt.")
             }
         }
     }
@@ -147,56 +132,6 @@ struct ExerciseRowView: View {
             }
         }
         .padding(.vertical, 2)
-    }
-}
-
-// MARK: - Bottom Search Bar
-
-private struct BottomSearchBar: View {
-    @Binding var text: String
-    @FocusState var isFocused: Bool
-    var placeholder: String
-    var onClear: () -> Void
-    var onSubmit: () -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField(placeholder, text: $text)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .submitLabel(.search)
-                    .focused($isFocused)
-                    .onSubmit(onSubmit)
-                if !text.isEmpty {
-                    Button {
-                        onClear()
-                        isFocused = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
-            )
-
-            if isFocused {
-                Button("Abbrechen") {
-                    isFocused = false
-                    text = ""
-                }
-                .transition(.opacity.combined(with: .move(edge: .trailing)))
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 
