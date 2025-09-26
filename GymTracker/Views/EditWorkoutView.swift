@@ -74,23 +74,33 @@ struct EditWorkoutView: View {
                                         TextField("Wdh", value: $editable.reps, format: .number)
                                             .keyboardType(.numberPad)
                                             .textFieldStyle(.plain)
+                                            .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { obj in
+                                                if let textField = obj.object as? UITextField {
+                                                    textField.selectAll(nil)
+                                                }
+                                            }
                                     }
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text("Gewicht (kg)")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
-                                        TextField("0.0", text: .init(
-                                            get: { editable.weight > 0 ? String(format: "%.1f", editable.weight) : "" },
+                                        TextField("0", text: .init(
+                                            get: { editable.weight > 0 ? String(Int(editable.weight)) : "" },
                                             set: { newValue in
-                                                if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
-                                                    editable.weight = max(0, min(weight, 999.9))
+                                                if let weight = Int(newValue) {
+                                                    editable.weight = Double(max(0, min(weight, 999)))
                                                 } else if newValue.isEmpty {
                                                     editable.weight = 0
                                                 }
                                             }
                                         ))
-                                            .keyboardType(.decimalPad)
+                                            .keyboardType(.numberPad)
                                             .textFieldStyle(.plain)
+                                            .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { obj in
+                                                if let textField = obj.object as? UITextField {
+                                                    textField.selectAll(nil)
+                                                }
+                                            }
                                     }
                                 }
                             }

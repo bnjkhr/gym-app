@@ -43,10 +43,6 @@ struct GeneratedWorkoutPreviewView: View {
                             Spacer()
                         }
                         .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.1))
-                        )
 
                         if usedProfileInfo {
                             HStack(alignment: .top, spacing: 10) {
@@ -62,15 +58,8 @@ struct GeneratedWorkoutPreviewView: View {
                                 }
                                 Spacer(minLength: 0)
                             }
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.blue.opacity(0.08))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.blue.opacity(0.25), lineWidth: 1)
-                                    )
-                            )
+                            .padding(.horizontal, 25)
+                            .padding(.vertical, 8)
                         }
 
                         // Workout Name Input
@@ -78,7 +67,6 @@ struct GeneratedWorkoutPreviewView: View {
                             Text("Workout Name")
                                 .font(.headline)
                             TextField("Mein Workout", text: $workoutName)
-                                .textFieldStyle(.roundedBorder)
                         }
                     }
 
@@ -126,10 +114,6 @@ struct GeneratedWorkoutPreviewView: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemGray6))
-                        )
                     }
                 }
                 .padding()
@@ -183,10 +167,6 @@ struct WorkoutStatsCard: View {
             )
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
     }
 
     private var estimatedDuration: String {
@@ -268,14 +248,6 @@ struct ExercisePreviewCard: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(.systemGray4), lineWidth: 1)
-                )
-        )
     }
 }
 
@@ -332,14 +304,6 @@ struct EditableExerciseCard: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.blue.opacity(0.05))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                )
-        )
     }
 }
 

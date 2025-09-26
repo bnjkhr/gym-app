@@ -674,7 +674,15 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
     }
     
     func updateUIView(_ uiView: UITextField, context: Context) {
-        let stringValue = String(value)
+        let stringValue: String
+        if keyboardType == .numberPad {
+            // For weight fields (numberPad), display as integer
+            stringValue = String(Int(Double(String(value)) ?? 0))
+        } else {
+            // For other fields (like reps), display normally
+            stringValue = String(value)
+        }
+        
         if uiView.text != stringValue && !uiView.isFirstResponder {
             uiView.text = stringValue
         }
@@ -694,9 +702,23 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
         @objc func textFieldDidChange(_ textField: UITextField) {
             let text = textField.text ?? ""
             if let newValue = Value(text) {
-                parent.value = newValue
+                if parent.keyboardType == .numberPad {
+                    // For weight fields, ensure we store as whole number
+                    let intValue = Int(Double(String(newValue)) ?? 0)
+                    if let convertedValue = Value(String(intValue)) {
+                        parent.value = convertedValue
+                    } else {
+                        parent.value = newValue
+                    }
+                } else {
+                    parent.value = newValue
+                }
             } else if text.isEmpty {
-                parent.value = Value(exactly: 0) ?? parent.value
+                if let zeroValue = Value("0") {
+                    parent.value = zeroValue
+                } else {
+                    parent.value = parent.value // Keep current value if we can't create zero
+                }
             }
         }
         
@@ -711,14 +733,6 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
             // Allow only numeric input
             let allowedCharacters = CharacterSet.decimalDigits
             let characterSet = CharacterSet(charactersIn: string)
-            
-            // For decimal values, also allow decimal separator
-            if parent.keyboardType == .decimalPad || parent.keyboardType == .numbersAndPunctuation {
-                let decimalSeparator = Locale.current.decimalSeparator ?? "."
-                let allowedDecimalCharacters = allowedCharacters.union(CharacterSet(charactersIn: decimalSeparator))
-                return allowedDecimalCharacters.isSuperset(of: characterSet)
-            }
-            
             return allowedCharacters.isSuperset(of: characterSet)
         }
     }
@@ -772,7 +786,7 @@ private struct WorkoutSetCard: View {
                         SelectAllTextField(
                             value: $set.weight,
                             placeholder: "0",
-                            keyboardType: .decimalPad
+                            keyboardType: .numberPad
                         )
                         .multilineTextAlignment(.center)
                         .frame(width: 80)
