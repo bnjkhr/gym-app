@@ -15,6 +15,7 @@ struct StatisticsView: View {
     @State private var headerHidden: Bool = false
     @State private var lastScrollOffset: CGFloat = 0
     @State private var didSetInitialOffset: Bool = false
+    @State private var showingCalendar: Bool = false
 
     var body: some View {
         ScrollView {
@@ -27,6 +28,9 @@ struct StatisticsView: View {
                         )
                 }
                 .frame(height: 0)
+
+                DayStripView(showCalendar: { showingCalendar = true })
+                    .environmentObject(workoutStore)
 
                 // Neue Übersicht (letztes Workout)
                 ProgressOverviewCardView()
@@ -61,6 +65,10 @@ struct StatisticsView: View {
             lastScrollOffset = newValue
         }
         .coordinateSpace(name: "statisticsScroll")
+        .sheet(isPresented: $showingCalendar) {
+            CalendarSessionsView()
+                .environmentObject(workoutStore)
+        }
     }
 }
 
@@ -180,13 +188,9 @@ private struct ProgressDeltaInfoCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundStyle(Color.mossGreen)
-                Text("Veränderungen seit letzter Session")
-                    .font(.subheadline.weight(.semibold))
-            }
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Veränderung seit der letzten Session")
+                .font(.headline)
 
             VStack(spacing: 10) {
                 HStack {
@@ -316,8 +320,214 @@ struct RecentActivityView: View {
     }
 }
 
-#Preview {
-    StatisticsView()
-        .environmentObject(WorkoutStore())
+// MARK: - Day Strip (7-day calendar)
+private struct DayStripView: View {
+    @EnvironmentObject var workoutStore: WorkoutStore
+    let showCalendar: () -> Void
+
+    private var last7Days: [Date] {
+        let cal = Calendar.current
+        return (0..<7).reversed().compactMap { offset in
+            cal.date(byAdding: .day, value: -offset, to: Date())
+        }
+    }
+
+    private var sessionDays: Set<Date> {
+        let cal = Calendar.current
+        return Set(workoutStore.sessionHistory.map { cal.startOfDay(for: $0.date) })
+    }
+
+    var body: some View {
+        Button(action: showCalendar) {
+            HStack(spacing: 10) {
+                ForEach(last7Days, id: \.self) { day in
+                    let cal = Calendar.current
+                    let isToday = cal.isDateInToday(day)
+                    let hasSession = sessionDays.contains(cal.startOfDay(for: day))
+                    VStack(spacing: 6) {
+                        Text(day, format: .dateTime.weekday(.narrow))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        ZStack {
+                            Circle()
+                                .fill(isToday ? Color.mossGreen.opacity(0.18) : Color(.systemGray6))
+                                .frame(width: 36, height: 36)
+                            Text(String(cal.component(.day, from: day)))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                        }
+                        Circle()
+                            .fill(AppTheme.purple)
+                            .frame(width: 6, height: 6)
+                            .opacity(hasSession ? 1 : 0)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Kalender öffnen")
+        .padding(.horizontal)
+    }
 }
 
+// MARK: - Calendar Sessions Sheet
+private struct CalendarSessionsView: View {
+    @EnvironmentObject var workoutStore: WorkoutStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var displayedMonth: Date = Date()
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+
+    private var monthTitle: String {
+        displayedMonth.formatted(.dateTime.month(.wide).year())
+    }
+
+    private var daysInMonth: [Date] {
+        let cal = Calendar.current
+        guard let range = cal.range(of: .day, in: .month, for: displayedMonth),
+              let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+        return range.compactMap { day -> Date? in
+            cal.date(byAdding: .day, value: day - 1, to: monthStart)
+        }
+    }
+
+    private var gridDays: [Date?] {
+        let cal = Calendar.current
+        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+        let weekday = cal.component(.weekday, from: monthStart) // 1=Sun...
+        let leading = (weekday + 5) % 7 // convert to Monday=0 leading count
+        let leadingPlaceholders: [Date?] = Array(repeating: nil, count: leading)
+        return leadingPlaceholders + daysInMonth.map { Optional($0) }
+    }
+
+    private var sessionDays: Set<Date> {
+        let cal = Calendar.current
+        return Set(workoutStore.sessionHistory.map { cal.startOfDay(for: $0.date) })
+    }
+
+    private func sessions(on date: Date) -> [WorkoutSession] {
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: date)
+        return workoutStore.sessionHistory.filter { cal.isDate($0.date, inSameDayAs: start) }
+            .sorted { $0.date > $1.date }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                // Header with month navigation
+                HStack {
+                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                    Spacer()
+                    Text(monthTitle)
+                        .font(.headline)
+                    Spacer()
+                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth } label: {
+                        Image(systemName: "chevron.right")
+                    }
+                }
+                .padding(.horizontal)
+
+                // Weekday symbols (Mon-Sun)
+                HStack {
+                    ForEach(["M", "D", "M", "D", "F", "S", "S"], id: \.self) { d in
+                        Text(d)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal)
+
+                // Calendar grid
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                    ForEach(gridDays.indices, id: \.self) { idx in
+                        if let day = gridDays[idx] {
+                            let cal = Calendar.current
+                            let isToday = cal.isDateInToday(day)
+                            let isSelected = cal.isDate(cal.startOfDay(for: day), inSameDayAs: selectedDate)
+                            let hasSession = sessionDays.contains(cal.startOfDay(for: day))
+                            VStack(spacing: 6) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            isSelected ? Color.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                        )
+                                        .frame(width: 36, height: 36)
+                                    Text(String(cal.component(.day, from: day)))
+                                        .font(.subheadline.weight(.medium))
+                                }
+                                Circle()
+                                    .fill(AppTheme.purple)
+                                    .frame(width: 6, height: 6)
+                                    .opacity(hasSession ? 1 : 0)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedDate = cal.startOfDay(for: day)
+                            }
+                        } else {
+                            Color.clear.frame(height: 44)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+
+                // Sessions list for selected date
+                let daySessions = sessions(on: selectedDate)
+                if daySessions.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("Keine Trainings an diesem Tag")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                } else {
+                    List {
+                        ForEach(daySessions) { session in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(session.name)
+                                    .font(.subheadline.weight(.semibold))
+                                HStack(spacing: 8) {
+                                    Text(session.date, style: .time)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("• \(session.exercises.count) Übungen")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .navigationTitle("Kalender")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schließen") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Date Helpers
+private extension Calendar {
+    func isDate(_ date1: Date, inSameDayAs startOfDay: Date) -> Bool {
+        isDate(date1, equalTo: startOfDay, toGranularity: .day)
+    }
+}

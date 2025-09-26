@@ -297,7 +297,7 @@ struct WorkoutDetailView: View {
                     .foregroundStyle(.secondary)
 
                 Text(formatTime(activeRest.remainingSeconds))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold))
                     .contentTransition(.numericText())
                     .monospacedDigit()
 
@@ -662,6 +662,9 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
     @Binding var value: Value
     let placeholder: String
     let keyboardType: UIKeyboardType
+    var uiFont: UIFont? = nil
+    var textColor: UIColor? = nil
+    var tintColor: UIColor? = nil
     
     func makeUIView(context: Context) -> UITextField {
         let textField = UITextField()
@@ -669,11 +672,18 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
         textField.keyboardType = keyboardType
         textField.placeholder = placeholder
         textField.textAlignment = .center
+        if let uiFont { textField.font = uiFont }
+        if let textColor { textField.textColor = textColor }
+        if let tintColor { textField.tintColor = tintColor }
         textField.addTarget(context.coordinator, action: #selector(Coordinator.textFieldDidChange), for: .editingChanged)
         return textField
     }
     
     func updateUIView(_ uiView: UITextField, context: Context) {
+        if let uiFont { uiView.font = uiFont }
+        if let textColor { uiView.textColor = textColor }
+        if let tintColor { uiView.tintColor = tintColor }
+        
         let stringValue: String
         if keyboardType == .numberPad {
             // For weight fields (numberPad), display as integer
@@ -756,51 +766,54 @@ private struct WorkoutSetCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("\(index + 1)")
-                    .font(.title3.weight(.semibold))
+                    .font(.system(size: 28, weight: .semibold))
 
                 verticalSeparator
 
                 HStack(spacing: 6) {
                     VStack(spacing: 2) {
-                        SelectAllTextField(
-                            value: $set.reps,
-                            placeholder: "0",
-                            keyboardType: .numberPad
-                        )
-                        .multilineTextAlignment(.center)
-                        .frame(width: 64)
-                        .font(.title3.weight(.semibold))
-                        
-                        if let prev = previousReps {
-                            Text("(\(prev))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                        ZStack(alignment: .center) {
+                            // Hidden baseline provider to align with large numbers
+                            Text("0")
+                                .font(.system(size: 28, weight: .semibold))
+                                .opacity(0)
+                            SelectAllTextField(
+                                value: $set.reps,
+                                placeholder: "0",
+                                keyboardType: .numberPad,
+                                uiFont: UIFont.systemFont(ofSize: 28, weight: .semibold),
+                                textColor: set.completed ? UIColor.systemGray3 : nil
+                            )
+                            .multilineTextAlignment(.center)
+                            .frame(width: 80)
                         }
                     }
                 }
 
                 verticalSeparator
 
-                HStack(spacing: 6) {
-                    VStack(spacing: 2) {
+                VStack(spacing: 2) {
+                    ZStack(alignment: .center) {
+                        // Hidden baseline provider to align with large numbers
+                        Text("0")
+                            .font(.system(size: 28, weight: .semibold))
+                            .opacity(0)
                         SelectAllTextField(
                             value: $set.weight,
                             placeholder: "0",
-                            keyboardType: .numberPad
+                            keyboardType: .numberPad,
+                            uiFont: UIFont.systemFont(ofSize: 28, weight: .semibold),
+                            textColor: set.completed ? UIColor.systemGray3 : nil
                         )
                         .multilineTextAlignment(.center)
-                        .frame(width: 80)
-                        .font(.title3.weight(.semibold))
-                        
-                        if let prevW = previousWeight {
-                            Text("(\(Int(prevW)))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                        .frame(width: 104)
                     }
-                    Text("kg")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    .overlay(alignment: .trailing) {
+                        Text("kg")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.trailing, 2)
+                    }
                 }
 
                 Spacer(minLength: 8)
@@ -1002,6 +1015,15 @@ private extension View {
     }
 }
 
+private extension UIFont {
+    func rounded() -> UIFont {
+        if let descriptor = self.fontDescriptor.withDesign(.rounded) {
+            return UIFont(descriptor: descriptor, size: pointSize)
+        }
+        return self
+    }
+}
+
 #Preview {
     let store = WorkoutStore()
     return NavigationStack {
@@ -1009,3 +1031,4 @@ private extension View {
             .environmentObject(store)
     }
 }
+

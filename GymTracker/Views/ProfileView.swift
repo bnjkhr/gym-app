@@ -19,6 +19,7 @@ struct ProfileView: View {
                         Text(workoutStore.userProfile.name)
                             .font(.title2)
                             .fontWeight(.semibold)
+                            .foregroundStyle(.white)
                     } else {
                         Text("Noch kein Name hinterlegt")
                             .font(.subheadline)
@@ -28,13 +29,13 @@ struct ProfileView: View {
                     if let age = workoutStore.userProfile.age {
                         Text("\(age) Jahre")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.white)
                     }
                     
                     if let weight = workoutStore.userProfile.weight {
                         Text("\(weight.formatted(.number.precision(.fractionLength(0...1)))) kg")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.white)
                     }
                 }
                 
@@ -74,7 +75,7 @@ struct ProfileView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(workoutStore.userProfile.goal.color.opacity(0.1))
+                    .fill(Color.white)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -84,7 +85,13 @@ struct ProfileView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.mossGreen, Color.purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)

@@ -202,6 +202,50 @@ struct WorkoutsHomeView: View {
                 let storedRoutines = workoutStore.workouts
 
                 LazyVStack(spacing: 20, pinnedViews: []) {
+                    // Greeting header at top
+                    HStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            Text("Hey")
+                                .font(.largeTitle)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                            let trimmedName = workoutStore.userProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !trimmedName.isEmpty {
+                                Text("\(trimmedName)!")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                    .lineLimit(1)
+                            } else {
+                                Button {
+                                    showingProfileEditor = true
+                                } label: {
+                                    Text("Name!")
+                                        .font(.largeTitle)
+                                        .fontWeight(.bold)
+                                        .underline()
+                                }
+                                .buttonStyle(.plain)
+                                .tint(AppTheme.purple)
+                            }
+                        }
+                        Spacer()
+                        Button {
+                            showingAddWorkout = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    Circle()
+                                        .fill(Color.mossGreen.opacity(0.8))
+                                        .shadow(color: Color.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+                                )
+                                .opacity(0.95)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     if let session = highlightSession {
                         SessionActionButton(
@@ -231,12 +275,16 @@ struct WorkoutsHomeView: View {
                                 // Star button outside menu, menu on row only
                                 HStack(spacing: 4) {
                                     Button {
-                                        workoutStore.toggleFavorite(for: workout.id)
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                            workoutStore.toggleFavorite(for: workout.id)
+                                        }
                                     } label: {
-                                        Image(systemName: workout.isFavorite ? "star.fill" : "star")
+                                        Image(systemName: workout.isFavorite ? "heart.fill" : "heart")
                                             .font(.system(size: 18, weight: .semibold))
-                                            .foregroundStyle(workout.isFavorite ? AppTheme.purple : Color.secondary)
+                                            .foregroundStyle(workout.isFavorite ? Color.mossGreen : Color.secondary)
                                             .frame(width: 28, height: 28)
+                                            .contentTransition(.symbolEffect(.replace))
+                                            .symbolEffect(.bounce, value: workout.isFavorite)
                                     }
                                     .buttonStyle(.plain)
 
@@ -321,23 +369,6 @@ struct WorkoutsHomeView: View {
             lastScrollOffset = newValue
         }
         .toolbar(.hidden, for: .navigationBar)
-        .overlay(alignment: .topTrailing) {
-            Button {
-                showingAddWorkout = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(Color.mossGreen)
-                            .shadow(color: Color.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
-                    )
-            }
-            .padding(.top, 32)
-            .padding(.trailing, 32)
-        }
         .sheet(isPresented: $showingAddWorkout) {
             NavigationStack {
                 VStack(spacing: 20) {
@@ -688,7 +719,8 @@ struct WorkoutHighlightCard: View {
                     .foregroundStyle(.white)
 
                 Text(workout.name)
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .foregroundStyle(.white)
                     .lineLimit(2)
             }
@@ -732,8 +764,8 @@ struct EmptyStateCard: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "sparkles")
-                .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(.white)
+                .font(.largeTitle)
+                .fontWeight(.semibold)
 
             Text("Starte deine Trainingsreise")
                 .font(.title2)
@@ -967,10 +999,12 @@ struct WeeklySnapshotCard: View {
                     // Zentraler Text
                     VStack(spacing: -2) {
                         Text("\(workoutsThisWeek)")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.callout)
+                            .fontWeight(.bold)
                             .foregroundStyle(.primary)
                         Text("\(goal)")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.caption)
+                            .fontWeight(.medium)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -1061,41 +1095,50 @@ struct SessionDetailView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Details") {
-                    HStack {
-                        Text("Name")
-                        Spacer()
-                        Text(session.name)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        Text("Datum")
-                        Spacer()
-                        Text(session.date, style: .date)
-                            .foregroundStyle(.secondary)
-                    }
-                    if let duration = session.duration {
-                        HStack {
-                            Text("Dauer")
-                            Spacer()
-                            Text("\(Int(duration / 60)) min")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
+            ZStack {
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
 
-                Section("Übungen") {
-                    ForEach(session.exercises) { ex in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(ex.exercise.name)
-                                .font(.subheadline.weight(.semibold))
-                            Text("\(ex.sets.count) Sätze")
-                                .font(.caption)
+                List {
+                    Section("Details") {
+                        HStack {
+                            Text("Name")
+                            Spacer()
+                            Text(session.name)
                                 .foregroundStyle(.secondary)
                         }
+                        HStack {
+                            Text("Datum")
+                            Spacer()
+                            Text(session.date, style: .date)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let duration = session.duration {
+                            HStack {
+                                Text("Dauer")
+                                Spacer()
+                                Text("\(Int(duration / 60)) min")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
+                    .listRowBackground(Color.clear)
+
+                    Section("Übungen") {
+                        ForEach(session.exercises) { ex in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(ex.exercise.name)
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(ex.sets.count) Sätze")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .listRowBackground(Color.clear)
                 }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Session")
             .navigationBarTitleDisplayMode(.inline)

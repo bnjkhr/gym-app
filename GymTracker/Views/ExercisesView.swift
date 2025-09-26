@@ -68,7 +68,7 @@ struct ExercisesView: View {
             FloatingPlusButton {
                 showingAddExercise = true
             }
-            .padding(.top, 20)
+            .padding(.top, 80)
             .padding(.trailing, 20)
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -241,7 +241,7 @@ private struct MuscleGroupFilterBar: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 11) {
                 FilterChip(title: "Alle", color: .gray, isSelected: selected.isEmpty) {
                     selected.removeAll()
                 }
@@ -255,7 +255,7 @@ private struct MuscleGroupFilterBar: View {
                     }
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
         }
     }
 }
@@ -268,17 +268,17 @@ private struct FilterChip: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 13, weight: .bold))
                 }
                 Text(title)
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 13, weight: .semibold))
             }
             .foregroundStyle(isSelected ? Color.white : color)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 8)
             .background(
                 Capsule().fill(isSelected ? color : color.opacity(0.12))
             )
