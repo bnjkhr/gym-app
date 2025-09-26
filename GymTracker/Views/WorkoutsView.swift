@@ -19,34 +19,30 @@ struct WorkoutsView: View {
         }
         .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top) {
-            HStack(alignment: .center) {
-                Text("Workouts")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.primary)
-                Spacer()
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.black.opacity(0.08))
+                    .frame(height: 0.5)
                 Button {
                     showingAddWorkout = true
                 } label: {
-                    ZStack {
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Circle()
-                                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
-                            )
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
-                        Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.orange)
+                    HStack {
+                        Spacer()
+                        Text("Neues Workout anlegen")
+                            .font(.headline)
+                        Spacer()
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.purple)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .padding(.bottom, 6)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
+            .background(.ultraThinMaterial)
+            .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 0)
+            .zIndex(1)
         }
         .sheet(isPresented: $showingAddWorkout) {
             AddWorkoutView()

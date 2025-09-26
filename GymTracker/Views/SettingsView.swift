@@ -1,6 +1,13 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private struct SettingsScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
@@ -49,18 +56,23 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
             }
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top) {
-            HStack(alignment: .center) {
-                Text("Einstellungen")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.primary)
-                Spacer()
+
+            Section("Benachrichtigungen") {
+                Toggle(isOn: $workoutStore.restNotificationsEnabled) {
+                    Text("Pausen-Benachrichtigungen")
+                }
+                .onChange(of: workoutStore.restNotificationsEnabled) { _, newValue in
+                    if newValue {
+                        NotificationManager.shared.requestAuthorization()
+                    } else {
+                        NotificationManager.shared.cancelRestEndNotification()
+                    }
+                }
+
+                Text("Informiert dich, wenn deine Satz-Pause endet.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
         }
         .fileImporter(
             isPresented: $showingImporter,

@@ -46,44 +46,12 @@ struct ExercisesView: View {
             }
             .onDelete(perform: requestDeletionForList)
         }
-        .transaction { tx in
-            tx.animation = nil
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top) {
-            HStack(alignment: .center) {
-                Text("Übungen")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.primary)
-                Spacer()
-                Button {
-                    showingAddExercise = true
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Circle()
-                                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
-                            )
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
-                        Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.mossGreen)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
-        }
         .safeAreaInset(edge: .bottom) {
             LiquidGlassSearchBar(text: $searchText)
                 .padding(.horizontal)
                 .padding(.bottom, 12)
         }
+        .toolbar(.hidden, for: .navigationBar)
         .onChange(of: searchText, initial: true) { oldValue, newValue in
             let current = newValue
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

@@ -1,13 +1,33 @@
 import SwiftUI
 import Charts
 
+private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct StatisticsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
 
+    @State private var headerHidden: Bool = false
+    @State private var lastScrollOffset: CGFloat = 0
+    @State private var didSetInitialOffset: Bool = false
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 20) {
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(
+                            key: StatisticsScrollOffsetPreferenceKey.self,
+                            value: geo.frame(in: .named("statisticsScroll")).minY
+                        )
+                }
+                .frame(height: 0)
+
                 // Neue Übersicht (letztes Workout)
                 ProgressOverviewCardView()
                     .environmentObject(workoutStore)
@@ -26,17 +46,21 @@ struct StatisticsView: View {
             .padding()
         }
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top) {
-            HStack(alignment: .center) {
-                Text("Fortschritt")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.primary)
-                Spacer()
+        .onPreferenceChange(StatisticsScrollOffsetPreferenceKey.self) { newValue in
+            if !didSetInitialOffset {
+                lastScrollOffset = newValue
+                didSetInitialOffset = true
+                return
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
+            let delta = newValue - lastScrollOffset
+            if delta < -5 {
+                if !headerHidden { headerHidden = true }
+            } else if delta > 5 {
+                if headerHidden { headerHidden = false }
+            }
+            lastScrollOffset = newValue
         }
+        .coordinateSpace(name: "statisticsScroll")
     }
 }
 
@@ -307,3 +331,4 @@ struct RecentActivityView: View {
     StatisticsView()
         .environmentObject(WorkoutStore())
 }
+

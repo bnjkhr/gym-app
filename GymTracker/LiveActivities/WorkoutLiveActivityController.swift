@@ -31,6 +31,19 @@ final class WorkoutLiveActivityController {
         Task { await startOrUpdateGeneralState(workoutName: workoutName) }
     }
 
+    func showRestEnded(workoutName: String) {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        Task {
+            await ensureActivityExists(workoutName: workoutName)
+            let state = WorkoutActivityAttributes.ContentState(
+                remainingSeconds: 0,
+                totalSeconds: 1,
+                title: "Pause beendet"
+            )
+            await updateState(state: state)
+        }
+    }
+
     func end() {
         guard let activity else { return }
         Task {
@@ -99,6 +112,7 @@ final class WorkoutLiveActivityController {
     func start(workoutName: String) {}
     func updateRest(workoutName: String, remainingSeconds: Int, totalSeconds: Int) {}
     func clearRest(workoutName: String) {}
+    func showRestEnded(workoutName: String) {}
     func end() {}
 }
 #endif

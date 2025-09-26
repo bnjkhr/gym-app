@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 class WorkoutStore: ObservableObject {
@@ -18,6 +21,7 @@ class WorkoutStore: ObservableObject {
         var remainingSeconds: Int
         var totalSeconds: Int
         var isRunning: Bool
+        var endDate: Date?
     }
 
     @Published var activeRestState: ActiveRestState?
@@ -27,6 +31,7 @@ class WorkoutStore: ObservableObject {
     private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
     private var weekStreakCache: (date: Date, value: Int)?
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
+    @AppStorage("restNotificationsEnabled") var restNotificationsEnabled: Bool = true
 
     var activeWorkout: Workout? {
         guard let activeSessionID else { return nil }
@@ -191,54 +196,116 @@ class WorkoutStore: ObservableObject {
 
     func startRest(for workout: Workout, exerciseIndex: Int, setIndex: Int, totalSeconds: Int) {
         let total = max(totalSeconds, 0)
-        activeRestState = ActiveRestState(
+        var state = ActiveRestState(
             workoutId: workout.id,
             workoutName: workout.name,
             exerciseIndex: exerciseIndex,
             setIndex: setIndex,
             remainingSeconds: total,
             totalSeconds: total,
-            isRunning: total > 0
+            isRunning: total > 0,
+            endDate: Date().addingTimeInterval(TimeInterval(total))
         )
+        activeRestState = state
         setupRestTimer()
         updateLiveActivityRest()
+        if restNotificationsEnabled {
+            let exerciseName = (workout.exercises.indices.contains(exerciseIndex) ? workout.exercises[exerciseIndex].exercise.name : nil)
+            NotificationManager.shared.scheduleRestEndNotification(
+                remainingSeconds: total,
+                workoutName: workout.name,
+                exerciseName: exerciseName,
+                workoutId: workout.id
+            )
+        }
     }
 
     func pauseRest() {
         guard var state = activeRestState else { return }
         state.isRunning = false
         activeRestState = state
+        NotificationManager.shared.cancelRestEndNotification()
         updateLiveActivityRest()
     }
 
     func resumeRest() {
         guard var state = activeRestState, state.remainingSeconds > 0 else { return }
         state.isRunning = true
+        state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
         activeRestState = state
         setupRestTimer()
         updateLiveActivityRest()
+        if restNotificationsEnabled {
+            let exerciseName: String? = {
+                if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
+                    return w.exercises[state.exerciseIndex].exercise.name
+                }
+                return nil
+            }()
+            NotificationManager.shared.scheduleRestEndNotification(
+                remainingSeconds: state.remainingSeconds,
+                workoutName: state.workoutName,
+                exerciseName: exerciseName,
+                workoutId: state.workoutId
+            )
+        }
     }
 
     func addRest(seconds: Int) {
         guard var state = activeRestState else { return }
         state.remainingSeconds = max(0, state.remainingSeconds + seconds)
+        if state.isRunning, let end = state.endDate {
+            state.endDate = end.addingTimeInterval(TimeInterval(seconds))
+        }
         activeRestState = state
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
+        if restNotificationsEnabled {
+            let exerciseName: String? = {
+                if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
+                    return w.exercises[state.exerciseIndex].exercise.name
+                }
+                return nil
+            }()
+            NotificationManager.shared.scheduleRestEndNotification(
+                remainingSeconds: state.remainingSeconds,
+                workoutName: state.workoutName,
+                exerciseName: exerciseName,
+                workoutId: state.workoutId
+            )
+        }
     }
 
     func setRest(remaining: Int, total: Int? = nil) {
         guard var state = activeRestState else { return }
         state.remainingSeconds = max(0, remaining)
         if let total { state.totalSeconds = max(1, total) }
+        if state.isRunning {
+            state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
+        }
         activeRestState = state
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
+        if restNotificationsEnabled {
+            let exerciseName: String? = {
+                if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
+                    return w.exercises[state.exerciseIndex].exercise.name
+                }
+                return nil
+            }()
+            NotificationManager.shared.scheduleRestEndNotification(
+                remainingSeconds: state.remainingSeconds,
+                workoutName: state.workoutName,
+                exerciseName: exerciseName,
+                workoutId: state.workoutId
+            )
+        }
     }
 
     func stopRest() {
         restTimer?.invalidate()
         restTimer = nil
+        NotificationManager.shared.cancelRestEndNotification()
         if let state = activeRestState {
             WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
         }
@@ -258,16 +325,38 @@ class WorkoutStore: ObservableObject {
 
     private func tickRest() {
         guard var state = activeRestState, state.isRunning else { return }
-        if state.remainingSeconds > 0 {
-            state.remainingSeconds -= 1
+        if let end = state.endDate {
+            let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
+            state.remainingSeconds = remaining
             activeRestState = state
             updateLiveActivityRest()
-            if state.remainingSeconds <= 0 {
+            if remaining <= 0 {
                 SoundPlayer.playBoxBell()
+                #if canImport(UIKit)
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                #endif
+                WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
                 stopRest()
             }
         } else {
-            stopRest()
+            // Fallback: decrement by one
+            if state.remainingSeconds > 0 {
+                state.remainingSeconds -= 1
+                activeRestState = state
+                updateLiveActivityRest()
+                if state.remainingSeconds <= 0 {
+                    SoundPlayer.playBoxBell()
+                    #if canImport(UIKit)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    #endif
+                    WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+                    stopRest()
+                }
+            } else {
+                stopRest()
+            }
         }
     }
 
@@ -278,6 +367,20 @@ class WorkoutStore: ObservableObject {
             remainingSeconds: state.remainingSeconds,
             totalSeconds: max(state.totalSeconds, 1)
         )
+    }
+
+    // Refresh rest timer from wall clock (for example after app resumes from background)
+    func refreshRestFromWallClock() {
+        guard var state = activeRestState, state.isRunning, let end = state.endDate else { return }
+        let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
+        state.remainingSeconds = remaining
+        activeRestState = state
+        if remaining <= 0 {
+            // If already elapsed while in background, just stop without duplicating sounds
+            stopRest()
+        } else {
+            setupRestTimer()
+        }
     }
 
     // MARK: - Persistence Sammellogik
@@ -987,3 +1090,4 @@ extension Array {
         return first + second
     }
 }
+

@@ -40,12 +40,13 @@
 		AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */; };
 		AD90F2C42E845AFD003D4DE9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C32E845AFD003D4DE9 /* Theme.swift */; };
 		AD90F2C62E845B05003D4DE9 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C52E845B05003D4DE9 /* StartView.swift */; };
+		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
 		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		11E748EC2C9E4B0F00AB1234 /* GymTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GymTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		11E748EC2C9E4B0F00AB1234 /* GymBo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GymBo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		11E748EF2C9E4B0F00AB1234 /* GymTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymTrackerApp.swift; sourceTree = "<group>"; };
 		11E748F12C9E4B0F00AB1234 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		11E748F32C9E4B1100AB1234 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -80,6 +81,7 @@
 		AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconGenerator.swift; sourceTree = "<group>"; };
 		AD90F2C32E845AFD003D4DE9 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		AD90F2C52E845B05003D4DE9 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
+		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActionButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -105,7 +107,7 @@
 		11E748ED2C9E4B0F00AB1234 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				11E748EC2C9E4B0F00AB1234 /* GymTracker.app */,
+				11E748EC2C9E4B0F00AB1234 /* GymBo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -124,6 +126,7 @@
 				11E748F32C9E4B1100AB1234 /* Assets.xcassets */,
 				11E748F52C9E4B1100AB1234 /* Preview Content */,
 				AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */,
+				ADFA7B752E86652D00816DAF /* NotificationManager.swift */,
 			);
 			path = GymTracker;
 			sourceTree = "<group>";
@@ -195,9 +198,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		11E748EB2C9E4B0F00AB1234 /* GymTracker */ = {
+		11E748EB2C9E4B0F00AB1234 /* GymBo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 11E748FA2C9E4B1100AB1234 /* Build configuration list for PBXNativeTarget "GymTracker" */;
+			buildConfigurationList = 11E748FA2C9E4B1100AB1234 /* Build configuration list for PBXNativeTarget "GymBo" */;
 			buildPhases = (
 				11E748E82C9E4B0F00AB1234 /* Sources */,
 				11E748E92C9E4B0F00AB1234 /* Frameworks */,
@@ -207,9 +210,9 @@
 			);
 			dependencies = (
 			);
-			name = GymTracker;
+			name = GymBo;
 			productName = GymTracker;
-			productReference = 11E748EC2C9E4B0F00AB1234 /* GymTracker.app */;
+			productReference = 11E748EC2C9E4B0F00AB1234 /* GymBo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -227,7 +230,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 11E748E72C9E4B0F00AB1234 /* Build configuration list for PBXProject "GymTracker" */;
+			buildConfigurationList = 11E748E72C9E4B0F00AB1234 /* Build configuration list for PBXProject "GymBo" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -240,7 +243,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				11E748EB2C9E4B0F00AB1234 /* GymTracker */,
+				11E748EB2C9E4B0F00AB1234 /* GymBo */,
 			);
 		};
 /* End PBXProject section */
@@ -280,6 +283,7 @@
 				11E749142C9E4C4B00AB1234 /* SettingsView.swift in Sources */,
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,
 				11E748F02C9E4B0F00AB1234 /* GymTrackerApp.swift in Sources */,
+				ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */,
 				11E749012C9E4B7A00AB1234 /* Exercise.swift in Sources */,
 				11E749162C9E4C4B00AB1234 /* WorkoutDetailView.swift in Sources */,
 				AD90F2C42E845AFD003D4DE9 /* Theme.swift in Sources */,
@@ -431,6 +435,8 @@
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GymBo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -460,6 +466,8 @@
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GymBo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -481,7 +489,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		11E748E72C9E4B0F00AB1234 /* Build configuration list for PBXProject "GymTracker" */ = {
+		11E748E72C9E4B0F00AB1234 /* Build configuration list for PBXProject "GymBo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				11E748F82C9E4B1100AB1234 /* Debug */,
@@ -490,7 +498,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		11E748FA2C9E4B1100AB1234 /* Build configuration list for PBXNativeTarget "GymTracker" */ = {
+		11E748FA2C9E4B1100AB1234 /* Build configuration list for PBXNativeTarget "GymBo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				11E748FB2C9E4B1100AB1234 /* Debug */,
