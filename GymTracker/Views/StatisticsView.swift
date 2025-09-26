@@ -107,10 +107,6 @@ private struct ProgressOverviewCardView: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
     }
 
     private func statBox(title: String, value: String, icon: String, tint: Color) -> some View {

@@ -90,6 +90,15 @@ struct ContentView: View {
                 break
             }
         }
+        .onOpenURL { url in
+            // Handle deep link from Live Activity to jump into the active workout
+            guard url.scheme?.lowercased() == "workout" else { return }
+            if url.host?.lowercased() == "active" {
+                if workoutStore.activeWorkout != nil {
+                    navigateToActiveWorkout = true
+                }
+            }
+        }
     }
 
     private func workoutBinding(for id: UUID) -> Binding<Workout>? {
@@ -208,17 +217,19 @@ struct WorkoutsHomeView: View {
                     }
 
                     SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
+                        .padding(.horizontal, 8)
 
                     if storedRoutines.isEmpty {
                         Text("Lege ein neues Workout an, um eine Routine zu speichern.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8)
                     } else {
                         LazyVStack(spacing: 6) {
                             ForEach(sortedWorkouts) { workout in
                                 // Star button outside menu, menu on row only
-                                HStack(spacing: 10) {
+                                HStack(spacing: 4) {
                                     Button {
                                         workoutStore.toggleFavorite(for: workout.id)
                                     } label: {
@@ -246,16 +257,30 @@ struct WorkoutsHomeView: View {
                                 }
                             }
                         }
+                        .padding(.horizontal, 8)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 0)
+
+                // Divider line before WeeklySnapshotCard
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 0.5)
+                    .padding(.horizontal, 16)
 
                 WeeklySnapshotCard(
                     workoutsThisWeek: workoutsThisWeek,
                     minutesThisWeek: minutesThisWeek,
                     goal: workoutStore.weeklyGoal
                 )
+                .padding(.horizontal, 16)
+
+                // Divider line before RecentActivityCard
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 0.5)
+                    .padding(.horizontal, 16)
 
                 RecentActivityCard(
                     workouts: Array(sortedSessions.prefix(5)),
@@ -265,6 +290,7 @@ struct WorkoutsHomeView: View {
                     enableActions: true,
                     showHeader: false
                 )
+                .padding(.horizontal, 16)
             }
             .coordinateSpace(name: "workoutsScroll")
             .transaction { tx in
@@ -295,30 +321,22 @@ struct WorkoutsHomeView: View {
             lastScrollOffset = newValue
         }
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.black.opacity(0.08))
-                    .frame(height: 0.5)
-                Button {
-                    showingAddWorkout = true
-                } label: {
-                    HStack {
-                        Spacer()
-                        Text("Neues Workout anlegen")
-                            .font(.headline)
-                        Spacer()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.purple)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .padding(.bottom, 6)
+        .overlay(alignment: .topTrailing) {
+            Button {
+                showingAddWorkout = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.mossGreen)
+                            .shadow(color: Color.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+                    )
             }
-            .background(.ultraThinMaterial)
-            .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 0)
-            .zIndex(1)
+            .padding(.top, 32)
+            .padding(.trailing, 32)
         }
         .sheet(isPresented: $showingAddWorkout) {
             NavigationStack {
@@ -667,23 +685,25 @@ struct WorkoutHighlightCard: View {
                 Text(dateText.uppercased())
                     .font(.caption2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(AppTheme.purple)
+                    .foregroundStyle(.white)
 
                 Text(workout.name)
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.white)
                     .lineLimit(2)
             }
 
             // Dauer-Chip entfernt, nur noch Anzahl Übungen
             HStack(spacing: 10) {
-                MetricChip(icon: "flame.fill", text: "\(workout.exercises.count) Übungen", tint: .mossGreen)
-            }
-
-            Wrap(alignment: .leading, spacing: 6) {
-                ForEach(tags, id: \.self) { tag in
-                    CapsuleTag(text: tag)
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                    Text("\(workout.exercises.count) Übungen")
+                        .font(.caption.weight(.semibold))
                 }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.2), in: Capsule())
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -775,6 +795,7 @@ struct RecentActivityCard: View {
             if showHeader {
                 Text("Letzte Sessions")
                     .font(.headline)
+                    .padding(.horizontal, 8)
             }
             ForEach(workouts) { session in
                 HStack {
@@ -797,13 +818,14 @@ struct RecentActivityCard: View {
                     }
                 }
                 .padding(.vertical, 6)
+                .padding(.horizontal, 16)
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemBackground))
-        )
+// Removed .background modifier as per instructions
+//        .background(
+//            RoundedRectangle(cornerRadius: 16)
+//                .fill(Color(.secondarySystemBackground))
+//        )
     }
 }
 
@@ -898,9 +920,19 @@ struct WeeklySnapshotCard: View {
     let workoutsThisWeek: Int
     let minutesThisWeek: Int
     let goal: Int
+    
+    private var progress: Double {
+        guard goal > 0 else { return 0 }
+        return min(Double(workoutsThisWeek) / Double(goal), 1.0)
+    }
+    
+    private var progressColor: Color {
+        let hue = progress * 0.33 // 0 = rot, 0.33 = grün
+        return Color(hue: hue, saturation: 0.8, brightness: 0.8)
+    }
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Diese Woche")
                     .font(.caption)
@@ -911,13 +943,41 @@ struct WeeklySnapshotCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+            
             Spacer()
-            VStack(alignment: .trailing, spacing: 6) {
+            
+            VStack(spacing: 8) {
+                ZStack {
+                    // Hintergrund-Ring
+                    Circle()
+                        .stroke(Color(.systemGray5), lineWidth: 6)
+                        .frame(width: 60, height: 60)
+                    
+                    // Fortschritts-Ring
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(
+                            progressColor,
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                        )
+                        .frame(width: 60, height: 60)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 0.6), value: progress)
+                    
+                    // Zentraler Text
+                    VStack(spacing: -2) {
+                        Text("\(workoutsThisWeek)")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(.primary)
+                        Text("\(goal)")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
                 Text("Ziel")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text("\(goal) / Woche")
-                    .font(.headline)
             }
         }
         .padding()
@@ -946,14 +1006,15 @@ struct WorkoutRow: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(.systemGray4), lineWidth: 1)
-                )
-        )
+// Removed .background modifier as per instructions
+//        .background(
+//            RoundedRectangle(cornerRadius: 12)
+//                .fill(Color(.systemBackground))
+//                .overlay(
+//                    RoundedRectangle(cornerRadius: 12)
+//                        .stroke(Color(.systemGray4), lineWidth: 1)
+//                )
+//        )
     }
 }
 
@@ -981,12 +1042,16 @@ struct CapsuleTag: View {
     var body: some View {
         Text(text)
             .font(.caption)
+            .lineLimit(1)
+            .truncationMode(.tail)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(Color(.systemGray5))
+                    .fill(Color.white.opacity(0.15))
             )
+            .foregroundStyle(.white)
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
 

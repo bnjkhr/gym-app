@@ -362,8 +362,15 @@ class WorkoutStore: ObservableObject {
 
     private func updateLiveActivityRest() {
         guard let state = activeRestState else { return }
+        let exerciseName: String? = {
+            if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
+                return w.exercises[state.exerciseIndex].exercise.name
+            }
+            return nil
+        }()
         WorkoutLiveActivityController.shared.updateRest(
             workoutName: state.workoutName,
+            exerciseName: exerciseName,
             remainingSeconds: state.remainingSeconds,
             totalSeconds: max(state.totalSeconds, 1)
         )

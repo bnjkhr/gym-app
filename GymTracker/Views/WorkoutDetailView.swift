@@ -14,36 +14,126 @@ struct WorkoutDetailView: View {
     @State private var showingCompletionConfirmation = false
     @State private var showingReorderSheet = false
     @State private var reorderExercises: [WorkoutExercise] = []
+    @State private var selectedTab: ProgressTab = .overview
+    @State private var editingNotes = false
+    @State private var notesText = ""
+
+    enum ProgressTab: String, CaseIterable {
+        case overview = "Überblick"
+        case progress = "Fortschritt"
+        case changes = "Veränderung"
+    }
 
     var body: some View {
         List {
-            summarySection
-
-            // Fortschritt
-            progressOverviewSection
-            progressInfoBoxSection
+            // Tab selector
+            progressTabSelector
+            
+            // Selected tab content
+            selectedTabContent
 
             if let activeRest = activeRestForThisWorkout {
+                // Divider before rest timer
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 0.5)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                
                 restTimerSection(activeRest: activeRest)
+                    .id("activeRest")
             }
+
+            // Divider before exercises
+            Rectangle()
+                .fill(Color(.systemGray5))
+                .frame(height: 0.5)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
 
             exerciseSections
 
             if isActiveSession && hasExercises {
+                // Divider before completion
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 0.5)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                
                 completionSection
             }
 
-            if !workout.notes.isEmpty {
-                Section("Notizen") {
-                    Text(workout.notes)
-                        .foregroundStyle(.secondary)
+            // Notes section - always visible
+            Rectangle()
+                .fill(Color(.systemGray5))
+                .frame(height: 0.5)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+            
+            Section("Notizen") {
+                if editingNotes {
+                    VStack(alignment: .leading, spacing: 12) {
+                        TextEditor(text: $notesText)
+                            .frame(minHeight: 80)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.systemGray6))
+                            )
+                        
+                        HStack {
+                            Button("Abbrechen") {
+                                notesText = workout.notes
+                                editingNotes = false
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            Spacer()
+                            
+                            Button("Speichern") {
+                                workout.notes = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                editingNotes = false
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(Color.mossGreen)
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if workout.notes.isEmpty {
+                            Text("Tippe hier, um Notizen hinzuzufügen...")
+                                .foregroundStyle(.secondary)
+                                .italic()
+                        } else {
+                            Text(workout.notes)
+                                .foregroundStyle(.primary)
+                        }
+                        
+                        Button {
+                            notesText = workout.notes
+                            editingNotes = true
+                        } label: {
+                            HStack {
+                                Image(systemName: workout.notes.isEmpty ? "plus.circle" : "pencil")
+                                Text(workout.notes.isEmpty ? "Notizen hinzufügen" : "Notizen bearbeiten")
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
+            .listRowBackground(Color.clear)
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            notesText = workout.notes
             if isActiveSession {
                 WorkoutLiveActivityController.shared.start(workoutName: workout.name)
             }
@@ -95,69 +185,97 @@ struct WorkoutDetailView: View {
         }
     }
 
-    private var summarySection: some View {
-        Section("Überblick") {
-            VStack(spacing: 12) {
-                summaryRow(title: "Dauer", value: durationText)
-                summaryRow(title: "Volumen", value: totalVolumeValueText)
-                summaryRow(title: "Veränderung", value: progressDeltaText)
-            }
-        }
-    }
-
-    // MARK: - Fortschritt
-
-    private var progressOverviewSection: some View {
-        Section("Fortschritt") {
-            VStack(spacing: 12) {
-                HStack {
-                    summaryRow(title: "Letztes Gewicht", value: previousVolumeValueText)
-                    summaryRow(title: "Letztes Datum", value: previousDateText)
-                    summaryRow(title: "Übungen zuletzt", value: previousExerciseCountText)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-    }
-
-    private var progressInfoBoxSection: some View {
+    // MARK: - Tab Interface
+    
+    private var progressTabSelector: some View {
         Section {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .foregroundStyle(Color.mossGreen)
-                    Text("Veränderungen seit letzter Session")
-                        .font(.subheadline.weight(.semibold))
-                }
-
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("Gewicht")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(progressDeltaText)
-                            .font(.subheadline.weight(.semibold))
-                            .contentTransition(.numericText())
-                    }
-                    HStack {
-                        Text("Wiederholungen")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(repsDeltaText)
-                            .font(.subheadline.weight(.semibold))
-                            .contentTransition(.numericText())
+            HStack {
+                Spacer()
+                HStack(spacing: 0) {
+                    ForEach(ProgressTab.allCases, id: \.self) { tab in
+                        Button {
+                            selectedTab = tab
+                        } label: {
+                            Text(tab.rawValue)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(selectedTab == tab ? Color.white : Color.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(selectedTab == tab ? Color.mossGreen : Color.clear)
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                )
+                Spacer()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
         }
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: -35, leading: 16, bottom: -8, trailing: 16))
     }
+    
+    @ViewBuilder
+    private var selectedTabContent: some View {
+        Section {
+            switch selectedTab {
+            case .overview:
+                summaryContent
+            case .progress:
+                progressContent
+            case .changes:
+                changesContent
+            }
+        }
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+    }
+    
+    private var summaryContent: some View {
+        VStack(spacing: 6) {
+            summaryRow(title: "Volumen", value: totalVolumeValueText)
+        }
+        .padding(.vertical, -6)
+    }
+    
+    private var progressContent: some View {
+        VStack(spacing: 6) {
+            HStack {
+                summaryRow(title: "Letztes Gewicht", value: previousVolumeValueText)
+                summaryRow(title: "Letztes Datum", value: previousDateText)
+                summaryRow(title: "Übungen zuletzt", value: previousExerciseCountText)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, -6)
+    }
+    
+    private var changesContent: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Gewicht")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(progressDeltaText)
+                    .font(.subheadline.weight(.semibold))
+                    .contentTransition(.numericText())
+            }
+            HStack {
+                Text("Wiederholungen")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(repsDeltaText)
+                    .font(.subheadline.weight(.semibold))
+                    .contentTransition(.numericText())
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, -6)
+    }
+
+
 
     private func summaryRow(title: String, value: String) -> some View {
         VStack(spacing: 4) {
@@ -217,6 +335,7 @@ struct WorkoutDetailView: View {
                 .font(.caption)
             }
         }
+        .listRowBackground(Color.clear)
     }
 
     private var exerciseSections: some View {
@@ -249,6 +368,7 @@ struct WorkoutDetailView: View {
                         }
                     )
                     .listRowSeparator(.hidden)
+                    .id("exercise_\(exerciseIndex)_set_\(setIndex)")
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             removeSet(at: setIndex, for: exerciseIndex)
@@ -273,6 +393,7 @@ struct WorkoutDetailView: View {
                         prepareReorder()
                     }
             }
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -316,6 +437,7 @@ struct WorkoutDetailView: View {
         }
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
+        .id("completionSection")
     }
 
     private var durationText: String {
@@ -342,7 +464,7 @@ struct WorkoutDetailView: View {
     }
 
     private var totalVolumeValueText: String {
-        totalVolume.formatted(.number.precision(.fractionLength(1))) + " kg"
+        "\(Int(totalVolume)) kg"
     }
 
     private var previousVolume: Double? {
@@ -355,7 +477,7 @@ struct WorkoutDetailView: View {
 
     private var previousVolumeValueText: String {
         guard let previousVolume else { return "–" }
-        return previousVolume.formatted(.number.precision(.fractionLength(1))) + " kg"
+        return "\(Int(previousVolume)) kg"
     }
 
     private var previousDateText: String {
@@ -383,7 +505,7 @@ struct WorkoutDetailView: View {
         }
 
         let delta = totalVolume - previousVolume
-        let formattedDelta = delta.magnitude.formatted(.number.precision(.fractionLength(1)))
+        let formattedDelta = Int(delta.magnitude)
 
         if delta == 0 {
             return "Gleich wie zuletzt"
@@ -436,7 +558,7 @@ struct WorkoutDetailView: View {
             }
         }
     }
-
+    
     private func completeWorkout() {
         showingCompletionConfirmation = true
     }
@@ -535,6 +657,73 @@ private extension Array {
     }
 }
 
+// MARK: - Custom TextField with Select All Functionality
+private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: UIViewRepresentable {
+    @Binding var value: Value
+    let placeholder: String
+    let keyboardType: UIKeyboardType
+    
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.delegate = context.coordinator
+        textField.keyboardType = keyboardType
+        textField.placeholder = placeholder
+        textField.textAlignment = .center
+        textField.addTarget(context.coordinator, action: #selector(Coordinator.textFieldDidChange), for: .editingChanged)
+        return textField
+    }
+    
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        let stringValue = String(value)
+        if uiView.text != stringValue && !uiView.isFirstResponder {
+            uiView.text = stringValue
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UITextFieldDelegate {
+        let parent: SelectAllTextField
+        
+        init(_ parent: SelectAllTextField) {
+            self.parent = parent
+        }
+        
+        @objc func textFieldDidChange(_ textField: UITextField) {
+            let text = textField.text ?? ""
+            if let newValue = Value(text) {
+                parent.value = newValue
+            } else if text.isEmpty {
+                parent.value = Value(exactly: 0) ?? parent.value
+            }
+        }
+        
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            // Select all text when editing begins
+            DispatchQueue.main.async {
+                textField.selectAll(nil)
+            }
+        }
+        
+        func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+            // Allow only numeric input
+            let allowedCharacters = CharacterSet.decimalDigits
+            let characterSet = CharacterSet(charactersIn: string)
+            
+            // For decimal values, also allow decimal separator
+            if parent.keyboardType == .decimalPad || parent.keyboardType == .numbersAndPunctuation {
+                let decimalSeparator = Locale.current.decimalSeparator ?? "."
+                let allowedDecimalCharacters = allowedCharacters.union(CharacterSet(charactersIn: decimalSeparator))
+                return allowedDecimalCharacters.isSuperset(of: characterSet)
+            }
+            
+            return allowedCharacters.isSuperset(of: characterSet)
+        }
+    }
+}
+
 private struct WorkoutSetCard: View {
     let index: Int
     @Binding var set: ExerciseSet
@@ -545,7 +734,6 @@ private struct WorkoutSetCard: View {
     var onRestTimeUpdated: (Double) -> Void
     var onToggleCompletion: () -> Void
 
-    @State private var weightText: String = ""
     @State private var showingRestEditor = false
     @State private var restMinutes: Int = 0
     @State private var restSeconds: Int = 0
@@ -559,52 +747,46 @@ private struct WorkoutSetCard: View {
                 verticalSeparator
 
                 HStack(spacing: 6) {
-                    TextField("0", value: $set.reps, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
+                    VStack(spacing: 2) {
+                        SelectAllTextField(
+                            value: $set.reps,
+                            placeholder: "0",
+                            keyboardType: .numberPad
+                        )
+                        .multilineTextAlignment(.center)
                         .frame(width: 64)
                         .font(.title3.weight(.semibold))
-                    if let prev = previousReps {
-                        Text("(\(prev))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        
+                        if let prev = previousReps {
+                            Text("(\(prev))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
                 verticalSeparator
 
                 HStack(spacing: 6) {
-                    TextField("0.0", text: $weightText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
+                    VStack(spacing: 2) {
+                        SelectAllTextField(
+                            value: $set.weight,
+                            placeholder: "0",
+                            keyboardType: .decimalPad
+                        )
+                        .multilineTextAlignment(.center)
                         .frame(width: 80)
                         .font(.title3.weight(.semibold))
-                        .onAppear {
-                            weightText = set.weight > 0 ? String(format: "%.1f", set.weight) : ""
+                        
+                        if let prevW = previousWeight {
+                            Text("(\(Int(prevW)))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
-                        .onChangeCompat(of: weightText) { newValue in
-                            if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
-                                set.weight = max(0, min(weight, 999.9))
-                            } else if newValue.isEmpty {
-                                set.weight = 0
-                            }
-                        }
-                        .onChangeCompat(of: set.weight) { newValue in
-                            let formatted = newValue > 0 ? String(format: "%.1f", newValue) : ""
-                            if weightText != formatted && !weightText.isEmpty {
-                                DispatchQueue.main.async {
-                                    weightText = formatted
-                                }
-                            }
-                        }
+                    }
                     Text("kg")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    if let prevW = previousWeight {
-                        Text(String(format: "(%.1f)", prevW))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
                 }
 
                 Spacer(minLength: 8)
@@ -767,10 +949,6 @@ private struct WorkoutCompletionSummaryView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                )
 
                 Button("Zur Übersicht") {
                     dismissAction()

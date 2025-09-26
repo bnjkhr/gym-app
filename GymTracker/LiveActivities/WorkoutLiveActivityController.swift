@@ -14,14 +14,15 @@ final class WorkoutLiveActivityController {
         Task { await startOrUpdateGeneralState(workoutName: workoutName) }
     }
 
-    func updateRest(workoutName: String, remainingSeconds: Int, totalSeconds: Int) {
+    func updateRest(workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         Task {
             await ensureActivityExists(workoutName: workoutName)
             await updateState(
                 remaining: max(remainingSeconds, 0),
                 total: max(totalSeconds, 1),
-                title: "Pause"
+                title: "Pause",
+                exerciseName: exerciseName
             )
         }
     }
@@ -38,7 +39,8 @@ final class WorkoutLiveActivityController {
             let state = WorkoutActivityAttributes.ContentState(
                 remainingSeconds: 0,
                 totalSeconds: 1,
-                title: "Pause beendet"
+                title: "Pause beendet",
+                exerciseName: nil
             )
             await updateState(state: state)
         }
@@ -50,7 +52,8 @@ final class WorkoutLiveActivityController {
             let closingState = WorkoutActivityAttributes.ContentState(
                 remainingSeconds: 0,
                 totalSeconds: 1,
-                title: "Workout beendet"
+                title: "Workout beendet",
+                exerciseName: nil
             )
 
             await activity.end(using: closingState, dismissalPolicy: .immediate)
@@ -70,7 +73,8 @@ final class WorkoutLiveActivityController {
         let baseState = WorkoutActivityAttributes.ContentState(
             remainingSeconds: 0,
             totalSeconds: 1,
-            title: "Workout läuft"
+            title: "Workout läuft",
+            exerciseName: nil
         )
 
         if let activity {
@@ -89,11 +93,12 @@ final class WorkoutLiveActivityController {
         }
     }
 
-    private func updateState(remaining: Int, total: Int, title: String) async {
+    private func updateState(remaining: Int, total: Int, title: String, exerciseName: String?) async {
         let state = WorkoutActivityAttributes.ContentState(
             remainingSeconds: remaining,
             totalSeconds: max(total, 1),
-            title: title
+            title: title,
+            exerciseName: exerciseName
         )
         await updateState(state: state)
     }
@@ -110,7 +115,7 @@ final class WorkoutLiveActivityController {
     private init() {}
 
     func start(workoutName: String) {}
-    func updateRest(workoutName: String, remainingSeconds: Int, totalSeconds: Int) {}
+    func updateRest(workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int) {}
     func clearRest(workoutName: String) {}
     func showRestEnded(workoutName: String) {}
     func end() {}

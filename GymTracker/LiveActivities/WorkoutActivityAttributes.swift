@@ -7,8 +7,10 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var remainingSeconds: Int
         var totalSeconds: Int
         var title: String
+        var exerciseName: String?
     }
 
     var workoutName: String
 }
 #endif
+

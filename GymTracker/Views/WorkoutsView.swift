@@ -19,6 +19,8 @@ struct WorkoutsView: View {
         }
         .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Rectangle()
@@ -55,29 +57,22 @@ struct WorkoutRowView: View {
     let workout: Workout
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(workout.name)
-                .font(.headline)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(workout.name)
+                    .font(.headline)
 
-            Text(workout.date, style: .date)
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            HStack {
-                Text("\(workout.exercises.count) Übungen")
+                Text(workout.date, style: .date)
                     .font(.caption)
                     .foregroundColor(.secondary)
-
-                Spacer()
-
-                if let duration = workout.duration {
-                    Text("\(Int(duration / 60))min")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
             }
+            Spacer()
+            Text("\(workout.exercises.count) Übungen")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
     }
 }
 
