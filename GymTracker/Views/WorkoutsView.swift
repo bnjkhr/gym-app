@@ -20,7 +20,7 @@ struct WorkoutsView: View {
         .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
         .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
+        .listStyle(.plain)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Rectangle()

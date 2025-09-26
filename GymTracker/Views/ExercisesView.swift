@@ -30,26 +30,46 @@ struct ExercisesView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                // empty section to host a pinned header
-            } header: {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                // Filter header
                 MuscleGroupFilterBar(selected: $selectedGroups)
-            }
-            ForEach(filteredExercises) { exercise in
-                Button {
-                    editingExercise = exercise
-                } label: {
-                    ExerciseRowView(exercise: exercise)
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
+                
+                // Exercise list
+                LazyVStack(spacing: 8) {
+                    ForEach(filteredExercises) { exercise in
+                        Button {
+                            editingExercise = exercise
+                        } label: {
+                            ExerciseRowView(exercise: exercise)
+                                .padding(.horizontal)
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                requestDeletion(for: [exercise])
+                            } label: {
+                                Label("Löschen", systemImage: "trash")
+                            }
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
+                .padding(.bottom, 100) // Space for search bar
             }
-            .onDelete(perform: requestDeletionForList)
         }
         .safeAreaInset(edge: .bottom) {
             LiquidGlassSearchBar(text: $searchText)
                 .padding(.horizontal)
                 .padding(.bottom, 12)
+        }
+        .overlay(alignment: .topTrailing) {
+            FloatingPlusButton {
+                showingAddExercise = true
+            }
+            .padding(.top, 20)
+            .padding(.trailing, 20)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onChange(of: searchText, initial: true) { oldValue, newValue in
@@ -87,11 +107,6 @@ struct ExercisesView: View {
                 Text("\(pendingDeletion.count) Übungen werden entfernt.")
             }
         }
-    }
-
-    private func requestDeletionForList(at indexSet: IndexSet) {
-        let exercises = indexSet.compactMap { filteredExercises[safe: $0] }
-        requestDeletion(for: exercises)
     }
 
     private func requestDeletion(for exercises: [Exercise]) {
@@ -269,6 +284,32 @@ private struct FilterChip: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct FloatingPlusButton: View {
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Circle()
+                            .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.4 : 0.15), radius: 20, x: 0, y: 10)
+
+                Image(systemName: "plus")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Neue Übung hinzufügen")
     }
 }
 

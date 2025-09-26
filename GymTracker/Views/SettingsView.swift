@@ -19,60 +19,84 @@ struct SettingsView: View {
     private let maxImportBytes: Int = 2 * 1024 * 1024
 
     var body: some View {
-        Form {
-            Section {
+        ScrollView {
+            LazyVStack(spacing: 24) {
+                // Profile Section
                 ProfileView()
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-            }
-            
-            Section("Trainingsziele") {
-                Stepper(value: $workoutStore.weeklyGoal, in: 1...14) {
-                    Text("Wochenziel: \(workoutStore.weeklyGoal) Workouts")
-                }
-
-                Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 4)
-            }
-
-            Section("Workouts") {
-                Button {
-                    showingImporter = true
-                } label: {
-                    Label("Workouts importieren (CSV)", systemImage: "tray.and.arrow.down")
-                }
-
-                Button {
-                    workoutStore.resetToSampleData()
-                    showAlert(message: "Sample-Workouts geladen!")
-                } label: {
-                    Label("Sample-Workouts laden", systemImage: "arrow.clockwise")
-                        .foregroundColor(.orange)
-                }
-
-                Text("Erstelle eine CSV mit 'Übung,Sätze,Wiederholungen,Gewicht' pro Zeile und importiere sie als Vorlage.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-
-            Section("Benachrichtigungen") {
-                Toggle(isOn: $workoutStore.restNotificationsEnabled) {
-                    Text("Pausen-Benachrichtigungen")
-                }
-                .onChange(of: workoutStore.restNotificationsEnabled) { _, newValue in
-                    if newValue {
-                        NotificationManager.shared.requestAuthorization()
-                    } else {
-                        NotificationManager.shared.cancelRestEndNotification()
+                
+                // Trainingsziele Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Trainingsziele")
+                        .font(.headline)
+                    
+                    Stepper(value: $workoutStore.weeklyGoal, in: 1...14) {
+                        Text("Wochenziel: \(workoutStore.weeklyGoal) Workouts")
                     }
+                    
+                    Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
                 }
-
-                Text("Informiert dich, wenn deine Satz-Pause endet.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                
+                // Workouts Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Workouts")
+                        .font(.headline)
+                    
+                    Button {
+                        showingImporter = true
+                    } label: {
+                        Label("Workouts importieren (CSV)", systemImage: "tray.and.arrow.down")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        workoutStore.resetToSampleData()
+                        showAlert(message: "Sample-Workouts geladen!")
+                    } label: {
+                        Label("Sample-Workouts laden", systemImage: "arrow.clockwise")
+                            .foregroundColor(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Text("Erstelle eine CSV mit 'Übung,Sätze,Wiederholungen,Gewicht' pro Zeile und importiere sie als Vorlage.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                
+                // Benachrichtigungen Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Benachrichtigungen")
+                        .font(.headline)
+                    
+                    Toggle(isOn: $workoutStore.restNotificationsEnabled) {
+                        Text("Pausen-Benachrichtigungen")
+                    }
+                    .onChange(of: workoutStore.restNotificationsEnabled) { _, newValue in
+                        if newValue {
+                            NotificationManager.shared.requestAuthorization()
+                        } else {
+                            NotificationManager.shared.cancelRestEndNotification()
+                        }
+                    }
+                    
+                    Text("Informiert dich, wenn deine Satz-Pause endet.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
             }
+            .padding(.horizontal)
         }
         .fileImporter(
             isPresented: $showingImporter,

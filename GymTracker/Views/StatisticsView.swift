@@ -82,7 +82,7 @@ private struct ProgressOverviewCardView: View {
 
     private var lastDateText: String {
         guard let session = lastSession else { return "–" }
-        return session.date.formatted(.dateTime.day().month().year())
+        return session.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
     }
 
     private var lastExerciseCountText: String {
@@ -92,7 +92,8 @@ private struct ProgressOverviewCardView: View {
 
     private var lastVolumeText: String {
         guard let vol = lastVolume else { return "–" }
-        return vol.formatted(.number.precision(.fractionLength(1))) + " kg"
+        let tons = vol / 1000.0
+        return tons.formatted(.number.precision(.fractionLength(2))) + " t"
     }
 
     var body: some View {
@@ -212,10 +213,6 @@ private struct ProgressDeltaInfoCardView: View {
             )
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
     }
 }
 
@@ -271,8 +268,6 @@ struct MostUsedExercisesView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -318,8 +313,6 @@ struct RecentActivityView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

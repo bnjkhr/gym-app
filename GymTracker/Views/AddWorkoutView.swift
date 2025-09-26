@@ -15,6 +15,7 @@ struct AddWorkoutView: View {
             Form {
                 Section("Workout Details") {
                     TextField("Workout Name", text: $workoutName)
+                        .textFieldStyle(.plain)
 
                     HStack {
                         Label("Angelegt", systemImage: "calendar")
@@ -24,6 +25,7 @@ struct AddWorkoutView: View {
                     }
 
                     TextField("Notizen (optional)", text: $notes, axis: .vertical)
+                        .textFieldStyle(.plain)
                         .lineLimit(3...6)
                 }
 
@@ -77,6 +79,7 @@ struct AddWorkoutView: View {
                                             }
                                         }
                                     ))
+                                        .textFieldStyle(.plain)
                                         .multilineTextAlignment(.trailing)
                                         .keyboardType(.decimalPad)
                                         .frame(maxWidth: 120)
@@ -118,6 +121,8 @@ struct AddWorkoutView: View {
                 }
 
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Neues Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

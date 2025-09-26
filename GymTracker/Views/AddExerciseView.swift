@@ -11,59 +11,77 @@ struct AddExerciseView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section("Grundinformationen") {
-                    TextField("Name der Übung", text: $name)
-                    TextField("Beschreibung (optional)", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-
-                Section("Muskelgruppen") {
-                    LazyVGrid(columns: [
-                        GridItem(.adaptive(minimum: 100))
-                    ], spacing: 8) {
-                        ForEach(MuscleGroup.allCases, id: \.self) { muscleGroup in
-                            MuscleGroupButton(
-                                muscleGroup: muscleGroup,
-                                isSelected: selectedMuscleGroups.contains(muscleGroup)
-                            ) {
-                                if selectedMuscleGroups.contains(muscleGroup) {
-                                    selectedMuscleGroups.remove(muscleGroup)
-                                } else {
-                                    selectedMuscleGroups.insert(muscleGroup)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Grundinformationen Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Grundinformationen")
+                            .font(.headline)
+                        
+                        TextField("Name der Übung", text: $name)
+                            .textFieldStyle(.plain)
+                        
+                        TextField("Beschreibung (optional)", text: $description, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .lineLimit(3...6)
+                    }
+                    
+                    // Muskelgruppen Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Muskelgruppen")
+                            .font(.headline)
+                        
+                        LazyVGrid(columns: [
+                            GridItem(.adaptive(minimum: 100))
+                        ], spacing: 8) {
+                            ForEach(MuscleGroup.allCases, id: \.self) { muscleGroup in
+                                MuscleGroupButton(
+                                    muscleGroup: muscleGroup,
+                                    isSelected: selectedMuscleGroups.contains(muscleGroup)
+                                ) {
+                                    if selectedMuscleGroups.contains(muscleGroup) {
+                                        selectedMuscleGroups.remove(muscleGroup)
+                                    } else {
+                                        selectedMuscleGroups.insert(muscleGroup)
+                                    }
                                 }
                             }
                         }
                     }
-                    .padding(.vertical, 8)
-                }
-
-                Section("Anweisungen (optional)") {
-                    ForEach(instructions.indices, id: \.self) { index in
-                        HStack {
-                            TextField("Schritt \(index + 1)", text: $instructions[index])
-
-                            if instructions.count > 1 {
-                                Button {
-                                    instructions.remove(at: index)
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundColor(.red)
+                    
+                    // Anweisungen Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Anweisungen (optional)")
+                            .font(.headline)
+                        
+                        ForEach(instructions.indices, id: \.self) { index in
+                            HStack {
+                                TextField("Schritt \(index + 1)", text: $instructions[index])
+                                    .textFieldStyle(.plain)
+                                
+                                if instructions.count > 1 {
+                                    Button {
+                                        instructions.remove(at: index)
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
                                 }
                             }
                         }
-                    }
-
-                    Button {
-                        instructions.append("")
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Schritt hinzufügen")
+                        
+                        Button {
+                            instructions.append("")
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Schritt hinzufügen")
+                            }
+                            .foregroundColor(.mossGreen)
                         }
-                        .foregroundColor(.mossGreen)
                     }
                 }
+                .padding()
             }
             .navigationTitle("Neue Übung")
             .navigationBarTitleDisplayMode(.inline)

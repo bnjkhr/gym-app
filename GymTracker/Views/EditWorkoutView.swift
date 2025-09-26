@@ -27,7 +27,9 @@ struct EditWorkoutView: View {
             Form {
                 Section("Details") {
                     TextField("Name", text: $name)
+                        .textFieldStyle(.plain)
                     TextField("Notizen", text: $notes, axis: .vertical)
+                        .textFieldStyle(.plain)
                         .lineLimit(3...6)
                     Stepper(value: $restTime, in: 30...240, step: 5) {
                         Text("Standard-Pause: \(Int(restTime))s")
@@ -71,7 +73,7 @@ struct EditWorkoutView: View {
                                             .foregroundStyle(.secondary)
                                         TextField("Wdh", value: $editable.reps, format: .number)
                                             .keyboardType(.numberPad)
-                                            .textFieldStyle(.roundedBorder)
+                                            .textFieldStyle(.plain)
                                     }
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text("Gewicht (kg)")
@@ -88,7 +90,7 @@ struct EditWorkoutView: View {
                                             }
                                         ))
                                             .keyboardType(.decimalPad)
-                                            .textFieldStyle(.roundedBorder)
+                                            .textFieldStyle(.plain)
                                     }
                                 }
                             }
@@ -104,6 +106,8 @@ struct EditWorkoutView: View {
                     }
                 }
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Workout bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

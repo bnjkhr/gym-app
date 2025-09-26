@@ -25,7 +25,9 @@ struct EditExerciseView: View {
         Form {
             Section("Details") {
                 TextField("Name", text: $name)
+                    .textFieldStyle(.plain)
                 TextField("Beschreibung", text: $description, axis: .vertical)
+                    .textFieldStyle(.plain)
                     .lineLimit(2...5)
             }
 
@@ -41,6 +43,8 @@ struct EditExerciseView: View {
                 }
             }
         }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .navigationTitle("Übung bearbeiten")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

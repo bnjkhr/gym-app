@@ -31,153 +31,188 @@ struct ProfileEditView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                // Profile Picture Section
-                Section {
-                    HStack {
-                        Spacer()
-                        Button {
-                            showingActionSheet = true
-                        } label: {
-                            ProfileImageView(image: selectedImage ?? profileImage, size: 120)
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                    }
-                    .padding(.vertical, 8)
-                    
-                    HStack {
-                        Spacer()
-                        Text("Tippen zum Bearbeiten")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                } header: {
-                    Text("Profilbild")
-                }
-                
-                // Personal Information
-                Section {
-                    HStack {
-                        Text("Name")
-                        Spacer()
-                        TextField("Dein Name", text: $name)
-                            .multilineTextAlignment(.trailing)
-                            .onChange(of: name) { oldValue, newValue in
-                                if newValue.count > maxNameLength {
-                                    name = String(newValue.prefix(maxNameLength))
-                                }
-                            }
-                    }
-                    
-                    HStack {
-                        Text("Geburtsdatum")
-                        Spacer()
-                        if let birthDate {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Profile Picture Section
+                    VStack(spacing: 12) {
+                        Text("Profilbild")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        VStack(spacing: 8) {
                             Button {
-                                showingDatePicker.toggle()
+                                showingActionSheet = true
                             } label: {
-                                Text(birthDate.formatted(date: .abbreviated, time: .omitted))
-                                    .foregroundStyle(.primary)
+                                ProfileImageView(image: selectedImage ?? profileImage, size: 120)
                             }
-                        } else {
-                            Button {
-                                showingDatePicker.toggle()
-                            } label: {
-                                Text("Nicht angegeben")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    
-                    if let birthDate, let age = workoutStore.userProfile.age {
-                        HStack {
-                            Text("Alter")
-                            Spacer()
-                            Text("\(age) Jahre")
+                            .buttonStyle(.plain)
+                            
+                            Text("Tippen zum Bearbeiten")
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     
-                    HStack {
-                        Text("Gewicht")
-                        Spacer()
-                        TextField("kg", text: $weight)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                        Text("kg")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Persönliche Informationen")
-                }
-                
-                // Fitness Goal Section
-                Section {
-                    ForEach(FitnessGoal.allCases, id: \.self) { fitnessGoal in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Image(systemName: fitnessGoal.icon)
-                                        .foregroundStyle(fitnessGoal.color)
-                                        .frame(width: 20)
-                                    
-                                    Text(fitnessGoal.displayName)
-                                        .font(.headline)
+                    // Personal Information
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Persönliche Informationen")
+                            .font(.headline)
+                        
+                        VStack(spacing: 16) {
+                            HStack {
+                                Text("Name")
+                                Spacer()
+                                TextField("Dein Name", text: $name)
+                                    .multilineTextAlignment(.trailing)
+                                    .textFieldStyle(.plain)
+                                    .frame(maxWidth: 200)
+                                    .onChange(of: name) { oldValue, newValue in
+                                        if newValue.count > maxNameLength {
+                                            name = String(newValue.prefix(maxNameLength))
+                                        }
+                                    }
+                            }
+                            
+                            HStack {
+                                Text("Geburtsdatum")
+                                Spacer()
+                                Button {
+                                    showingDatePicker.toggle()
+                                } label: {
+                                    Text(birthDate?.formatted(date: .abbreviated, time: .omitted) ?? "Nicht angegeben")
+                                        .foregroundStyle(birthDate != nil ? .primary : .secondary)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
                                 }
-                                
-                                Text(fitnessGoal.description)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.leading)
+                                .buttonStyle(.plain)
                             }
                             
-                            Spacer()
+                            if let birthDate, let age = workoutStore.userProfile.age {
+                                HStack {
+                                    Text("Alter")
+                                    Spacer()
+                                    Text("\(age) Jahre")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                             
-                            if goal == fitnessGoal {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(fitnessGoal.color)
-                                    .font(.title2)
+                            HStack {
+                                Text("Gewicht")
+                                Spacer()
+                                HStack(spacing: 4) {
+                                    TextField("kg", text: $weight)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .textFieldStyle(.plain)
+                                        .frame(width: 80)
+                                    Text("kg")
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                goal = fitnessGoal
+                    }
+                    
+                    // Fitness Goal Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Trainingsziel")
+                            .font(.headline)
+                        
+                        VStack(spacing: 8) {
+                            ForEach(FitnessGoal.allCases, id: \.self) { fitnessGoal in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack {
+                                            Image(systemName: fitnessGoal.icon)
+                                                .foregroundStyle(fitnessGoal.color)
+                                                .frame(width: 20)
+                                            
+                                            Text(fitnessGoal.displayName)
+                                                .font(.headline)
+                                        }
+                                        
+                                        Text(fitnessGoal.description)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if goal == fitnessGoal {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(fitnessGoal.color)
+                                            .font(.title2)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(goal == fitnessGoal ? fitnessGoal.color.opacity(0.1) : Color(.systemGray6))
+                                .cornerRadius(10)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        goal = fitnessGoal
+                                    }
+                                }
                             }
                         }
+                        
+                        Text("Wähle dein primäres Trainingsziel aus. Dies kann später jederzeit geändert werden.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
                     }
-                } header: {
-                    Text("Trainingsziel")
-                } footer: {
-                    Text("Wähle dein primäres Trainingsziel aus. Dies kann später jederzeit geändert werden.")
+                    
+                    // Preferences Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Präferenzen für 1‑Klick-Workout")
+                            .font(.headline)
+                        
+                        VStack(spacing: 16) {
+                            HStack {
+                                Text("Erfahrung")
+                                Spacer()
+                                Picker("Erfahrung", selection: $experience) {
+                                    ForEach(ExperienceLevel.allCases, id: \.self) { level in
+                                        Text(level.displayName).tag(level)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                            }
+                            
+                            HStack {
+                                Text("Equipment")
+                                Spacer()
+                                Picker("Equipment", selection: $equipment) {
+                                    ForEach(EquipmentPreference.allCases, id: \.self) { pref in
+                                        Text(pref.displayName).tag(pref)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                            }
+                            
+                            HStack {
+                                Text("Dauer")
+                                Spacer()
+                                Picker("Dauer", selection: $preferredDuration) {
+                                    ForEach(WorkoutDuration.allCases, id: \.self) { d in
+                                        Text(d.displayName).tag(d)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                            }
+                        }
+                        
+                        Text("Diese Einstellungen nutzt der 1‑Klick‑Generator für schnelle Vorschläge.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                    }
                 }
-                
-                Section {
-                    Picker("Erfahrung", selection: $experience) {
-                        ForEach(ExperienceLevel.allCases, id: \.self) { level in
-                            Text(level.displayName).tag(level)
-                        }
-                    }
-
-                    Picker("Equipment", selection: $equipment) {
-                        ForEach(EquipmentPreference.allCases, id: \.self) { pref in
-                            Text(pref.displayName).tag(pref)
-                        }
-                    }
-
-                    Picker("Dauer", selection: $preferredDuration) {
-                        ForEach(WorkoutDuration.allCases, id: \.self) { d in
-                            Text(d.displayName).tag(d)
-                        }
-                    }
-                } header: {
-                    Text("Präferenzen für 1‑Klick-Workout")
-                } footer: {
-                    Text("Diese Einstellungen nutzt der 1‑Klick‑Generator für schnelle Vorschläge.")
-                }
+                .padding()
             }
             .navigationTitle("Profil bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
