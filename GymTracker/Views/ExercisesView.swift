@@ -34,7 +34,7 @@ struct ExercisesView: View {
             LazyVStack(spacing: 0) {
                 // Filter header
                 MuscleGroupFilterBar(selected: $selectedGroups)
-                    .padding(.horizontal)
+                    .appEdgePadding()
                     .padding(.bottom, 12)
                 
                 // Exercise list
@@ -44,7 +44,7 @@ struct ExercisesView: View {
                             editingExercise = exercise
                         } label: {
                             ExerciseRowView(exercise: exercise)
-                                .padding(.horizontal)
+                                .appEdgePadding()
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
@@ -61,7 +61,7 @@ struct ExercisesView: View {
         }
         .safeAreaInset(edge: .bottom) {
             LiquidGlassSearchBar(text: $searchText)
-                .padding(.horizontal)
+                .appEdgePadding()
                 .padding(.bottom, 12)
         }
         .overlay(alignment: .topTrailing) {
@@ -155,11 +155,7 @@ struct ExerciseRowView: View {
                 ForEach(exercise.muscleGroups, id: \.self) { muscleGroup in
                     Text(muscleGroup.rawValue)
                         .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(muscleGroup.color.opacity(0.2))
                         .foregroundColor(muscleGroup.color)
-                        .clipShape(Capsule())
                 }
                 Spacer()
             }
@@ -276,11 +272,11 @@ private struct FilterChip: View {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundStyle(isSelected ? Color.white : color)
+            .foregroundStyle(isSelected ? Color.white : .primary)
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
             .background(
-                Capsule().fill(isSelected ? color : color.opacity(0.12))
+                Capsule().fill(isSelected ? AppTheme.darkPurple : Color.secondary.opacity(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -316,4 +312,6 @@ private struct FloatingPlusButton: View {
 #Preview {
     ExercisesView()
         .environmentObject(WorkoutStore())
+        .environment(\.colorScheme, .dark)
 }
+

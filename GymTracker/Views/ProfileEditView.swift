@@ -212,7 +212,7 @@ struct ProfileEditView: View {
                             .padding(.top, 4)
                     }
                 }
-                .padding()
+                .appEdgePadding()
             }
             .navigationTitle("Profil bearbeiten")
             .navigationBarTitleDisplayMode(.inline)

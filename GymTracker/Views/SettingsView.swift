@@ -96,7 +96,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
-            .padding(.horizontal)
+            .appEdgePadding()
         }
         .fileImporter(
             isPresented: $showingImporter,

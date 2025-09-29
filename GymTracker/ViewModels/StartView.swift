@@ -37,7 +37,7 @@ struct StartView: View {
                 }
             }
         }
-        .tint(AppTheme.purple)
+        .tint(AppTheme.darkPurple)
     }
 
     private var headerCard: some View {

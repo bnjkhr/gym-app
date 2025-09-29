@@ -7,13 +7,15 @@ enum AppTheme {
     static let purple = Color(red: 0.36, green: 0.20, blue: 0.60)   // dunkleres Purple
     static let indigo = Color(red: 0.48, green: 0.56, blue: 0.86)   // kühles Indigo/Lavender
 
+    static let darkPurple = Color.darkPurple
+
     // Hintergrundverlauf für Header-Karten
     static var headerGradient: LinearGradient {
         LinearGradient(
             colors: [
                 Color(red: 0.70, green: 0.74, blue: 0.92), // helles Lavender oben links
                 indigo,                                    // kühles Indigo in der Mitte
-                purple,                                    // kräftiges Purple
+                darkPurple,                                // kräftiges Purple
                 Color(red: 0.26, green: 0.15, blue: 0.46)  // tiefes Purple unten rechts
             ],
             startPoint: .topLeading,

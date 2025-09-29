@@ -38,6 +38,8 @@
 		AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */; };
 		AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */; };
 		AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */; };
+		AD4B5D4C2E8A6CBB0083787B /* ExercisePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4B5D4B2E8A6CBB0083787B /* ExercisePickerView.swift */; };
+		AD4B5D4E2E8A723B0083787B /* AppLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4B5D4D2E8A723B0083787B /* AppLayout.swift */; };
 		AD90F2C42E845AFD003D4DE9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C32E845AFD003D4DE9 /* Theme.swift */; };
 		AD90F2C62E845B05003D4DE9 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C52E845B05003D4DE9 /* StartView.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
@@ -79,6 +81,8 @@
 		AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileImageView.swift; sourceTree = "<group>"; };
 		AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconGenerator.swift; sourceTree = "<group>"; };
+		AD4B5D4B2E8A6CBB0083787B /* ExercisePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerView.swift; sourceTree = "<group>"; };
+		AD4B5D4D2E8A723B0083787B /* AppLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLayout.swift; sourceTree = "<group>"; };
 		AD90F2C32E845AFD003D4DE9 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		AD90F2C52E845B05003D4DE9 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
@@ -127,6 +131,7 @@
 				11E748F52C9E4B1100AB1234 /* Preview Content */,
 				AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */,
 				ADFA7B752E86652D00816DAF /* NotificationManager.swift */,
+				AD4B5D4D2E8A723B0083787B /* AppLayout.swift */,
 			);
 			path = GymTracker;
 			sourceTree = "<group>";
@@ -182,6 +187,7 @@
 				AD03A7822E858B920005AE79 /* ProfileEditView.swift */,
 				AD03A7842E858BA40005AE79 /* ProfileView.swift */,
 				AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */,
+				AD4B5D4B2E8A6CBB0083787B /* ExercisePickerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -266,6 +272,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				11E7491E2C9E4D1500AB1234 /* SoundPlayer.swift in Sources */,
+				AD4B5D4E2E8A723B0083787B /* AppLayout.swift in Sources */,
 				11E7491A2C9E4C9E00AB1234 /* Color+Theme.swift in Sources */,
 				AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */,
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
@@ -279,6 +286,7 @@
 				AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */,
 				11E749092C9E4BB300AB1234 /* ExercisesView.swift in Sources */,
 				11E748F22C9E4B0F00AB1234 /* ContentView.swift in Sources */,
+				AD4B5D4C2E8A6CBB0083787B /* ExercisePickerView.swift in Sources */,
 				11E7490F2C9E4BDD00AB1234 /* AddWorkoutView.swift in Sources */,
 				11E749142C9E4C4B00AB1234 /* SettingsView.swift in Sources */,
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,

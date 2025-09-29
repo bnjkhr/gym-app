@@ -19,7 +19,7 @@ struct StatisticsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 20) {
+            LazyVStack(spacing: 12) {
                 GeometryReader { geo in
                     Color.clear
                         .preference(
@@ -47,7 +47,6 @@ struct StatisticsView: View {
                 RecentActivityView()
                     .environmentObject(workoutStore)
             }
-            .padding()
         }
         .toolbar(.hidden, for: .navigationBar)
         .onPreferenceChange(StatisticsScrollOffsetPreferenceKey.self) { newValue in
@@ -115,7 +114,7 @@ private struct ProgressOverviewCardView: View {
                 statBox(title: "Übungen", value: lastExerciseCountText, icon: "list.bullet", tint: .orange)
             }
         }
-        .padding()
+        .appEdgePadding()
     }
 
     private func statBox(title: String, value: String, icon: String, tint: Color) -> some View {
@@ -216,7 +215,7 @@ private struct ProgressDeltaInfoCardView: View {
                     .fill(Color(.secondarySystemGroupedBackground))
             )
         }
-        .padding()
+        .appEdgePadding()
     }
 }
 
@@ -271,7 +270,7 @@ struct MostUsedExercisesView: View {
                 }
             }
         }
-        .padding()
+        .appEdgePadding()
     }
 }
 
@@ -316,7 +315,7 @@ struct RecentActivityView: View {
                 }
             }
         }
-        .padding()
+        .appEdgePadding()
     }
 }
 
@@ -339,40 +338,40 @@ private struct DayStripView: View {
 
     var body: some View {
         Button(action: showCalendar) {
-            HStack(spacing: 10) {
+            HStack(spacing: 14) {
                 ForEach(last7Days, id: \.self) { day in
                     let cal = Calendar.current
                     let isToday = cal.isDateInToday(day)
                     let hasSession = sessionDays.contains(cal.startOfDay(for: day))
+
                     VStack(spacing: 6) {
-                        Text(day, format: .dateTime.weekday(.narrow))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
                         ZStack {
-                            Circle()
-                                .fill(isToday ? Color.mossGreen.opacity(0.18) : Color(.systemGray6))
-                                .frame(width: 36, height: 36)
-                            Text(String(cal.component(.day, from: day)))
-                                .font(.subheadline.weight(.semibold))
+                            if isToday {
+                                Circle()
+                                    .fill(Color(.systemGray5))
+                                    .frame(width: 28, height: 28)
+                            }
+                            Text(day, format: .dateTime.day())
+                                .font(.body.weight(isToday ? .bold : .regular))
                                 .foregroundStyle(.primary)
                         }
+                        Text(day, format: .dateTime.weekday(.abbreviated))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                         Circle()
-                            .fill(AppTheme.purple)
+                            .fill(AppTheme.darkPurple)
                             .frame(width: 6, height: 6)
                             .opacity(hasSession ? 1 : 0)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(.secondarySystemGroupedBackground))
-            )
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Kalender öffnen")
-        .padding(.horizontal)
+        .appEdgePadding()
     }
 }
 
@@ -434,7 +433,7 @@ private struct CalendarSessionsView: View {
                         Image(systemName: "chevron.right")
                     }
                 }
-                .padding(.horizontal)
+                .appEdgePadding()
 
                 // Weekday symbols (Mon-Sun)
                 HStack {
@@ -445,7 +444,7 @@ private struct CalendarSessionsView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .padding(.horizontal)
+                .appEdgePadding()
 
                 // Calendar grid
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
@@ -466,7 +465,7 @@ private struct CalendarSessionsView: View {
                                         .font(.subheadline.weight(.medium))
                                 }
                                 Circle()
-                                    .fill(AppTheme.purple)
+                                    .fill(AppTheme.darkPurple)
                                     .frame(width: 6, height: 6)
                                     .opacity(hasSession ? 1 : 0)
                             }
@@ -479,7 +478,7 @@ private struct CalendarSessionsView: View {
                         }
                     }
                 }
-                .padding(.horizontal)
+                .appEdgePadding()
 
                 // Sessions list for selected date
                 let daySessions = sessions(on: selectedDate)

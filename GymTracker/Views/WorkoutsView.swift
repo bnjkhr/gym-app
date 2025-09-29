@@ -37,8 +37,8 @@ struct WorkoutsView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(AppTheme.purple)
-                .padding(.horizontal, 16)
+                .tint(AppTheme.darkPurple)
+                .appEdgePadding()
                 .padding(.vertical, 12)
                 .padding(.bottom, 6)
             }

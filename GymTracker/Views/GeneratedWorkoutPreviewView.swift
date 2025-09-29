@@ -116,7 +116,7 @@ struct GeneratedWorkoutPreviewView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                .padding()
+                .appEdgePadding()
             }
             .navigationTitle("Workout Vorschau")
             .navigationBarTitleDisplayMode(.inline)

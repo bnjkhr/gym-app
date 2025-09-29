@@ -118,6 +118,7 @@ struct WorkoutWizardView: View {
                 }
                 .padding()
             }
+            .appEdgePadding()
             .navigationTitle("Workout-Assistent")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

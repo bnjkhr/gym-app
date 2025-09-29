@@ -12,6 +12,7 @@ struct EditWorkoutView: View {
     @State private var editableExercises: [EditableExercise]
     @State private var showingExercisePickerIndex: Int?
     @State private var editMode: EditMode = .inactive
+    @State private var showingExercisePicker = false
 
     init(workout: Binding<Workout>) {
         _workout = workout
@@ -108,24 +109,33 @@ struct EditWorkoutView: View {
                         .onDelete(perform: deleteExercises)
                         .onMove(perform: moveExercises)
                     }
-
-                    Button {
-                        addExercise()
-                    } label: {
-                        Label("Übung hinzufügen", systemImage: "plus")
-                    }
                 }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .navigationTitle("Workout bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: $showingExercisePicker) {
+                ExercisePickerView(
+                    isSelected: { exercise in
+                        isExerciseAlreadySelected(exercise)
+                    },
+                    onAdd: { exercise in
+                        addExerciseFromPicker(exercise)
+                    }
+                )
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Abbrechen") { dismiss() }
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     EditButton()
+                    Button {
+                        showingExercisePicker = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                     Button("Speichern") { saveChanges() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || editableExercises.isEmpty)
                 }
@@ -141,6 +151,28 @@ struct EditWorkoutView: View {
     private func addExercise() {
         let defaultExercise = workoutStore.exercises.first ?? workoutStore.exercise(named: "Neue Übung")
         editableExercises.append(EditableExercise(exercise: defaultExercise, setCount: 3, reps: 10, weight: 0))
+    }
+
+    private func isExerciseAlreadySelected(_ exercise: Exercise) -> Bool {
+        editableExercises.contains { $0.exercise.id == exercise.id }
+    }
+
+    private func addExerciseFromPicker(_ exercise: Exercise) {
+        guard !isExerciseAlreadySelected(exercise) else { return }
+        let metrics = workoutStore.lastMetrics(for: exercise)
+        let setCount = metrics?.setCount ?? 3
+        let weight = metrics?.weight ?? 0
+        let reps = 10
+        let sets = (0..<setCount).map { _ in
+            ExerciseSet(reps: reps, weight: weight, restTime: restTime, completed: false)
+        }
+        let newEditable = EditableExercise(
+            exercise: exercise,
+            setCount: setCount,
+            reps: reps,
+            weight: weight
+        )
+        editableExercises.append(newEditable)
     }
 
     private func deleteExercises(at offsets: IndexSet) {

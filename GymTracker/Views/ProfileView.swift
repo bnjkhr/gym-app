@@ -87,7 +87,7 @@ struct ProfileView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.mossGreen, Color.purple],
+                        colors: [Color.mossGreen, AppTheme.darkPurple],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -119,3 +119,4 @@ struct ProfileView: View {
         .environmentObject(WorkoutStore())
         .padding()
 }
+

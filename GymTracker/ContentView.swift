@@ -35,7 +35,7 @@ struct ContentView: View {
                                 endAction: { endActiveSession() }
                             )
                             .environmentObject(workoutStore)
-                            .padding(Edge.Set.horizontal, 16)
+                            .appEdgePadding()
                             .padding(Edge.Set.vertical, 12)
                             .padding(.bottom, 6)
                         }
@@ -76,7 +76,7 @@ struct ContentView: View {
                 Text("Einstellungen")
             }
         }
-        .tint(AppTheme.purple)
+        .tint(AppTheme.darkPurple)
         .task {
             NotificationManager.shared.requestAuthorization()
         }
@@ -225,7 +225,7 @@ struct WorkoutsHomeView: View {
                                         .underline()
                                 }
                                 .buttonStyle(.plain)
-                                .tint(AppTheme.purple)
+                                .tint(AppTheme.darkPurple)
                             }
                         }
                         Spacer()
@@ -246,6 +246,11 @@ struct WorkoutsHomeView: View {
                         .buttonStyle(.plain)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    WeekCalendarStrip(sessions: workoutStore.sessionHistory)
+                        .padding(.top, 4)
+
+                    WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
 
                     if let session = highlightSession {
                         SessionActionButton(
@@ -308,27 +313,13 @@ struct WorkoutsHomeView: View {
                         .padding(.horizontal, 8)
                     }
                 }
-                .padding(.horizontal, 16)
+                .appEdgePadding()
                 .padding(.top, 0)
 
-                // Divider line before WeeklySnapshotCard
                 Rectangle()
                     .fill(Color(.systemGray5))
                     .frame(height: 0.5)
-                    .padding(.horizontal, 16)
-
-                WeeklySnapshotCard(
-                    workoutsThisWeek: workoutsThisWeek,
-                    minutesThisWeek: minutesThisWeek,
-                    goal: workoutStore.weeklyGoal
-                )
-                .padding(.horizontal, 16)
-
-                // Divider line before RecentActivityCard
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .frame(height: 0.5)
-                    .padding(.horizontal, 16)
+                    .appEdgePadding()
 
                 RecentActivityCard(
                     workouts: Array(sortedSessions.prefix(5)),
@@ -338,7 +329,7 @@ struct WorkoutsHomeView: View {
                     enableActions: true,
                     showHeader: false
                 )
-                .padding(.horizontal, 16)
+                .appEdgePadding()
             }
             .coordinateSpace(name: "workoutsScroll")
             .transaction { tx in
@@ -746,7 +737,7 @@ struct WorkoutHighlightCard: View {
                     LinearGradient(
                         colors: [
                             Color.mossGreen,
-                            AppTheme.purple
+                            AppTheme.darkPurple
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -945,6 +936,92 @@ struct SectionHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
+    }
+}
+
+struct WeekCalendarStrip: View {
+    let sessions: [WorkoutSession]
+    @Environment(\.calendar) private var calendar
+
+    private var startOfWeek: Date {
+        let cal = calendar
+        let now = Date()
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
+        return cal.date(from: comps) ?? now
+    }
+
+    private var days: [Date] {
+        (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: startOfWeek) }
+    }
+
+    private func hasSession(on day: Date) -> Bool {
+        sessions.contains { calendar.isDate($0.date, inSameDayAs: day) }
+    }
+
+    private var today: Date { Date() }
+
+    var body: some View {
+        HStack(spacing: 18) {
+            ForEach(days, id: \.self) { day in
+                VStack(spacing: 6) {
+                    Text(day, format: .dateTime.day())
+                        .font(.headline.weight(calendar.isDate(day, inSameDayAs: today) ? .bold : .regular))
+                        .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.secondary)
+                    Text(day, format: .dateTime.weekday(.abbreviated))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Circle()
+                        .fill(hasSession(on: day) ? Color.mossGreen : Color.secondary.opacity(0.25))
+                        .frame(width: 6, height: 6)
+                        .opacity(hasSession(on: day) ? 1 : 0.6)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+}
+
+struct WeeklyProgressCard: View {
+    let workoutsThisWeek: Int
+    let goal: Int
+
+    private var progress: Double {
+        guard goal > 0 else { return 0 }
+        return min(Double(workoutsThisWeek) / Double(goal), 1.0)
+    }
+
+    var body: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Wochenfortschritt")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text("\(workoutsThisWeek) von \(max(goal, 1)) Workouts abgeschlossen")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            Spacer()
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.25), lineWidth: 6)
+                    .frame(width: 44, height: 44)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(Color.mossGreen, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.black.opacity(0.9))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
     }
 }
 

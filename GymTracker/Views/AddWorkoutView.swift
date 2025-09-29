@@ -92,16 +92,15 @@ struct AddWorkoutView: View {
                         }
                     }
 
-                    Menu {
-                        ForEach(workoutStore.exercises) { exercise in
-                            let alreadySelected = isExerciseSelected(exercise)
-                            Button {
+                    NavigationLink {
+                        ExercisePickerView(
+                            isSelected: { exercise in
+                                isExerciseSelected(exercise)
+                            },
+                            onAdd: { exercise in
                                 addExercise(exercise)
-                            } label: {
-                                Label(exercise.name, systemImage: alreadySelected ? "checkmark" : "plus")
                             }
-                            .disabled(alreadySelected)
-                        }
+                        )
                     } label: {
                         Label("Übung hinzufügen", systemImage: "plus.circle")
                     }
