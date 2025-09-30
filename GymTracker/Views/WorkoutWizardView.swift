@@ -1,10 +1,12 @@
 import SwiftUI
+import SwiftData
 
 struct WorkoutWizardView: View {
     var isManualStart: Bool = false
 
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var currentStep = 0
     @State private var experience: ExperienceLevel = .beginner
@@ -129,6 +131,9 @@ struct WorkoutWizardView: View {
                 }
             }
             .onAppear {
+                // Ensure WorkoutStore has access to ModelContext
+                workoutStore.modelContext = modelContext
+                
                 let profile = workoutStore.userProfile
                 var didPrefill = false
                 // Prefill goal from profile if different
@@ -281,10 +286,27 @@ struct WorkoutWizardView: View {
     }
 
     private func saveWorkout() {
-        guard var workout = generatedWorkout else { return }
+        guard var workout = generatedWorkout else { 
+            print("❌ Kein Workout zum Speichern vorhanden")
+            return 
+        }
+        
         workout.name = workoutName
-        workoutStore.addWorkout(workout)
-        dismiss()
+        
+        // Ensure ModelContext is set in WorkoutStore
+        if workoutStore.modelContext == nil {
+            workoutStore.modelContext = modelContext
+        }
+        
+        // Try to save the workout
+        do {
+            print("💾 Speichere Workout: \(workoutName)")
+            workoutStore.addWorkout(workout)
+            print("✅ Workout erfolgreich gespeichert: \(workoutName)")
+            dismiss()
+        } catch {
+            print("❌ Fehler beim Speichern des Workouts: \(error)")
+        }
     }
 }
 
@@ -314,6 +336,8 @@ struct SelectionCard: View {
                 }
             }
             .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

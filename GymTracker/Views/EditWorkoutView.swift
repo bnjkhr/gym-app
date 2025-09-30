@@ -1,10 +1,12 @@
 import SwiftUI
+import SwiftData
 
 struct EditWorkoutView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
-    @Binding var workout: Workout
+    let entity: WorkoutEntity
 
     @State private var name: String
     @State private var notes: String
@@ -14,13 +16,25 @@ struct EditWorkoutView: View {
     @State private var editMode: EditMode = .inactive
     @State private var showingExercisePicker = false
 
-    init(workout: Binding<Workout>) {
-        _workout = workout
-        let value = workout.wrappedValue
-        _name = State(initialValue: value.name)
-        _notes = State(initialValue: value.notes)
-        _restTime = State(initialValue: value.defaultRestTime)
-        _editableExercises = State(initialValue: value.exercises.map { EditableExercise(workoutExercise: $0) })
+    @Query(sort: [SortDescriptor(\ExerciseEntity.name, order: .forward)])
+    private var exerciseEntities: [ExerciseEntity]
+
+    init(entity: WorkoutEntity) {
+        self.entity = entity
+        _name = State(initialValue: entity.name)
+        _notes = State(initialValue: entity.notes)
+        _restTime = State(initialValue: entity.defaultRestTime)
+        let editable = entity.exercises.compactMap { we -> EditableExercise? in
+            guard let exId = we.exercise?.id else { return nil }
+            let firstSet = we.sets.first
+            return EditableExercise(
+                exerciseId: exId,
+                setCount: max(we.sets.count, 1),
+                reps: firstSet?.reps ?? 10,
+                weight: firstSet?.weight ?? 0
+            )
+        }
+        _editableExercises = State(initialValue: editable)
     }
 
     var body: some View {
@@ -47,14 +61,14 @@ struct EditWorkoutView: View {
                         ForEach($editableExercises) { $editable in
                             VStack(alignment: .leading, spacing: 12) {
                                 Menu {
-                                    ForEach(workoutStore.exercises) { exercise in
-                                        Button(exercise.name) {
-                                            editable.exercise = exercise
+                                    ForEach(exerciseEntities, id: \.id) { exEntity in
+                                        Button(exEntity.name) {
+                                            editable.exerciseId = exEntity.id
                                         }
                                     }
                                 } label: {
                                     HStack {
-                                        Text(editable.exercise.name)
+                                        Text(exerciseName(for: editable.exerciseId))
                                             .font(.headline)
                                         Spacer()
                                         Image(systemName: "chevron.down")
@@ -85,17 +99,17 @@ struct EditWorkoutView: View {
                                         Text("Gewicht (kg)")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
-                                        TextField("0", text: .init(
-                                            get: { editable.weight > 0 ? String(Int(editable.weight)) : "" },
+                                        TextField("0.0", text: .init(
+                                            get: { editable.weight > 0 ? String(format: "%.1f", editable.weight) : "" },
                                             set: { newValue in
-                                                if let weight = Int(newValue) {
-                                                    editable.weight = Double(max(0, min(weight, 999)))
+                                                if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                                    editable.weight = max(0, min(weight, 999.9))
                                                 } else if newValue.isEmpty {
                                                     editable.weight = 0
                                                 }
                                             }
                                         ))
-                                            .keyboardType(.numberPad)
+                                            .keyboardType(.decimalPad)
                                             .textFieldStyle(.plain)
                                             .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { obj in
                                                 if let textField = obj.object as? UITextField {
@@ -148,28 +162,19 @@ struct EditWorkoutView: View {
         Text("Übungen")
     }
 
-    private func addExercise() {
-        let defaultExercise = workoutStore.exercises.first ?? workoutStore.exercise(named: "Neue Übung")
-        editableExercises.append(EditableExercise(exercise: defaultExercise, setCount: 3, reps: 10, weight: 0))
-    }
-
     private func isExerciseAlreadySelected(_ exercise: Exercise) -> Bool {
-        editableExercises.contains { $0.exercise.id == exercise.id }
+        editableExercises.contains { $0.exerciseId == exercise.id }
     }
 
     private func addExerciseFromPicker(_ exercise: Exercise) {
         guard !isExerciseAlreadySelected(exercise) else { return }
-        let metrics = workoutStore.lastMetrics(for: exercise)
-        let setCount = metrics?.setCount ?? 3
-        let weight = metrics?.weight ?? 0
-        let reps = 10
-        let sets = (0..<setCount).map { _ in
-            ExerciseSet(reps: reps, weight: weight, restTime: restTime, completed: false)
-        }
+        let metricsReps = 10
+        let setCount = 3
+        let weight = 0.0
         let newEditable = EditableExercise(
-            exercise: exercise,
+            exerciseId: exercise.id,
             setCount: setCount,
-            reps: reps,
+            reps: metricsReps,
             weight: weight
         )
         editableExercises.append(newEditable)
@@ -184,35 +189,53 @@ struct EditWorkoutView: View {
     }
 
     private func saveChanges() {
-        workout.name = name
-        workout.notes = notes
-        workout.defaultRestTime = restTime
-        workout.exercises = editableExercises.map { editable in
-            let sets = (0..<editable.setCount).map { _ in
-                ExerciseSet(reps: editable.reps, weight: editable.weight, restTime: restTime)
+        entity.name = name
+        entity.notes = notes
+        entity.defaultRestTime = restTime
+        // Rebuild exercises array from editable state
+        // Resolve ExerciseEntity by id
+        let byId: [UUID: ExerciseEntity] = Dictionary(uniqueKeysWithValues: exerciseEntities.map { ($0.id, $0) })
+        var newExercises: [WorkoutExerciseEntity] = []
+        for editable in editableExercises {
+            guard let exEntity = byId[editable.exerciseId] else { continue }
+            let we = WorkoutExerciseEntity(exercise: exEntity)
+            for _ in 0..<editable.setCount {
+                let set = ExerciseSetEntity(
+                    id: UUID(),
+                    reps: editable.reps,
+                    weight: editable.weight,
+                    restTime: restTime,
+                    completed: false
+                )
+                we.sets.append(set)
             }
-            return WorkoutExercise(exercise: editable.exercise, sets: sets)
+            newExercises.append(we)
         }
-        workoutStore.updateWorkout(workout)
+        entity.exercises = newExercises
+        try? modelContext.save()
         dismiss()
+    }
+
+    private func exerciseName(for id: UUID) -> String {
+        exerciseEntities.first(where: { $0.id == id })?.name ?? "Übung"
     }
 
     private struct EditableExercise: Identifiable {
         let id = UUID()
-        var exercise: Exercise
+        var exerciseId: UUID
         var setCount: Int
         var reps: Int
         var weight: Double
 
-        init(exercise: Exercise, setCount: Int, reps: Int, weight: Double) {
-            self.exercise = exercise
+        init(exerciseId: UUID, setCount: Int, reps: Int, weight: Double) {
+            self.exerciseId = exerciseId
             self.setCount = setCount
             self.reps = reps
             self.weight = weight
         }
 
         init(workoutExercise: WorkoutExercise) {
-            self.exercise = workoutExercise.exercise
+            self.exerciseId = workoutExercise.exercise.id
             self.setCount = max(workoutExercise.sets.count, 1)
             self.reps = workoutExercise.sets.first?.reps ?? 10
             self.weight = workoutExercise.sets.first?.weight ?? 0
@@ -221,8 +244,17 @@ struct EditWorkoutView: View {
 }
 
 #Preview {
-    NavigationStack {
-        EditWorkoutView(workout: .constant(WorkoutStore().workouts.first!))
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self, ExerciseEntity.self, configurations: config)
+    let ex = ExerciseEntity(id: UUID(), name: "Bankdrücken")
+    let set = ExerciseSetEntity(id: UUID(), reps: 10, weight: 60, restTime: 90, completed: false)
+    let we = WorkoutExerciseEntity(id: UUID(), exercise: ex, sets: [set])
+    let workout = WorkoutEntity(id: UUID(), name: "Push Day", exercises: [we], defaultRestTime: 90)
+    container.mainContext.insert(workout)
+    return NavigationStack {
+        EditWorkoutView(entity: workout)
             .environmentObject(WorkoutStore())
     }
+    .modelContainer(container)
 }
+

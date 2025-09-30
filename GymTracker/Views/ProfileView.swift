@@ -5,34 +5,40 @@ struct ProfileView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingEditProfile = false
     
+    // This computed property will refresh when profileUpdateTrigger changes
+    private var profile: UserProfile {
+        let _ = workoutStore.profileUpdateTrigger // Creates dependency
+        return workoutStore.userProfile
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             // Profile Image and Basic Info
             HStack(spacing: 16) {
                 ProfileImageView(
-                    image: workoutStore.userProfile.profileImage,
+                    image: profile.profileImage,
                     size: 80
                 )
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    if !workoutStore.userProfile.name.isEmpty {
-                        Text(workoutStore.userProfile.name)
+                    if !profile.name.isEmpty {
+                        Text(profile.name)
                             .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
                     } else {
                         Text("Noch kein Name hinterlegt")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.white.opacity(0.8))
                     }
                     
-                    if let age = workoutStore.userProfile.age {
+                    if let age = profile.age {
                         Text("\(age) Jahre")
                             .font(.subheadline)
                             .foregroundStyle(.white)
                     }
                     
-                    if let weight = workoutStore.userProfile.weight {
+                    if let weight = profile.weight {
                         Text("\(weight.formatted(.number.precision(.fractionLength(0...1)))) kg")
                             .font(.subheadline)
                             .foregroundStyle(.white)
@@ -56,22 +62,23 @@ struct ProfileView: View {
             
             // Fitness Goal
             HStack(spacing: 12) {
-                Image(systemName: workoutStore.userProfile.goal.icon)
-                    .foregroundStyle(workoutStore.userProfile.goal.color)
+                Image(systemName: profile.goal.icon)
+                    .foregroundStyle(profile.goal.color)
                     .frame(width: 24, height: 24)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(workoutStore.userProfile.goal.displayName)
+                    Text(profile.goal.displayName)
                         .font(.headline)
                     
-                    Text(workoutStore.userProfile.goal.description)
+                    Text(profile.goal.description)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.black.opacity(0.6))
                         .multilineTextAlignment(.leading)
                 }
                 
                 Spacer()
             }
+            .foregroundStyle(.black)
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -79,7 +86,7 @@ struct ProfileView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(workoutStore.userProfile.goal.color.opacity(0.2), lineWidth: 1)
+                    .stroke(profile.goal.color.opacity(0.2), lineWidth: 1)
             )
         }
         .padding()
@@ -119,4 +126,3 @@ struct ProfileView: View {
         .environmentObject(WorkoutStore())
         .padding()
 }
-

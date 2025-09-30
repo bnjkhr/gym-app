@@ -1,11 +1,24 @@
 import SwiftUI
 import Charts
 import UserNotifications
+import SwiftData
+import HealthKit
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
+
+// Import the keyboard dismissal utilities
 
 struct ContentView: View {
     @StateObject private var workoutStore = WorkoutStore()
-    @State private var navigateToActiveWorkout = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.modelContext) private var modelContext
+    
+    @Query(sort: [
+        SortDescriptor(\WorkoutEntity.date, order: SortOrder.reverse)
+    ])
+    private var workoutEntities: [WorkoutEntity]
 
     var body: some View {
         TabView {
@@ -13,29 +26,18 @@ struct ContentView: View {
             NavigationStack {
                 WorkoutsHomeView()
                     .environmentObject(workoutStore)
-                    .navigationDestination(isPresented: $navigateToActiveWorkout) {
-                        if let activeWorkout = workoutStore.activeWorkout,
-                           let binding = workoutBinding(for: activeWorkout.id) {
-                            WorkoutDetailView(
-                                workout: binding,
-                                isActiveSession: true,
-                                onActiveSessionEnd: {
-                                    workoutStore.activeSessionID = nil
-                                    WorkoutLiveActivityController.shared.end()
-                                }
-                            )
-                            .environmentObject(workoutStore)
-                        }
-                    }
                     .safeAreaInset(edge: .bottom) {
                         if let activeWorkout = workoutStore.activeWorkout {
                             ActiveWorkoutBar(
                                 workout: activeWorkout,
-                                resumeAction: { resumeActiveWorkout() },
+                                resumeAction: { 
+                                    // Signal the WorkoutsHomeView to navigate to active workout
+                                    NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+                                },
                                 endAction: { endActiveSession() }
                             )
                             .environmentObject(workoutStore)
-                            .appEdgePadding()
+                            .padding(.horizontal, 16)
                             .padding(Edge.Set.vertical, 12)
                             .padding(.bottom, 6)
                         }
@@ -56,14 +58,14 @@ struct ContentView: View {
                 Text("Übungen")
             }
 
-            // Fortschritt Tab
+            // Insights Tab
             NavigationStack {
                 StatisticsView()
                     .environmentObject(workoutStore)
             }
             .tabItem {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                Text("Fortschritt")
+                Text("Insights")
             }
 
             // Einstellungen Tab
@@ -76,14 +78,18 @@ struct ContentView: View {
                 Text("Einstellungen")
             }
         }
-        .tint(AppTheme.darkPurple)
+        .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
+        // Entfernt: .dismissKeyboard() weil es Touch-Events blockiert
+        .environment(\.keyboardDismissalEnabled, true) // Enable keyboard dismissal globally
+        .onAppear {
+            // Set model context in WorkoutStore immediately when view appears
+            workoutStore.modelContext = modelContext
+        }
         .task {
             NotificationManager.shared.requestAuthorization()
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
-            case .background:
-                workoutStore.flushPersistence()
             case .active:
                 workoutStore.refreshRestFromWallClock()
             default:
@@ -94,21 +100,13 @@ struct ContentView: View {
             // Handle deep link from Live Activity to jump into the active workout
             guard url.scheme?.lowercased() == "workout" else { return }
             if url.host?.lowercased() == "active" {
-                if workoutStore.activeWorkout != nil {
-                    navigateToActiveWorkout = true
+                if let activeID = workoutStore.activeSessionID {
+                    // This will trigger navigation in WorkoutsHomeView when it sees the activeSessionID
+                    // Signal the WorkoutsHomeView to navigate to active workout
+                    NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
                 }
             }
         }
-    }
-
-    private func workoutBinding(for id: UUID) -> Binding<Workout>? {
-        guard let index = workoutStore.workouts.firstIndex(where: { $0.id == id }) else {
-            return nil
-        }
-        return Binding(
-            get: { workoutStore.workouts[index] },
-            set: { workoutStore.workouts[index] = $0 }
-        )
     }
 
     private func resumeActiveWorkout() {
@@ -116,16 +114,16 @@ struct ContentView: View {
             workoutStore.activeSessionID = nil
             return
         }
-        // Navigiere über die globale NavigationDestination
-        navigateToActiveWorkout = true
+        
+        // Navigate to the active workout using the WorkoutsHomeView selection
+        // This will be handled by the child view's selectedWorkout state
         WorkoutLiveActivityController.shared.start(workoutName: active.name)
     }
-
+    
     private func endActiveSession() {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
-        navigateToActiveWorkout = false
     }
 }
 
@@ -146,12 +144,24 @@ struct WorkoutsHomeView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
 
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [
+        SortDescriptor(\WorkoutEntity.date, order: SortOrder.reverse)
+    ])
+    private var workoutEntities: [WorkoutEntity]
+    
+    @Query(sort: [
+        SortDescriptor(\WorkoutSessionEntity.date, order: SortOrder.reverse)
+    ])
+    private var sessionEntities: [WorkoutSessionEntity]
+
     @State private var showingAddWorkout = false
     @State private var showingWorkoutWizard = false
     @State private var showingManualAdd = false
 
     @State private var showingProfileAlert = false
     @State private var showingProfileEditor = false
+    @State private var showingCalendar = false
 
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
@@ -169,167 +179,81 @@ struct WorkoutsHomeView: View {
     @State private var lastScrollOffset: CGFloat = 0
     @State private var didSetInitialOffset: Bool = false
 
+    // Explicit initializer to avoid private memberwise init caused by private nested types
+    init() {}
+
     private var weekStart: Date {
         let calendar = Calendar.current
         return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
     }
 
     private var workoutsThisWeek: Int {
-        workoutStore.sessionHistory.filter { $0.date >= weekStart }.count
+        displaySessions.filter { $0.date >= weekStart }.count
     }
 
     private var minutesThisWeek: Int {
-        workoutStore.sessionHistory
+        displaySessions
             .filter { $0.date >= weekStart }
             .compactMap { $0.duration }
             .map { Int($0 / 60) }
             .reduce(0, +)
     }
-    
-    private var sortedWorkouts: [Workout] {
-        workoutStore.workouts.stablePartition { $0.isFavorite }
+
+    private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise? {
+        // Use safe mapping with context to avoid touching potentially invalidated snapshots
+        return Exercise(entity: entity, in: modelContext)
     }
 
-    var body: some View {
-        ZStack {
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
+    private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout? {
+        // Use safe mapping with context to avoid touching potentially invalidated snapshots
+        return Workout(entity: entity, in: modelContext)
+    }
 
+    private var displayWorkouts: [Workout] {
+        workoutEntities.compactMap { mapWorkoutEntity($0) }
+    }
+    
+    private var displaySessions: [WorkoutSession] {
+        sessionEntities.map { WorkoutSession(entity: $0, in: modelContext) }
+    }
+
+    private var sortedWorkouts: [Workout] {
+        displayWorkouts
+    }
+
+    // Precomputed helpers to reduce type-checking complexity
+    private var highlightSession: WorkoutSession? {
+        displaySessions.first
+    }
+
+    private var storedRoutines: [Workout] {
+        displayWorkouts
+    }
+
+    private var mainScrollView: AnyView {
+        AnyView(
             ScrollView(showsIndicators: false) {
-                let sortedSessions = workoutStore.sessionHistory
-                    .sorted { $0.date > $1.date }
-                let highlightSession = sortedSessions.first
-                let storedRoutines = workoutStore.workouts
-
-                LazyVStack(spacing: 20, pinnedViews: []) {
-                    // Greeting header at top
-                    HStack(spacing: 12) {
-                        HStack(spacing: 8) {
-                            Text("Hey")
-                                .font(.largeTitle)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
-                            let trimmedName = workoutStore.userProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !trimmedName.isEmpty {
-                                Text("\(trimmedName)!")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                    .lineLimit(1)
-                            } else {
-                                Button {
-                                    showingProfileEditor = true
-                                } label: {
-                                    Text("Name!")
-                                        .font(.largeTitle)
-                                        .fontWeight(.bold)
-                                        .underline()
-                                }
-                                .buttonStyle(.plain)
-                                .tint(AppTheme.darkPurple)
-                            }
-                        }
-                        Spacer()
-                        Button {
-                            showingAddWorkout = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    Circle()
-                                        .fill(Color.mossGreen.opacity(0.8))
-                                        .shadow(color: Color.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
-                                )
-                                .opacity(0.95)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    WeekCalendarStrip(sessions: workoutStore.sessionHistory)
-                        .padding(.top, 4)
-
-                    WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
-
-                    if let session = highlightSession {
-                        SessionActionButton(
-                            session: session,
-                            startAction: { startSession($0) },
-                            detailAction: { viewSession($0) },
-                            deleteAction: { removeSession(id: $0.id) }
-                        ) {
-                            WorkoutHighlightCard(workout: Workout(session: session))
-                        }
-                    } else {
-                        EmptyStateCard(action: { showingAddWorkout = true })
-                    }
-
-                    SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
-                        .padding(.horizontal, 8)
-
-                    if storedRoutines.isEmpty {
-                        Text("Lege ein neues Workout an, um eine Routine zu speichern.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 8)
-                    } else {
-                        LazyVStack(spacing: 6) {
-                            ForEach(sortedWorkouts) { workout in
-                                // Star button outside menu, menu on row only
-                                HStack(spacing: 4) {
-                                    Button {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                            workoutStore.toggleFavorite(for: workout.id)
-                                        }
-                                    } label: {
-                                        Image(systemName: workout.isFavorite ? "heart.fill" : "heart")
-                                            .font(.system(size: 18, weight: .semibold))
-                                            .foregroundStyle(workout.isFavorite ? Color.mossGreen : Color.secondary)
-                                            .frame(width: 28, height: 28)
-                                            .contentTransition(.symbolEffect(.replace))
-                                            .symbolEffect(.bounce, value: workout.isFavorite)
-                                    }
-                                    .buttonStyle(.plain)
-
-                                    Menu {
-                                        Button("Workout starten") {
-                                            startWorkout(with: workout.id)
-                                        }
-                                        Button("Bearbeiten") {
-                                            editWorkout(id: workout.id)
-                                        }
-                                        Button("Löschen", role: .destructive) {
-                                            workoutToDelete = workout
-                                        }
-                                    } label: {
-                                        WorkoutRow(workout: workout)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                    }
+                LazyVStack(spacing: 20) {
+                    headerSection
+                    highlightSection(highlightSession: highlightSession)
+                    savedWorkoutsSection(storedRoutines: storedRoutines)
                 }
-                .appEdgePadding()
-                .padding(.top, 0)
+                .padding(.horizontal, 16)
 
                 Rectangle()
                     .fill(Color(.systemGray5))
                     .frame(height: 0.5)
-                    .appEdgePadding()
+                    .padding(.horizontal, 16)
 
                 RecentActivityCard(
-                    workouts: Array(sortedSessions.prefix(5)),
+                    workouts: Array(displaySessions.prefix(5)),
                     startAction: { startSession($0) },
                     detailAction: { viewSession($0) },
                     deleteSessionAction: { removeSession(id: $0.id) },
                     enableActions: true,
                     showHeader: false
                 )
-                .appEdgePadding()
+                .padding(.horizontal, 16)
             }
             .coordinateSpace(name: "workoutsScroll")
             .transaction { tx in
@@ -344,287 +268,507 @@ struct WorkoutsHomeView: View {
                         )
                 }
             )
-        }
-        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { newValue in
-            if !didSetInitialOffset {
-                lastScrollOffset = newValue
-                didSetInitialOffset = true
-                return
-            }
-            let delta = newValue - lastScrollOffset
-            if delta < -5 {
-                if !headerHidden { headerHidden = true }
-            } else if delta > 5 {
-                if headerHidden { headerHidden = false }
-            }
-            lastScrollOffset = newValue
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showingAddWorkout) {
-            NavigationStack {
-                VStack(spacing: 20) {
-                    Text("Neues Workout erstellen")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .padding(.top)
-
-                    VStack(spacing: 16) {
-                        Button {
-                            showingAddWorkout = false
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showingWorkoutWizard = true
-                            }
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Workout-Assistent")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    Text("Personalisiertes Workout basierend auf deinen Zielen")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.leading)
-                                }
-                                Spacer()
-                                Image(systemName: "wand.and.stars")
-                                    .font(.title2)
-                                    .foregroundColor(.blue)
-                            }
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.blue.opacity(0.1))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            showingAddWorkout = false
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showingManualAdd = true
-                            }
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Manuell erstellen")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    Text("Selbst zusammengestelltes Workout")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.leading)
-                                }
-                                Spacer()
-                                Image(systemName: "plus.circle")
-                                    .font(.title2)
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray6))
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            // Check if profile exists; if not, prompt
-                            let profile = workoutStore.userProfile
-                            let isProfileMissing = profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && profile.weight == nil && profile.birthDate == nil
-                            if isProfileMissing {
-                                showingProfileAlert = true
-                                return
-                            }
-                            let goal = profile.goal
-                            let freq = max(1, min(workoutStore.weeklyGoal, 7))
-                            let preferences = WorkoutPreferences(
-                                experience: profile.experience,
-                                goal: goal,
-                                frequency: freq,
-                                equipment: profile.equipment,
-                                duration: profile.preferredDuration
-                            )
-                            quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
-                            quickWorkoutName = "Mein \(goal.displayName) Workout"
-                            showingAddWorkout = false
-                        } label: {
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("1-Klick-Workout mit Profil erstellen")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    if workoutStore.userProfile.name.isEmpty && workoutStore.userProfile.weight == nil && workoutStore.userProfile.birthDate == nil {
-                                        Text("Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten.")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .multilineTextAlignment(.leading)
-                                    } else {
-                                        Text("Ziel und Trainingsfrequenz werden aus deinem Profil übernommen.")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .multilineTextAlignment(.leading)
-                                    }
-                                }
-                                Spacer()
-                                Image(systemName: "bolt.badge.a.fill")
-                                    .font(.title2)
-                                    .foregroundColor(Color.mossGreen)
-                            }
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.mossGreen.opacity(0.1))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.mossGreen.opacity(0.3), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding()
-
-                    Spacer()
-                }
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Abbrechen") {
-                            showingAddWorkout = false
-                        }
-                    }
-                }
-            }
-        }
-        .navigationDestination(item: $selectedWorkout) { selection in
-            if let binding = binding(for: selection.id) {
-                WorkoutDetailView(
-                    workout: binding,
-                    isActiveSession: workoutStore.activeSessionID == selection.id,
-                    onActiveSessionEnd: { endActiveSession() }
-                )
-                .environmentObject(workoutStore)
-            } else {
-                Text("Workout konnte nicht geladen werden")
-            }
-        }
-        .sheet(item: $editingWorkoutSelection) { selection in
-            if let binding = binding(for: selection.id) {
-                EditWorkoutView(workout: binding)
-                    .environmentObject(workoutStore)
-            } else {
-                Text("Workout konnte nicht geladen werden")
-            }
-        }
-        .onReceive(workoutStore.$workouts) { workouts in
-            guard let activeID = workoutStore.activeSessionID else { return }
-            if !workouts.contains(where: { $0.id == activeID }) {
-                workoutStore.activeSessionID = nil
-                WorkoutLiveActivityController.shared.end()
-            }
-        }
-        .sheet(item: $viewingSession) { session in
-            SessionDetailView(session: session)
-        }
-        .alert("Wirklich löschen?", isPresented: Binding(
-            get: { workoutToDelete != nil },
-            set: { if !$0 { workoutToDelete = nil } }
-        )) {
-            Button("Löschen", role: .destructive) {
-                if let id = workoutToDelete?.id {
-                    deleteWorkout(id: id)
-                }
-                workoutToDelete = nil
-            }
-            Button("Abbrechen", role: .cancel) {
-                workoutToDelete = nil
-            }
-        } message: {
-            Text("\(workoutToDelete?.name ?? "Workout") wird dauerhaft entfernt.")
-        }
-        .alert("Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert, presenting: missingTemplateName) { _ in
-            Button("OK", role: .cancel) { missingTemplateName = nil }
-        } message: { name in
-            Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
-        }
-        .alert("Bitte lege zuerst ein Profil an", isPresented: $showingProfileAlert) {
-            Button("Profil anlegen") { showingProfileEditor = true }
-            Button("Abbrechen", role: .cancel) {}
-        } message: {
-            Text("Damit wir dein 1‑Klick‑Workout optimal erstellen können.")
-        }
-        .sheet(isPresented: $showingProfileEditor) {
-            ProfileEditView()
-                .environmentObject(workoutStore)
-        }
-        .sheet(isPresented: $showingWorkoutWizard) {
-            WorkoutWizardView(isManualStart: true)
-                .environmentObject(workoutStore)
-        }
-        .sheet(isPresented: $showingManualAdd) {
-            AddWorkoutView()
-                .environmentObject(workoutStore)
-        }
-        .sheet(item: $quickGeneratedWorkout) { workout in
-            GeneratedWorkoutPreviewView(
-                workout: workout,
-                workoutName: $quickWorkoutName,
-                usedProfileInfo: true,
-                onSave: {
-                    if var w = quickGeneratedWorkout {
-                        w.name = quickWorkoutName
-                        workoutStore.addWorkout(w)
-                    }
-                    quickGeneratedWorkout = nil
-                },
-                onDismiss: { quickGeneratedWorkout = nil }
-            )
-            .environmentObject(workoutStore)
-        }
-    }
-
-    private func binding(for id: UUID) -> Binding<Workout>? {
-        guard let index = workoutStore.workouts.firstIndex(where: { $0.id == id }) else {
-            return nil
-        }
-        return binding(index: index)
-    }
-
-    private func binding(index: Int) -> Binding<Workout> {
-        Binding(
-            get: { workoutStore.workouts[index] },
-            set: { workoutStore.workouts[index] = $0 }
         )
     }
 
-    private func startWorkout(with id: UUID) {
-        guard let binding = binding(for: id) else { return }
-        var workout = binding.wrappedValue
+    var body: some View {
+        rootView
+    }
 
-        // Wenn bereits aktiv: nicht zurücksetzen, nur in Details navigieren
-        if workoutStore.activeSessionID == id {
-            selectedWorkout = WorkoutSelection(id: id)
-            WorkoutLiveActivityController.shared.start(workoutName: workout.name)
+    private func handleScrollOffsetChange(_ newValue: CGFloat) {
+        if !didSetInitialOffset {
+            lastScrollOffset = newValue
+            didSetInitialOffset = true
             return
         }
+        let delta = newValue - lastScrollOffset
+        if delta < -5 {
+            if !headerHidden { headerHidden = true }
+        } else if delta > 5 {
+            if headerHidden { headerHidden = false }
+        }
+        lastScrollOffset = newValue
+    }
 
-        // Neu starten: Zeitstempel setzen und Sätze zurücksetzen
-        workout.date = Date()
-        workout.duration = nil
-        for exerciseIndex in workout.exercises.indices {
-            for setIndex in workout.exercises[exerciseIndex].sets.indices {
-                workout.exercises[exerciseIndex].sets[setIndex].completed = false
+    private var rootView: AnyView {
+        let baseView = createBaseView()
+        let viewWithToolbars = addToolbars(to: baseView)
+        let viewWithSheets = addSheets(to: viewWithToolbars)
+        let viewWithNavigationDestinations = addNavigationDestinations(to: viewWithSheets)
+        let viewWithAlerts = addAlerts(to: viewWithNavigationDestinations)
+        
+        return AnyView(viewWithAlerts)
+    }
+    
+    private func createBaseView() -> some View {
+        ZStack {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+            
+            mainScrollView
+        }
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { newValue in
+            handleScrollOffsetChange(newValue)
+        }
+    }
+    
+    private func addToolbars(to view: some View) -> some View {
+        view
+            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                // no SwiftData toggle toolbar item anymore
+            }
+    }
+    
+    private func addSheets(to view: some View) -> some View {
+        view
+            .sheet(isPresented: $showingAddWorkout) {
+                createAddWorkoutSheet()
+            }
+            .sheet(isPresented: $showingProfileEditor) {
+                ProfileEditView()
+                    .environmentObject(workoutStore)
+            }
+            .sheet(isPresented: $showingWorkoutWizard) {
+                WorkoutWizardView(isManualStart: true)
+                    .environmentObject(workoutStore)
+            }
+            .sheet(isPresented: $showingCalendar) {
+                CalendarSessionsView()
+            }
+            .sheet(isPresented: $showingManualAdd) {
+                AddWorkoutView()
+                    .environmentObject(workoutStore)
+            }
+            .sheet(item: $quickGeneratedWorkout) { workout in
+                GeneratedWorkoutPreviewView(
+                    workout: workout,
+                    workoutName: $quickWorkoutName,
+                    usedProfileInfo: true,
+                    onSave: {
+                        if var w = quickGeneratedWorkout {
+                            w.name = quickWorkoutName
+                            
+                            // Ensure WorkoutStore has ModelContext
+                            if workoutStore.modelContext == nil {
+                                workoutStore.modelContext = modelContext
+                            }
+                            
+                            // Use WorkoutStore's addWorkout method for consistency
+                            workoutStore.addWorkout(w)
+                        }
+                        quickGeneratedWorkout = nil
+                    },
+                    onDismiss: { quickGeneratedWorkout = nil }
+                )
+                .environmentObject(workoutStore)
+            }
+            .sheet(item: $viewingSession) { session in
+                SessionDetailView(session: session)
+            }
+            .sheet(item: $editingWorkoutSelection) { selection in
+                if let entity = workoutEntities.first(where: { $0.id == selection.id }) {
+                    EditWorkoutView(entity: entity)
+                        .environmentObject(workoutStore)
+                } else {
+                    Text("Workout konnte nicht geladen werden")
+                }
+            }
+    }
+    
+    private func addNavigationDestinations(to view: some View) -> some View {
+        view
+            .navigationDestination(item: $selectedWorkout) { selection in
+                // Try to find the entity first in Query
+                if let entity = workoutEntities.first(where: { $0.id == selection.id }) {
+                    WorkoutDetailView(
+                        entity: entity,
+                        isActiveSession: workoutStore.activeSessionID == selection.id,
+                        onActiveSessionEnd: { 
+                            endActiveSession() 
+                            // Navigation wird automatisch durch dismiss() gehandhabt
+                        }
+                    )
+                    .environmentObject(workoutStore)
+                } else {
+                    // Fallback: try direct fetch from modelContext
+                    let selectionId = selection.id
+                    let descriptor = FetchDescriptor<WorkoutEntity>(
+                        predicate: #Predicate<WorkoutEntity> { entity in
+                            entity.id == selectionId
+                        }
+                    )
+                    if let entity = try? modelContext.fetch(descriptor).first {
+                        WorkoutDetailView(
+                            entity: entity,
+                            isActiveSession: workoutStore.activeSessionID == selection.id,
+                            onActiveSessionEnd: { 
+                                endActiveSession() 
+                                // Navigation wird automatisch durch dismiss() gehandhabt
+                            }
+                        )
+                        .environmentObject(workoutStore)
+                    } else {
+                        ErrorWorkoutView()
+                    }
+                }
+            }
+            .onReceive(workoutStore.$activeSessionID) { activeID in
+                guard let activeID else { return }
+                let workoutExists = workoutEntities.contains { $0.id == activeID }
+                if !workoutExists {
+                    // Try direct fetch before giving up
+                    let activeSessionId = activeID
+                    let descriptor = FetchDescriptor<WorkoutEntity>(
+                        predicate: #Predicate<WorkoutEntity> { entity in
+                            entity.id == activeSessionId
+                        }
+                    )
+                    if (try? modelContext.fetch(descriptor).first) == nil {
+                        workoutStore.activeSessionID = nil
+                        WorkoutLiveActivityController.shared.end()
+                    }
+                } else {
+                    // Auto-navigate to active workout if we don't have a selection yet
+                    if selectedWorkout == nil {
+                        selectedWorkout = WorkoutSelection(id: activeID)
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .resumeActiveWorkout)) { _ in
+                if let activeID = workoutStore.activeSessionID {
+                    selectedWorkout = WorkoutSelection(id: activeID)
+                    if let entity = workoutEntities.first(where: { $0.id == activeID }) {
+                        WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+                    }
+                }
+            }
+    }
+    
+    private func addAlerts(to view: some View) -> some View {
+        view
+            .alert("Wirklich löschen?", isPresented: Binding(
+                get: { workoutToDelete != nil },
+                set: { if !$0 { workoutToDelete = nil } }
+            )) {
+                Button("Löschen", role: .destructive) {
+                    if let id = workoutToDelete?.id {
+                        deleteWorkout(id: id)
+                    }
+                    workoutToDelete = nil
+                }
+                Button("Abbrechen", role: .cancel) {
+                    workoutToDelete = nil
+                }
+            } message: {
+                Text("\(workoutToDelete?.name ?? "Workout") wird dauerhaft entfernt.")
+            }
+            .alert("Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert, presenting: missingTemplateName) { _ in
+                Button("OK", role: .cancel) { missingTemplateName = nil }
+            } message: { name in
+                Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
+            }
+            .alert("Bitte lege zuerst ein Profil an", isPresented: $showingProfileAlert) {
+                Button("Profil anlegen") { showingProfileEditor = true }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Damit wir dein 1‑Klick‑Workout optimal erstellen können.")
+            }
+    }
+    
+    private func createAddWorkoutSheet() -> some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Neues Workout erstellen")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .padding(.top)
+
+                VStack(spacing: 16) {
+                    createWorkoutAssistantButton()
+                    createManualWorkoutButton()
+                    createQuickWorkoutButton()
+                }
+                .padding()
+
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Abbrechen") {
+                        showingAddWorkout = false
+                    }
+                }
             }
         }
-        binding.wrappedValue = workout
+    }
+    
+    private func createWorkoutAssistantButton() -> some View {
+        Button {
+            showingAddWorkout = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showingWorkoutWizard = true
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Workout-Assistent")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text("Personalisiertes Workout basierend auf deinen Zielen")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "wand.and.stars")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.blue.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func createManualWorkoutButton() -> some View {
+        Button {
+            showingAddWorkout = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showingManualAdd = true
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Manuell erstellen")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text("Selbst zusammengestelltes Workout")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "plus.circle")
+                    .font(.title2)
+                    .foregroundColor(.gray)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray6))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func createQuickWorkoutButton() -> some View {
+        Button {
+            let profile = workoutStore.userProfile
+            let isProfileMissing = profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && profile.weight == nil && profile.birthDate == nil
+            if isProfileMissing {
+                showingProfileAlert = true
+                return
+            }
+            let goal = profile.goal
+            let freq = max(1, min(workoutStore.weeklyGoal, 7))
+            let preferences = WorkoutPreferences(
+                experience: profile.experience,
+                goal: goal,
+                frequency: freq,
+                equipment: profile.equipment,
+                duration: profile.preferredDuration
+            )
+            quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
+            quickWorkoutName = "Mein \(goal.displayName) Workout"
+            showingAddWorkout = false
+        } label: {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("1-Klick-Workout mit Profil erstellen")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    if workoutStore.userProfile.name.isEmpty && workoutStore.userProfile.weight == nil && workoutStore.userProfile.birthDate == nil {
+                        Text("Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.leading)
+                    } else {
+                        Text("Ziel und Trainingsfrequenz werden aus deinem Profil übernommen.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                Spacer()
+                Image(systemName: "bolt.badge.a.fill")
+                    .font(.title2)
+                    .foregroundColor(colorScheme == .dark ? Color.green : Color.mossGreen)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
 
-        selectedWorkout = WorkoutSelection(id: id)
-        workoutStore.activeSessionID = id
-        WorkoutLiveActivityController.shared.start(workoutName: workout.name)
+    @ViewBuilder
+    private var headerSection: some View {
+        Group {
+            // Greeting header at top
+            HStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Text("Hey")
+                        .font(.largeTitle)
+                        .fontWeight(.heavy)
+                        .foregroundStyle(.secondary)
+                    let trimmedName = workoutStore.userProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmedName.isEmpty {
+                        Text("\(trimmedName)!")
+                            .font(.largeTitle)
+                            .fontWeight(.heavy)
+                            .lineLimit(1)
+                    } else {
+                        Button {
+                            showingProfileEditor = true
+                        } label: {
+                            Text("Name!")
+                                .font(.largeTitle)
+                                .fontWeight(.heavy)
+                                .underline()
+                        }
+                        .buttonStyle(.plain)
+                        .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
+                    }
+                }
+                Spacer()
+
+                Button {
+                    showingAddWorkout = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.8))
+                                .shadow(color: (colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), radius: 8, x: 0, y: 4)
+                        )
+                        .opacity(0.95)
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            WeekCalendarStrip(sessions: displaySessions, showCalendar: { showingCalendar = true })
+                .padding(.top, 4)
+
+            WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
+        }
+    }
+
+    @ViewBuilder
+    private func highlightSection(highlightSession: WorkoutSession?) -> some View {
+        Group {
+            if let session = highlightSession {
+                SessionActionButton(
+                    session: session,
+                    startAction: { startSession($0) },
+                    detailAction: { viewSession($0) },
+                    deleteAction: { removeSession(id: $0.id) }
+                ) {
+                    WorkoutHighlightCard(workout: Workout(session: session))
+                }
+            } else {
+                EmptyStateCard(action: { showingAddWorkout = true })
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func savedWorkoutsSection(storedRoutines: [Workout]) -> some View {
+        Group {
+            SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
+
+            if storedRoutines.isEmpty {
+                Text("Lege ein neues Workout an, um eine Routine zu speichern.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 8),
+                        GridItem(.flexible(), spacing: 8)
+                    ],
+                    spacing: 12
+                ) {
+                    ForEach(sortedWorkouts) { workout in
+                        Menu {
+                            Button("Workout starten") {
+                                startWorkout(with: workout.id)
+                            }
+                            Button("Bearbeiten") {
+                                editWorkout(id: workout.id)
+                            }
+                            Button("Löschen", role: .destructive) {
+                                workoutToDelete = workout
+                            }
+                        } label: {
+                            WorkoutTile(workout: workout)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+
+
+    private func startWorkout(with id: UUID) {
+        // First, make sure the modelContext is saved and synced
+        do {
+            try modelContext.save()
+        } catch {
+            // Error handled silently
+        }
+        
+        // Use the WorkoutStore's startSession method which handles the reset logic
+        if workoutStore.activeSessionID == id {
+            // If already active: just navigate to details
+            selectedWorkout = WorkoutSelection(id: id)
+            if let entity = workoutEntities.first(where: { $0.id == id }) {
+                WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+            }
+            return
+        }
+        
+        // Start new session
+        workoutStore.startSession(for: id)
+        if workoutStore.activeSessionID == id {
+            selectedWorkout = WorkoutSelection(id: id)
+            if let entity = workoutEntities.first(where: { $0.id == id }) {
+                WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+            }
+        } else {
+            // Error handled silently
+        }
     }
 
     private func showWorkoutDetails(id: UUID) {
@@ -637,23 +781,27 @@ struct WorkoutsHomeView: View {
     }
 
     private func deleteWorkout(id: UUID) {
-        if let index = workoutStore.workouts.firstIndex(where: { $0.id == id }) {
-            workoutStore.deleteWorkout(at: IndexSet(integer: index))
-            if selectedWorkout?.id == id {
-                selectedWorkout = nil
-            }
-            if workoutStore.activeSessionID == id {
-                workoutStore.activeSessionID = nil
-                WorkoutLiveActivityController.shared.end()
-            }
-            if editingWorkoutSelection?.id == id {
-                editingWorkoutSelection = nil
-            }
+        if let entity = workoutEntities.first(where: { $0.id == id }) {
+            modelContext.delete(entity)
+            try? modelContext.save()
+        }
+        if selectedWorkout?.id == id { selectedWorkout = nil }
+        if workoutStore.activeSessionID == id {
+            workoutStore.activeSessionID = nil
+            WorkoutLiveActivityController.shared.end()
+        }
+        if editingWorkoutSelection?.id == id {
+            editingWorkoutSelection = nil
         }
     }
 
     private func removeSession(id: UUID) {
-        workoutStore.removeSession(with: id)
+        // Delete from SwiftData history
+        if let entity = sessionEntities.first(where: { $0.id == id }) {
+            modelContext.delete(entity)
+            try? modelContext.save()
+        }
+        // Clear active session if needed
         if workoutStore.activeSessionID == id {
             workoutStore.activeSessionID = nil
             WorkoutLiveActivityController.shared.end()
@@ -665,7 +813,8 @@ struct WorkoutsHomeView: View {
 
     private func startSession(_ session: WorkoutSession) {
         viewingSession = nil
-        if let templateId = session.templateId, binding(for: templateId) != nil {
+        if let templateId = session.templateId,
+           workoutEntities.contains(where: { $0.id == templateId }) {
             missingTemplateName = nil
             startWorkout(with: templateId)
         } else {
@@ -677,7 +826,7 @@ struct WorkoutsHomeView: View {
     private func viewSession(_ session: WorkoutSession) {
         viewingSession = session
     }
-
+    
     private func endActiveSession() {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
@@ -736,8 +885,8 @@ struct WorkoutHighlightCard: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.mossGreen,
-                            AppTheme.darkPurple
+                            (colorScheme == .dark ? Color.green : Color.mossGreen),
+                            (colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -754,10 +903,6 @@ struct EmptyStateCard: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "sparkles")
-                .font(.largeTitle)
-                .fontWeight(.semibold)
-
             Text("Starte deine Trainingsreise")
                 .font(.title2)
                 .fontWeight(.bold)
@@ -898,7 +1043,7 @@ struct ActiveWorkoutBar: View {
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color.mossGreen)
+            .tint(colorScheme == .dark ? Color.green : Color.mossGreen)
 
             Button(role: .destructive, action: endAction) {
                 Image(systemName: "xmark")
@@ -941,7 +1086,9 @@ struct SectionHeader: View {
 
 struct WeekCalendarStrip: View {
     let sessions: [WorkoutSession]
+    let showCalendar: () -> Void
     @Environment(\.calendar) private var calendar
+    @Environment(\.colorScheme) private var colorScheme
 
     private var startOfWeek: Date {
         let cal = calendar
@@ -959,32 +1106,52 @@ struct WeekCalendarStrip: View {
     }
 
     private var today: Date { Date() }
+    
+    // Deutsche Wochentag-Abkürzungen
+    private func germanWeekdayAbbreviation(for date: Date) -> String {
+        let weekday = calendar.component(.weekday, from: date)
+        switch weekday {
+        case 1: return "So"  // Sonntag
+        case 2: return "Mo"  // Montag
+        case 3: return "Di"  // Dienstag
+        case 4: return "Mi"  // Mittwoch
+        case 5: return "Do"  // Donnerstag
+        case 6: return "Fr"  // Freitag
+        case 7: return "Sa"  // Samstag
+        default: return "?"
+        }
+    }
 
     var body: some View {
-        HStack(spacing: 18) {
-            ForEach(days, id: \.self) { day in
-                VStack(spacing: 6) {
-                    Text(day, format: .dateTime.day())
-                        .font(.headline.weight(calendar.isDate(day, inSameDayAs: today) ? .bold : .regular))
-                        .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.secondary)
-                    Text(day, format: .dateTime.weekday(.abbreviated))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Circle()
-                        .fill(hasSession(on: day) ? Color.mossGreen : Color.secondary.opacity(0.25))
-                        .frame(width: 6, height: 6)
-                        .opacity(hasSession(on: day) ? 1 : 0.6)
+        Button(action: showCalendar) {
+            HStack(spacing: 18) {
+                ForEach(days, id: \.self) { day in
+                    VStack(spacing: 6) {
+                        Text(day, format: .dateTime.day())
+                            .font(.headline.weight(calendar.isDate(day, inSameDayAs: today) ? .bold : .regular))
+                            .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.7))
+                        Text(germanWeekdayAbbreviation(for: day))
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.6))
+                        Circle()
+                            .fill(hasSession(on: day) ? (colorScheme == .dark ? Color.green : Color.mossGreen) : Color.secondary.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                            .opacity(hasSession(on: day) ? 1 : 0.8)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
             }
+            .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 8)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Kalender öffnen")
     }
 }
 
 struct WeeklyProgressCard: View {
     let workoutsThisWeek: Int
     let goal: Int
+    @Environment(\.colorScheme) private var colorScheme
 
     private var progress: Double {
         guard goal > 0 else { return 0 }
@@ -1008,7 +1175,7 @@ struct WeeklyProgressCard: View {
                     .frame(width: 44, height: 44)
                 Circle()
                     .trim(from: 0, to: progress)
-                    .stroke(Color.mossGreen, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .stroke(colorScheme == .dark ? Color.green : Color.mossGreen, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .frame(width: 44, height: 44)
             }
@@ -1095,6 +1262,49 @@ struct WeeklySnapshotCard: View {
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.secondarySystemBackground))
+        )
+    }
+}
+
+struct WorkoutTile: View {
+    let workout: Workout
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workout.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    Text("\(workout.exercises.count) Übungen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+            }
+            
+            // Menu dots at bottom right
+            HStack {
+                Spacer()
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
         )
     }
 }
@@ -1223,6 +1433,164 @@ struct SessionDetailView: View {
     }
 }
 
+// MARK: - Calendar Sessions Sheet
+private struct CalendarSessionsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+
+    @State private var displayedMonth: Date = Date()
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+
+    private var monthTitle: String {
+        displayedMonth.formatted(.dateTime.month(.wide).year())
+    }
+
+    private var daysInMonth: [Date] {
+        let cal = Calendar.current
+        guard let range = cal.range(of: .day, in: .month, for: displayedMonth),
+              let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+        return range.compactMap { day -> Date? in
+            cal.date(byAdding: .day, value: day - 1, to: monthStart)
+        }
+    }
+
+    private var gridDays: [Date?] {
+        let cal = Calendar.current
+        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+        let weekday = cal.component(.weekday, from: monthStart) // 1=Sun...
+        let leading = (weekday + 5) % 7 // convert to Monday=0 leading count
+        let leadingPlaceholders: [Date?] = Array(repeating: nil, count: leading)
+        return leadingPlaceholders + daysInMonth.map { Optional($0) }
+    }
+
+    private var sessionDays: Set<Date> {
+        let cal = Calendar.current
+        return Set(sessionEntities.map { cal.startOfDay(for: $0.date) })
+    }
+
+    private func sessions(on date: Date) -> [WorkoutSession] {
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: date)
+        let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
+        return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                // Header with month navigation
+                HStack {
+                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                    Spacer()
+                    Text(monthTitle)
+                        .font(.headline)
+                    Spacer()
+                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth } label: {
+                        Image(systemName: "chevron.right")
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Weekday symbols (Mon-Sun in German)
+                HStack {
+                    ForEach(["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], id: \.self) { d in
+                        Text(d)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Calendar grid
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                    ForEach(gridDays.indices, id: \.self) { idx in
+                        if let day = gridDays[idx] {
+                            let cal = Calendar.current
+                            let isToday = cal.isDateInToday(day)
+                            let isSelected = cal.isDate(cal.startOfDay(for: day), inSameDayAs: selectedDate)
+                            let hasSession = sessionDays.contains(cal.startOfDay(for: day))
+                            VStack(spacing: 6) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            isSelected ? Color.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                        )
+                                        .frame(width: 36, height: 36)
+                                    Text(String(cal.component(.day, from: day)))
+                                        .font(.subheadline.weight(.medium))
+                                }
+                                Circle()
+                                    .fill(AppTheme.darkPurple)
+                                    .frame(width: 6, height: 6)
+                                    .opacity(hasSession ? 1 : 0)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedDate = cal.startOfDay(for: day)
+                            }
+                        } else {
+                            Color.clear.frame(height: 44)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Sessions list for selected date
+                let daySessions = sessions(on: selectedDate)
+                if daySessions.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("Keine Trainings an diesem Tag")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                } else {
+                    List {
+                        ForEach(daySessions) { session in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(session.name)
+                                    .font(.subheadline.weight(.semibold))
+                                HStack(spacing: 8) {
+                                    Text(session.date, style: .time)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("• \(session.exercises.count) Übungen")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .navigationTitle("Kalender")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schließen") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Date Helpers
+private extension Calendar {
+    func isDate(_ date1: Date, inSameDayAs startOfDay: Date) -> Bool {
+        isDate(date1, equalTo: startOfDay, toGranularity: .day)
+    }
+}
+
 private extension Array {
     func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
         var first: [Element] = []
@@ -1238,6 +1606,37 @@ private extension Array {
     }
 }
 
+private extension View {
+    func erasedToAnyView() -> AnyView { AnyView(self) }
+}
+
+// MARK: - Error View
+struct ErrorWorkoutView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 50))
+                .foregroundColor(.orange)
+            Text("Workout nicht verfügbar")
+                .font(.headline)
+            Text("Das Workout konnte nicht geladen werden.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Button("Zurück") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+    }
+}
+
 #Preview {
     ContentView()
+}
+
+extension Notification.Name {
+    static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
 }

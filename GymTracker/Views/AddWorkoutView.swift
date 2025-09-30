@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct AddWorkoutView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var workoutName = ""
     @State private var creationDate = Date()
@@ -124,6 +126,10 @@ struct AddWorkoutView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle("Neues Workout")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Ensure WorkoutStore has access to ModelContext
+                workoutStore.modelContext = modelContext
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Abbrechen") {
@@ -142,24 +148,63 @@ struct AddWorkoutView: View {
     }
 
     private func saveWorkout() {
-        let workoutExercises = selectedExercises.map { selection in
-            let sets = (0..<selection.setCount).map { _ in
-                ExerciseSet(reps: 0, weight: selection.weight, restTime: restTimeSeconds)
-            }
+        // Ensure we have or create ExerciseEntity for each selected exercise
+        // Fetch existing exercises by id
+        let fetch = FetchDescriptor<ExerciseEntity>()
+        let allExercises = (try? modelContext.fetch(fetch)) ?? []
+        var byId: [UUID: ExerciseEntity] = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0) })
 
-            return WorkoutExercise(exercise: selection.exercise, sets: sets)
+        var workoutExerciseEntities: [WorkoutExerciseEntity] = []
+        for selection in selectedExercises {
+            // Resolve or create ExerciseEntity
+            let exId = selection.exercise.id
+            let exerciseEntity: ExerciseEntity = byId[exId] ?? {
+                let e = ExerciseEntity(
+                    id: exId,
+                    name: selection.exercise.name,
+                    muscleGroupsRaw: selection.exercise.muscleGroups.map { $0.rawValue },
+                    descriptionText: selection.exercise.description,
+                    instructions: selection.exercise.instructions,
+                    createdAt: selection.exercise.createdAt
+                )
+                byId[exId] = e
+                modelContext.insert(e)
+                return e
+            }()
+
+            let we = WorkoutExerciseEntity(exercise: exerciseEntity)
+            for _ in 0..<selection.setCount {
+                let set = ExerciseSetEntity(
+                    id: UUID(),
+                    reps: 0,
+                    weight: selection.weight,
+                    restTime: restTimeSeconds,
+                    completed: false
+                )
+                we.sets.append(set)
+            }
+            workoutExerciseEntities.append(we)
         }
 
-        let workout = Workout(
+        let workoutEntity = WorkoutEntity(
+            id: UUID(),
             name: workoutName,
             date: creationDate,
-            exercises: workoutExercises,
+            exercises: workoutExerciseEntities,
             defaultRestTime: restTimeSeconds,
             duration: nil,
-            notes: notes
+            notes: notes,
+            isFavorite: false
         )
-
-        workoutStore.addWorkout(workout)
+        modelContext.insert(workoutEntity)
+        
+        do {
+            try modelContext.save()
+            print("✅ Neues Workout erfolgreich gespeichert: \(workoutName)")
+        } catch {
+            print("❌ Fehler beim Speichern des neuen Workouts: \(error)")
+        }
+        
         dismiss()
     }
 
@@ -210,6 +255,9 @@ struct AddWorkoutView: View {
 }
 
 #Preview {
-    AddWorkoutView()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self, ExerciseEntity.self, configurations: config)
+    return AddWorkoutView()
         .environmentObject(WorkoutStore())
+        .modelContainer(container)
 }

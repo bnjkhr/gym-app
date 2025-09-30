@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ExercisesView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
@@ -10,20 +11,64 @@ struct ExercisesView: View {
     @State private var pendingDeletion: [Exercise] = []
     @State private var showingDeleteAlert = false
     @State private var selectedGroups: Set<MuscleGroup> = []
+    @State private var selectedEquipment: Set<EquipmentType> = []
+    @State private var showingFilterSheet = false
+
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\ExerciseEntity.name, order: .forward)])
+    private var exerciseEntities: [ExerciseEntity]
+
+    private var sourceExercises: [Exercise] {
+        // Fresh fetch to avoid touching potentially invalid @Query snapshots
+        let descriptor = FetchDescriptor<ExerciseEntity>(sortBy: [SortDescriptor(\.name, order: .forward)])
+        
+        do {
+            let freshEntities = try modelContext.fetch(descriptor)
+            return freshEntities.compactMap { entity in
+                // Use safe access to muscle groups and equipment type
+                let groups: [MuscleGroup] = entity.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+                let equipmentType = EquipmentType(rawValue: entity.equipmentTypeRaw) ?? .mixed
+                return Exercise(
+                    id: entity.id,
+                    name: entity.name,
+                    muscleGroups: groups,
+                    equipmentType: equipmentType,
+                    description: entity.descriptionText,
+                    instructions: entity.instructions,
+                    createdAt: entity.createdAt
+                )
+            }
+        } catch {
+            print("❌ Fehler beim Laden der Übungen: \(error)")
+            return []
+        }
+    }
 
     var filteredExercises: [Exercise] {
         let query = debouncedSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var result = workoutStore.exercises
+        var result = sourceExercises
+        
+        // Filter by muscle groups
         if !selectedGroups.isEmpty {
             result = result.filter { exercise in
                 exercise.muscleGroups.contains { selectedGroups.contains($0) }
             }
         }
+        
+        // Filter by equipment type
+        if !selectedEquipment.isEmpty {
+            result = result.filter { exercise in
+                selectedEquipment.contains(exercise.equipmentType)
+            }
+        }
+        
+        // Filter by search text
         if !query.isEmpty {
             result = result.filter { exercise in
                 let nameMatch = exercise.name.lowercased().contains(query)
                 let groupMatch = exercise.muscleGroups.contains { $0.rawValue.lowercased().contains(query) }
-                return nameMatch || groupMatch
+                let equipmentMatch = exercise.equipmentType.rawValue.lowercased().contains(query)
+                return nameMatch || groupMatch || equipmentMatch
             }
         }
         return result
@@ -32,11 +77,6 @@ struct ExercisesView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                // Filter header
-                MuscleGroupFilterBar(selected: $selectedGroups)
-                    .appEdgePadding()
-                    .padding(.bottom, 12)
-                
                 // Exercise list
                 LazyVStack(spacing: 8) {
                     ForEach(filteredExercises) { exercise in
@@ -60,13 +100,19 @@ struct ExercisesView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            LiquidGlassSearchBar(text: $searchText)
+            LiquidGlassSearchBar(
+                text: $searchText,
+                showingFilterSheet: $showingFilterSheet,
+                hasActiveFilters: !selectedGroups.isEmpty || !selectedEquipment.isEmpty
+            )
                 .appEdgePadding()
                 .padding(.bottom, 12)
         }
         .overlay(alignment: .topTrailing) {
-            FloatingPlusButton {
-                showingAddExercise = true
+            VStack(spacing: 12) {
+                FloatingPlusButton {
+                    showingAddExercise = true
+                }
             }
             .padding(.top, 80)
             .padding(.trailing, 20)
@@ -87,7 +133,15 @@ struct ExercisesView: View {
         .sheet(item: $editingExercise) { exercise in
             NavigationStack {
                 EditExerciseView(exercise: exercise) { updatedExercise in
-                    workoutStore.updateExercise(updatedExercise)
+                    if let entity = exerciseEntities.first(where: { $0.id == updatedExercise.id }) {
+                        entity.name = updatedExercise.name
+                        entity.muscleGroupsRaw = updatedExercise.muscleGroups.map { $0.rawValue }
+                        entity.equipmentTypeRaw = updatedExercise.equipmentType.rawValue
+                        entity.descriptionText = updatedExercise.description
+                        entity.instructions = updatedExercise.instructions
+                        entity.createdAt = updatedExercise.createdAt
+                        try? modelContext.save()
+                    }
                 } deleteAction: {
                     requestDeletion(for: [exercise])
                 }
@@ -107,6 +161,12 @@ struct ExercisesView: View {
                 Text("\(pendingDeletion.count) Übungen werden entfernt.")
             }
         }
+        .sheet(isPresented: $showingFilterSheet) {
+            FilterSheet(
+                selectedGroups: $selectedGroups,
+                selectedEquipment: $selectedEquipment
+            )
+        }
     }
 
     private func requestDeletion(for exercises: [Exercise]) {
@@ -116,17 +176,13 @@ struct ExercisesView: View {
     }
 
     private func performDeletion() {
-        defer {
-            showingDeleteAlert = false
-        }
+        defer { showingDeleteAlert = false }
         for exercise in pendingDeletion {
-            if let index = workoutStore.exercises.firstIndex(where: { $0.id == exercise.id }) {
-                workoutStore.deleteExercise(at: IndexSet(integer: index))
-            }
-            if editingExercise?.id == exercise.id {
-                editingExercise = nil
+            if let entity = exerciseEntities.first(where: { $0.id == exercise.id }) {
+                modelContext.delete(entity)
             }
         }
+        try? modelContext.save()
         pendingDeletion = []
     }
 }
@@ -152,12 +208,24 @@ struct ExerciseRowView: View {
             }
 
             HStack {
-                ForEach(exercise.muscleGroups, id: \.self) { muscleGroup in
-                    Text(muscleGroup.rawValue)
-                        .font(.caption)
-                        .foregroundColor(muscleGroup.color)
+                HStack(spacing: 6) {
+                    ForEach(exercise.muscleGroups, id: \.self) { muscleGroup in
+                        Text(muscleGroup.rawValue)
+                            .font(.caption)
+                            .foregroundColor(.primary.opacity(0.7))
+                    }
                 }
+                
                 Spacer()
+                
+                HStack(spacing: 4) {
+                    Image(systemName: exercise.equipmentType.icon)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(exercise.equipmentType.rawValue)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 2)
@@ -166,6 +234,8 @@ struct ExerciseRowView: View {
 
 struct LiquidGlassSearchBar: View {
     @Binding var text: String
+    @Binding var showingFilterSheet: Bool
+    let hasActiveFilters: Bool
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -203,12 +273,9 @@ struct LiquidGlassSearchBar: View {
             )
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
 
-            // Big circular close button
+            // Filter button
             Button {
-                text = ""
-                #if canImport(UIKit)
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                #endif
+                showingFilterSheet = true
             } label: {
                 ZStack {
                     Circle()
@@ -220,68 +287,146 @@ struct LiquidGlassSearchBar: View {
                         )
                         .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
 
-                    Image(systemName: "xmark")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.primary)
+                    ZStack {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(hasActiveFilters ? AppTheme.darkPurple : .primary)
+                        
+                        // Badge for active filters
+                        if hasActiveFilters {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 8, height: 8)
+                                .offset(x: 10, y: -10)
+                        }
+                    }
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Suche schließen")
+            .accessibilityLabel("Filter öffnen")
         }
         .padding(.top, 8)
     }
 }
 
-private struct MuscleGroupFilterBar: View {
-    @Binding var selected: Set<MuscleGroup>
-
+struct FilterSheet: View {
+    @Binding var selectedGroups: Set<MuscleGroup>
+    @Binding var selectedEquipment: Set<EquipmentType>
+    @Environment(\.dismiss) private var dismiss
+    
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 11) {
-                FilterChip(title: "Alle", color: .gray, isSelected: selected.isEmpty) {
-                    selected.removeAll()
-                }
-                ForEach(MuscleGroup.allCases, id: \.self) { group in
-                    FilterChip(title: group.rawValue, color: group.color, isSelected: selected.contains(group)) {
-                        if selected.contains(group) {
-                            selected.remove(group)
-                        } else {
-                            selected.insert(group)
+        NavigationStack {
+            List {
+                // Muscle Groups Section
+                Section("Muskelgruppen") {
+                    ForEach(MuscleGroup.allCases, id: \.self) { group in
+                        HStack {
+                            Text(group.rawValue)
+                                .font(.body)
+                                .foregroundStyle(.primary.opacity(0.8))
+                            
+                            Spacer()
+                            
+                            if selectedGroups.contains(group) {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(AppTheme.darkPurple)
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if selectedGroups.contains(group) {
+                                    selectedGroups.remove(group)
+                                } else {
+                                    selectedGroups.insert(group)
+                                }
+                            }
+                        }
+                    }
+                    
+                    if !selectedGroups.isEmpty {
+                        Button("Alle Muskelgruppen löschen") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedGroups.removeAll()
+                            }
+                        }
+                        .foregroundStyle(.red)
+                    }
+                }
+                
+                // Equipment Section
+                Section("Equipment") {
+                    ForEach([EquipmentType.freeWeights, .machine, .bodyweight, .cable, .mixed], id: \.self) { equipment in
+                        HStack {
+                            HStack(spacing: 8) {
+                                Image(systemName: equipment.icon)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 20)
+                                
+                                Text(equipment.rawValue)
+                                    .font(.body)
+                                    .foregroundStyle(.primary.opacity(0.8))
+                            }
+                            
+                            Spacer()
+                            
+                            if selectedEquipment.contains(equipment) {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(AppTheme.darkPurple)
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if selectedEquipment.contains(equipment) {
+                                    selectedEquipment.remove(equipment)
+                                } else {
+                                    selectedEquipment.insert(equipment)
+                                }
+                            }
+                        }
+                    }
+                    
+                    if !selectedEquipment.isEmpty {
+                        Button("Alle Equipment-Filter löschen") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedEquipment.removeAll()
+                            }
+                        }
+                        .foregroundStyle(.red)
                     }
                 }
             }
-            .padding(.vertical, 8)
-        }
-    }
-}
-
-private struct FilterChip: View {
-    let title: String
-    let color: Color
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .bold))
+            .navigationTitle("Filter")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Alle löschen") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedGroups.removeAll()
+                            selectedEquipment.removeAll()
+                        }
+                    }
+                    .foregroundStyle(.red)
+                    .disabled(selectedGroups.isEmpty && selectedEquipment.isEmpty)
                 }
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Fertig") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
             }
-            .foregroundStyle(isSelected ? Color.white : .primary)
-            .padding(.horizontal, 13)
-            .padding(.vertical, 8)
-            .background(
-                Capsule().fill(isSelected ? AppTheme.darkPurple : Color.secondary.opacity(0.12))
-            )
         }
-        .buttonStyle(.plain)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
+
+
 
 private struct FloatingPlusButton: View {
     let action: () -> Void
@@ -310,8 +455,14 @@ private struct FloatingPlusButton: View {
 }
 
 #Preview {
-    ExercisesView()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: ExerciseEntity.self, configurations: config)
+    // Seed a few exercises
+    let ex1 = ExerciseEntity(id: UUID(), name: "Bankdrücken", muscleGroupsRaw: ["chest"], descriptionText: "", instructions: [], createdAt: Date())
+    let ex2 = ExerciseEntity(id: UUID(), name: "Kniebeugen", muscleGroupsRaw: ["legs"], descriptionText: "", instructions: [], createdAt: Date())
+    container.mainContext.insert(ex1)
+    container.mainContext.insert(ex2)
+    return ExercisesView()
         .environmentObject(WorkoutStore())
-        .environment(\.colorScheme, .dark)
+        .modelContainer(container)
 }
-

@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import HealthKit
 
 private struct SettingsScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -12,6 +13,7 @@ struct SettingsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingImporter = false
+    @State private var showingHealthKitSetup = false
     @State private var alertMessage: String?
     @State private var isShowingAlert = false
 
@@ -56,9 +58,9 @@ struct SettingsView: View {
                     
                     Button {
                         workoutStore.resetToSampleData()
-                        showAlert(message: "Sample-Workouts geladen!")
+                        showAlert(message: "Beispielworkouts geladen!")
                     } label: {
-                        Label("Sample-Workouts laden", systemImage: "arrow.clockwise")
+                        Label("Beispielworkouts laden", systemImage: "arrow.clockwise")
                             .foregroundColor(.orange)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -72,6 +74,49 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
                 
+                // HealthKit Section
+                if workoutStore.healthKitManager.isHealthDataAvailable {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("HealthKit Integration")
+                            .font(.headline)
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Status")
+                                    .font(.subheadline)
+                                Text(workoutStore.healthKitManager.isAuthorized ? "Aktiviert" : "Nicht aktiviert")
+                                    .font(.caption)
+                                    .foregroundColor(workoutStore.healthKitManager.isAuthorized ? .green : .secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(workoutStore.healthKitManager.isAuthorized ? "Einstellungen" : "Aktivieren") {
+                                if workoutStore.healthKitManager.isAuthorized {
+                                    // Open system settings for health permissions
+                                    if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                                        UIApplication.shared.open(settingsUrl)
+                                    }
+                                } else {
+                                    showingHealthKitSetup = true
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        
+                        if workoutStore.healthKitManager.isAuthorized {
+                            Text("Deine Workouts werden automatisch in der Health App gespeichert.")
+                        } else {
+                            Text("Verbinde dich mit HealthKit für automatische Synchronisation deiner Workouts und Profildaten.")
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                }
+
                 // Benachrichtigungen Section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Benachrichtigungen")
@@ -113,6 +158,10 @@ struct SettingsView: View {
             case .failure(let error):
                 showAlert(message: "Import fehlgeschlagen: \(error.localizedDescription)")
             }
+        }
+        .sheet(isPresented: $showingHealthKitSetup) {
+            HealthKitSetupView()
+                .environmentObject(workoutStore)
         }
         .alert("Import", isPresented: $isShowingAlert, actions: {
             Button("OK", role: .cancel) {}

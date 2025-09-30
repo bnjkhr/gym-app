@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct AddExerciseView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var name = ""
     @State private var description = ""
@@ -103,16 +105,32 @@ struct AddExerciseView: View {
     }
 
     private func saveExercise() {
-        let filteredInstructions = instructions.filter { !$0.isEmpty }
-        let exercise = Exercise(
-            name: name,
-            muscleGroups: Array(selectedMuscleGroups),
-            description: description,
-            instructions: filteredInstructions
-        )
-
-        workoutStore.addExercise(exercise)
-        dismiss()
+        // Check for duplicate names before saving
+        do {
+            let existingExercises = try modelContext.fetch(FetchDescriptor<ExerciseEntity>())
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if existingExercises.contains(where: { $0.name.localizedCaseInsensitiveCompare(trimmedName) == .orderedSame }) {
+                // Exercise with this name already exists - could show alert here
+                print("⚠️ Übung mit Namen '\(trimmedName)' existiert bereits")
+                return
+            }
+            
+            let filteredInstructions = instructions.filter { !$0.isEmpty }
+            let entity = ExerciseEntity(
+                id: UUID(),
+                name: trimmedName,
+                muscleGroupsRaw: Array(selectedMuscleGroups).map { $0.rawValue },
+                descriptionText: description,
+                instructions: filteredInstructions,
+                createdAt: Date()
+            )
+            modelContext.insert(entity)
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("❌ Fehler beim Speichern der Übung: \(error)")
+        }
     }
 }
 
@@ -145,6 +163,9 @@ struct MuscleGroupButton: View {
 }
 
 #Preview {
-    AddExerciseView()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: ExerciseEntity.self, configurations: config)
+    return AddExerciseView()
         .environmentObject(WorkoutStore())
+        .modelContainer(container)
 }

@@ -1,16 +1,14 @@
 import Foundation
 import SwiftUI
+import SwiftData
+import HealthKit
 #if canImport(UIKit)
 import UIKit
 #endif
 
 @MainActor
 class WorkoutStore: ObservableObject {
-    @Published var exercises: [Exercise] = []
-    @Published var workouts: [Workout] = []
-    @Published var sessionHistory: [WorkoutSession] = []
     @Published var activeSessionID: UUID?
-    @Published var userProfile: UserProfile = UserProfile()
 
     // Zentrale Rest-Timer-State
     struct ActiveRestState {
@@ -25,87 +23,302 @@ class WorkoutStore: ObservableObject {
     }
 
     @Published var activeRestState: ActiveRestState?
+    @Published var profileUpdateTrigger: UUID = UUID() // Triggers UI updates when profile changes
 
-    private var persistenceTimer: Timer?
     private var restTimer: Timer?
     private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
     private var weekStreakCache: (date: Date, value: Int)?
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
     @AppStorage("restNotificationsEnabled") var restNotificationsEnabled: Bool = true
 
-    var activeWorkout: Workout? {
-        guard let activeSessionID else { return nil }
-        return workouts.first { $0.id == activeSessionID }
-    }
+    // SwiftData context reference (wird von ContentView gesetzt)
+    var modelContext: ModelContext?
+    
+    // HealthKit integration
+    @Published var healthKitManager = HealthKitManager.shared
 
-    init() {
-        if !loadFromDisk() {
-            loadSampleData()
-            persistExercises()
-            persistWorkouts()
-            persistSessions()
-            persistProfile()
+    var activeWorkout: Workout? {
+        guard let activeSessionID, let context = modelContext else { 
+            return nil 
+        }
+        
+        do {
+            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate<WorkoutEntity> { $0.id == activeSessionID })
+            if let entity = try context.fetch(descriptor).first {
+                return mapWorkoutEntity(entity)
+            } else {
+                print("⚠️ Aktives Workout mit ID \(activeSessionID) nicht gefunden")
+                // Clear the invalid activeSessionID
+                self.activeSessionID = nil
+                return nil
+            }
+        } catch {
+            print("❌ Fehler beim Laden des aktiven Workouts: \(error)")
+            return nil
         }
     }
 
-    func resetToSampleData() {
-        loadSampleData()
-        invalidateCaches()
-        schedulePersistence()
+    var userProfile: UserProfile {
+        guard let context = modelContext else { return UserProfile() }
+        let descriptor = FetchDescriptor<UserProfileEntity>()
+        if let entity = try? context.fetch(descriptor).first {
+            return UserProfile(entity: entity)
+        }
+        return UserProfile()
     }
 
+    // MARK: - Active Session Management
+    
+    init() {}
+    
+    func startSession(for workoutId: UUID) {
+        guard let context = modelContext else { 
+            print("❌ WorkoutStore: ModelContext ist nil beim Starten einer Session")
+            return 
+        }
+        
+        // Verify workout exists and reset its sets
+        let descriptor = FetchDescriptor<WorkoutEntity>(
+            predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
+        )
+        
+        do {
+            if let workout = try context.fetch(descriptor).first {
+                // Reset all sets as not completed and update the date
+                workout.date = Date()
+                workout.duration = nil
+                
+                for exercise in workout.exercises {
+                    for set in exercise.sets {
+                        set.completed = false
+                    }
+                }
+                
+                try context.save()
+                activeSessionID = workoutId
+                print("✅ Session gestartet für Workout: \(workout.name)")
+            } else {
+                print("❌ Workout mit ID \(workoutId) nicht gefunden")
+            }
+        } catch {
+            print("❌ Fehler beim Starten der Session: \(error)")
+        }
+    }
+    
+    func endCurrentSession() {
+        if let sessionID = activeSessionID {
+            print("🔚 Session beendet für Workout-ID: \(sessionID)")
+            activeSessionID = nil
+            stopRest()
+        }
+    }
+
+    // MARK: - Data Access Helpers
+    
+    var exercises: [Exercise] {
+        getExercises()
+    }
+    
+    var workouts: [Workout] {
+        getWorkouts()
+    }
+    
+    private func getWorkouts() -> [Workout] {
+        guard let context = modelContext else { 
+            print("⚠️ WorkoutStore: ModelContext ist nil beim Abrufen von Workouts")
+            return [] 
+        }
+        
+        let descriptor = FetchDescriptor<WorkoutEntity>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        
+        do {
+            let entities = try context.fetch(descriptor)
+            return entities.map { mapWorkoutEntity($0) }
+        } catch {
+            print("❌ Fehler beim Abrufen der Workouts: \(error)")
+            return []
+        }
+    }
+    
+    private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise {
+        // Safely refetch by id from the current ModelContext to avoid invalid snapshot access
+        let id = entity.id
+        var source: ExerciseEntity? = nil
+        if let context = modelContext {
+            let descriptor = FetchDescriptor<ExerciseEntity>(predicate: #Predicate { $0.id == id })
+            source = try? context.fetch(descriptor).first
+        }
+        guard let fresh = source else {
+            // Return a placeholder exercise to avoid crash; caller may choose to filter it out
+            return Exercise(
+                id: UUID(),
+                name: "Übung nicht verfügbar",
+                muscleGroups: [],
+                equipmentType: .mixed,
+                description: "",
+                instructions: [],
+                createdAt: Date()
+            )
+        }
+
+        let groups: [MuscleGroup] = fresh.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+        let equipmentType = EquipmentType(rawValue: fresh.equipmentTypeRaw) ?? .mixed
+        return Exercise(
+            id: fresh.id,
+            name: fresh.name,
+            muscleGroups: groups,
+            equipmentType: equipmentType,
+            description: fresh.descriptionText,
+            instructions: fresh.instructions,
+            createdAt: fresh.createdAt
+        )
+    }
+
+    private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout {
+        let exercises: [WorkoutExercise] = entity.exercises.compactMap { we in
+            guard let exerciseEntity = we.exercise else { return nil }
+            let ex = mapExerciseEntity(exerciseEntity)
+            let sets: [ExerciseSet] = we.sets.map { set in
+                ExerciseSet(
+                    reps: set.reps,
+                    weight: set.weight,
+                    restTime: set.restTime,
+                    completed: set.completed
+                )
+            }
+            return WorkoutExercise(exercise: ex, sets: sets)
+        }
+        return Workout(
+            id: entity.id,
+            name: entity.name,
+            date: entity.date,
+            exercises: exercises,
+            defaultRestTime: entity.defaultRestTime,
+            duration: entity.duration,
+            notes: entity.notes,
+            isFavorite: entity.isFavorite
+        )
+    }
+
+    private func getExercises() -> [Exercise] {
+        guard let context = modelContext else { return [] }
+        let descriptor = FetchDescriptor<ExerciseEntity>(
+            sortBy: [SortDescriptor(\.name)]
+        )
+        let entities = (try? context.fetch(descriptor)) ?? []
+        return entities.map { mapExerciseEntity($0) }
+    }
+
+    private func getSessionHistory() -> [WorkoutSession] {
+        guard let context = modelContext else { return [] }
+        let descriptor = FetchDescriptor<WorkoutSessionEntity>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        let entities = (try? context.fetch(descriptor)) ?? []
+        return entities.map { WorkoutSession(entity: $0) }
+    }
+
+
+
     func addExercise(_ exercise: Exercise) {
-        guard !exercises.contains(where: { $0.id == exercise.id || $0.name.caseInsensitiveCompare(exercise.name) == .orderedSame }) else { return }
-        exercises.append(exercise)
+        guard let context = modelContext else { return }
+        
+        // Check if exercise already exists by ID first
+        let idDescriptor = FetchDescriptor<ExerciseEntity>(
+            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+        )
+        
+        if (try? context.fetch(idDescriptor).first) != nil {
+            return // Exercise already exists
+        }
+        
+        // Check by name using case-insensitive comparison
+        let nameDescriptor = FetchDescriptor<ExerciseEntity>()
+        let allExercises = (try? context.fetch(nameDescriptor)) ?? []
+        
+        if allExercises.contains(where: { $0.name.localizedCaseInsensitiveCompare(exercise.name) == .orderedSame }) {
+            return // Exercise with same name already exists
+        }
+        
+        let entity = ExerciseEntity.make(from: exercise)
+        context.insert(entity)
+        try? context.save()
         invalidateCaches()
-        schedulePersistence()
     }
 
     func updateExercise(_ exercise: Exercise) {
-        guard let index = exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
-        exercises[index] = exercise
-
-        workouts = workouts.map { workout in
-            var updatedWorkout = workout
-            updatedWorkout.exercises = workout.exercises.map { workoutExercise in
-                var mutableExercise = workoutExercise
-                if workoutExercise.exercise.id == exercise.id {
-                    mutableExercise.exercise = exercise
-                }
-                return mutableExercise
-            }
-            return updatedWorkout
-        }
-
-        // invalidate cache for this exercise id (name/metadata may be used by UI)
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<ExerciseEntity>(
+            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+        )
+        
+        guard let entity = try? context.fetch(descriptor).first else { return }
+        
+        entity.name = exercise.name
+        entity.muscleGroupsRaw = exercise.muscleGroups.map { $0.rawValue }
+        entity.equipmentTypeRaw = exercise.equipmentType.rawValue
+        entity.descriptionText = exercise.description
+        entity.instructions = exercise.instructions
+        
+        try? context.save()
+        
+        // Invalidate cache for this exercise id
         exerciseStatsCache[exercise.id] = nil
-        schedulePersistence()
     }
 
     func addWorkout(_ workout: Workout) {
-        workouts.insert(workout, at: 0)
-        schedulePersistence()
+        guard let context = modelContext else { 
+            print("❌ WorkoutStore: ModelContext ist nil beim Speichern eines Workouts")
+            return 
+        }
+        
+        do {
+            try DataManager.shared.saveWorkout(workout, to: context)
+            print("✅ Workout erfolgreich gespeichert: \(workout.name)")
+        } catch {
+            print("❌ Fehler beim Speichern des Workouts: \(error)")
+        }
     }
 
     func updateWorkout(_ workout: Workout) {
-        guard let index = workouts.firstIndex(where: { $0.id == workout.id }) else { return }
-        workouts[index] = workout
-        schedulePersistence()
+        guard let context = modelContext else { 
+            print("❌ WorkoutStore: ModelContext ist nil beim Aktualisieren eines Workouts")
+            return 
+        }
+        
+        do {
+            try DataManager.shared.saveWorkout(workout, to: context)
+            print("✅ Workout erfolgreich aktualisiert: \(workout.name)")
+        } catch {
+            print("❌ Fehler beim Aktualisieren des Workouts: \(error)")
+        }
     }
 
     func exercise(named name: String) -> Exercise {
-        if let existing = exercises.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
-            return existing
+        guard let context = modelContext else {
+            return Exercise(name: name, muscleGroups: [], equipmentType: .mixed, description: "")
+        }
+        
+        // Fetch all exercises and find by case-insensitive name comparison
+        let descriptor = FetchDescriptor<ExerciseEntity>()
+        let allExercises = (try? context.fetch(descriptor)) ?? []
+        
+        if let existing = allExercises.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+            return mapExerciseEntity(existing)
         }
 
-        let newExercise = Exercise(name: name, muscleGroups: [], description: "")
-        exercises.append(newExercise)
-        schedulePersistence()
+        let newExercise = Exercise(name: name, muscleGroups: [], equipmentType: .mixed, description: "")
+        let entity = ExerciseEntity.make(from: newExercise)
+        context.insert(entity)
+        try? context.save()
         return newExercise
     }
 
     func previousWorkout(before workout: Workout) -> Workout? {
-        sessionHistory
+        let sessionHistory = getSessionHistory()
+        return sessionHistory
             .filter { $0.templateId == workout.id }
             .sorted { $0.date > $1.date }
             .first
@@ -113,6 +326,7 @@ class WorkoutStore: ObservableObject {
     }
 
     func lastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
+        let sessionHistory = getSessionHistory()
         let sortedSessions = sessionHistory.sorted { $0.date > $1.date }
 
         for workout in sortedSessions {
@@ -127,69 +341,222 @@ class WorkoutStore: ObservableObject {
     }
 
     func deleteExercise(at indexSet: IndexSet) {
+        guard let context = modelContext else { return }
+        let exercises = getExercises()
         let removedExercises = indexSet.map { exercises[$0] }
-        exercises.remove(atOffsets: indexSet)
-
-        workouts = workouts.map { workout in
-            var updatedWorkout = workout
-            updatedWorkout.exercises.removeAll { workoutExercise in
-                removedExercises.contains(where: { $0.id == workoutExercise.exercise.id })
+        
+        for exercise in removedExercises {
+            let descriptor = FetchDescriptor<ExerciseEntity>(
+                predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+            )
+            
+            if let entity = try? context.fetch(descriptor).first {
+                context.delete(entity)
             }
-            return updatedWorkout
+            
+            // Invalidate caches for removed exercise IDs
+            exerciseStatsCache[exercise.id] = nil
         }
-
-        // Invalidate caches for removed exercise IDs
-        for ex in removedExercises {
-            exerciseStatsCache[ex.id] = nil
-        }
-        schedulePersistence()
+        
+        try? context.save()
     }
 
     func deleteWorkout(at indexSet: IndexSet) {
-        workouts.remove(atOffsets: indexSet)
-        schedulePersistence()
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<WorkoutEntity>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        let entities = (try? context.fetch(descriptor)) ?? []
+        
+        for index in indexSet {
+            guard index < entities.count else { continue }
+            context.delete(entities[index])
+        }
+        
+        try? context.save()
     }
 
     func recordSession(from workout: Workout) {
-        let session = WorkoutSession(
-            templateId: workout.id,
-            name: workout.name,
-            date: workout.date,
-            exercises: workout.exercises,
-            defaultRestTime: workout.defaultRestTime,
-            duration: workout.duration,
-            notes: workout.notes
-        )
-        sessionHistory.insert(session, at: 0)
-        invalidateCaches() // stats/streak may change
-        schedulePersistence()
+        guard let context = modelContext else { 
+            print("❌ WorkoutStore: ModelContext ist nil beim Speichern einer Session")
+            return 
+        }
+        
+        do {
+            let session = WorkoutSession(
+                templateId: workout.id,
+                name: workout.name,
+                date: workout.date,
+                exercises: workout.exercises,
+                defaultRestTime: workout.defaultRestTime,
+                duration: workout.duration,
+                notes: workout.notes
+            )
+            
+            try DataManager.shared.recordSession(session, to: context)
+            invalidateCaches() // stats/streak may change
+            print("✅ Workout-Session erfolgreich gespeichert: \(workout.name)")
+            
+            // Sync to HealthKit if enabled
+            if userProfile.healthKitSyncEnabled && healthKitManager.isAuthorized {
+                Task {
+                    do {
+                        try await saveWorkoutToHealthKit(session)
+                        print("✅ Workout in HealthKit gespeichert: \(session.name)")
+                    } catch {
+                        print("⚠️ Fehler beim Sync zu HealthKit: \(error.localizedDescription)")
+                    }
+                }
+            }
+        } catch {
+            print("❌ Fehler beim Speichern der Workout-Session: \(error)")
+        }
     }
 
     func removeSession(with id: UUID) {
-        sessionHistory.removeAll { $0.id == id }
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<WorkoutSessionEntity>(
+            predicate: #Predicate<WorkoutSessionEntity> { $0.id == id }
+        )
+        
+        if let entity = try? context.fetch(descriptor).first {
+            context.delete(entity)
+            try? context.save()
+        }
+        
         invalidateCaches()
-        schedulePersistence()
     }
     
     // MARK: - Profile Management
-    func updateProfile(name: String, birthDate: Date?, weight: Double?, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration) {
-        userProfile.updateInfo(name: name, birthDate: birthDate, weight: weight, goal: goal, experience: experience, equipment: equipment, preferredDuration: preferredDuration)
-        schedulePersistence()
+    func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false) {
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<UserProfileEntity>()
+        
+        let entity: UserProfileEntity
+        if let existing = try? context.fetch(descriptor).first {
+            entity = existing
+        } else {
+            entity = UserProfileEntity()
+            context.insert(entity)
+        }
+        
+        entity.name = name
+        entity.birthDate = birthDate
+        entity.weight = weight
+        entity.height = height
+        entity.biologicalSexRaw = Int16(biologicalSex?.rawValue ?? HKBiologicalSex.notSet.rawValue)
+        entity.healthKitSyncEnabled = healthKitSyncEnabled
+        entity.goalRaw = goal.rawValue
+        entity.experienceRaw = experience.rawValue
+        entity.equipmentRaw = equipment.rawValue
+        entity.preferredDurationRaw = preferredDuration.rawValue
+        entity.updatedAt = Date()
+        
+        try? context.save()
+        
+        // Trigger UI update
+        profileUpdateTrigger = UUID()
     }
     
     func updateProfileImage(_ image: UIImage?) {
-        userProfile.updateProfileImage(image)
-        schedulePersistence()
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<UserProfileEntity>()
+        
+        let entity: UserProfileEntity
+        if let existing = try? context.fetch(descriptor).first {
+            entity = existing
+        } else {
+            entity = UserProfileEntity()
+            context.insert(entity)
+        }
+        
+        entity.profileImageData = image?.jpegData(compressionQuality: 0.8)
+        entity.updatedAt = Date()
+        
+        try? context.save()
+        
+        // Trigger UI update
+        profileUpdateTrigger = UUID()
+    }
+    
+    // MARK: - HealthKit Integration
+    
+    func requestHealthKitAuthorization() async throws {
+        try await healthKitManager.requestAuthorization()
+    }
+    
+    func importFromHealthKit() async throws {
+        guard healthKitManager.isAuthorized else {
+            throw HealthKitError.notAuthorized
+        }
+        
+        let data = try await healthKitManager.readProfileData()
+        
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<UserProfileEntity>()
+        
+        let entity: UserProfileEntity
+        if let existing = try? context.fetch(descriptor).first {
+            entity = existing
+        } else {
+            entity = UserProfileEntity()
+            context.insert(entity)
+        }
+        
+        // Update only if we got valid data from HealthKit
+        if let birthDate = data.birthDate {
+            entity.birthDate = birthDate
+        }
+        if let weight = data.weight {
+            entity.weight = weight
+        }
+        if let height = data.height {
+            entity.height = height
+        }
+        if let sex = data.biologicalSex {
+            entity.biologicalSexRaw = Int16(sex.rawValue)
+        }
+        
+        entity.healthKitSyncEnabled = true
+        entity.updatedAt = Date()
+        
+        try? context.save()
+        
+        // Trigger UI update
+        profileUpdateTrigger = UUID()
+    }
+    
+    func saveWorkoutToHealthKit(_ workoutSession: WorkoutSession) async throws {
+        guard healthKitManager.isAuthorized else {
+            throw HealthKitError.notAuthorized
+        }
+        
+        guard userProfile.healthKitSyncEnabled else {
+            return // User has not enabled HealthKit sync
+        }
+        
+        try await healthKitManager.saveWorkout(workoutSession)
+    }
+    
+    func readHeartRateData(from startDate: Date, to endDate: Date) async throws -> [HeartRateReading] {
+        guard healthKitManager.isAuthorized else {
+            throw HealthKitError.notAuthorized
+        }
+        
+        return try await healthKitManager.readHeartRate(from: startDate, to: endDate)
     }
 
     // MARK: - Favorites
 
     func toggleFavorite(for workoutID: UUID) {
-        guard let index = workouts.firstIndex(where: { $0.id == workoutID }) else { return }
-        workouts[index].isFavorite.toggle()
-        // Move favorites to top while preserving relative order
-        workouts = workouts.stablePartition { $0.isFavorite }
-        schedulePersistence()
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<WorkoutEntity>(
+            predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
+        )
+        
+        guard let entity = try? context.fetch(descriptor).first else { return }
+        entity.isFavorite.toggle()
+        try? context.save()
     }
 
     // MARK: - Zentrale Rest-Timer Steuerung
@@ -236,12 +603,8 @@ class WorkoutStore: ObservableObject {
         setupRestTimer()
         updateLiveActivityRest()
         if restNotificationsEnabled {
-            let exerciseName: String? = {
-                if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
-                    return w.exercises[state.exerciseIndex].exercise.name
-                }
-                return nil
-            }()
+            let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
+                activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: state.remainingSeconds,
                 workoutName: state.workoutName,
@@ -261,12 +624,8 @@ class WorkoutStore: ObservableObject {
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
         if restNotificationsEnabled {
-            let exerciseName: String? = {
-                if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
-                    return w.exercises[state.exerciseIndex].exercise.name
-                }
-                return nil
-            }()
+            let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
+                activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: state.remainingSeconds,
                 workoutName: state.workoutName,
@@ -287,12 +646,8 @@ class WorkoutStore: ObservableObject {
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
         if restNotificationsEnabled {
-            let exerciseName: String? = {
-                if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
-                    return w.exercises[state.exerciseIndex].exercise.name
-                }
-                return nil
-            }()
+            let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
+                activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: state.remainingSeconds,
                 workoutName: state.workoutName,
@@ -362,12 +717,8 @@ class WorkoutStore: ObservableObject {
 
     private func updateLiveActivityRest() {
         guard let state = activeRestState else { return }
-        let exerciseName: String? = {
-            if let w = workouts.first(where: { $0.id == state.workoutId }), w.exercises.indices.contains(state.exerciseIndex) {
-                return w.exercises[state.exerciseIndex].exercise.name
-            }
-            return nil
-        }()
+        let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
+            activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
         WorkoutLiveActivityController.shared.updateRest(
             workoutName: state.workoutName,
             exerciseName: exerciseName,
@@ -390,312 +741,86 @@ class WorkoutStore: ObservableObject {
         }
     }
 
-    // MARK: - Persistence Sammellogik
-
-    private func schedulePersistence() {
-        persistenceTimer?.invalidate()
-        persistenceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
-            guard let self else { return }
-            DispatchQueue.global(qos: .background).async {
-                self.persistAllData()
-            }
-        }
-    }
-
-    func flushPersistence() {
-        persistenceTimer?.invalidate()
-        persistenceTimer = nil
-        DispatchQueue.global(qos: .background).async {
-            self.persistAllData()
-        }
-    }
-
-    private func persistAllData() {
-        persistExercises()
-        persistWorkouts()
-        persistSessions()
-        persistProfile()
-    }
+    // MARK: - Cache Management
 
     private func invalidateCaches() {
         exerciseStatsCache.removeAll()
         weekStreakCache = nil
     }
-
-    private func loadSampleData() {
-        let sampleExercises = [
-            // BRUST (Chest)
-            Exercise(name: "Bankdrücken", muscleGroups: [.chest, .triceps, .shoulders], description: "Klassisches Bankdrücken mit Langhantel"),
-            Exercise(name: "Kurzhantel Bankdrücken", muscleGroups: [.chest, .triceps, .shoulders], description: "Bankdrücken mit Kurzhanteln für größeren Bewegungsradius"),
-            Exercise(name: "Schrägbankdrücken", muscleGroups: [.chest, .triceps, .shoulders], description: "Bankdrücken auf schräger Bank für obere Brust"),
-            Exercise(name: "Chest Press (Maschine)", muscleGroups: [.chest, .triceps], description: "Maschinen-gestützte Brustpresse"),
-            Exercise(name: "Chest Fly (Maschine)", muscleGroups: [.chest], description: "Fly-Maschine für definierte Brustmuskulatur"),
-            Exercise(name: "Kurzhantel Fliegende", muscleGroups: [.chest], description: "Fliegende Bewegung mit Kurzhanteln"),
-            Exercise(name: "Dips", muscleGroups: [.chest, .triceps, .shoulders], description: "Eigengewicht-Übung für untere Brust"),
-            Exercise(name: "Push-ups", muscleGroups: [.chest, .triceps, .shoulders], description: "Klassische Liegestütze"),
-
-            // RÜCKEN (Back)
-            Exercise(name: "Klimmzüge", muscleGroups: [.back, .biceps], description: "Klassische Klimmzüge im Obergriff"),
-            Exercise(name: "Lat Pulldown (Maschine)", muscleGroups: [.back, .biceps], description: "Latzug-Maschine mit Fokus auf den breiten Rücken"),
-            Exercise(name: "Rudern (Langhantel)", muscleGroups: [.back, .biceps], description: "Vorgebeugtes Rudern mit Langhantel"),
-            Exercise(name: "Kurzhantel Rudern", muscleGroups: [.back, .biceps], description: "Einarmiges Kurzhantel-Rudern"),
-            Exercise(name: "Seated Row (Maschine)", muscleGroups: [.back, .biceps], description: "Rudermaschine für den mittleren Rücken"),
-            Exercise(name: "Cable Row", muscleGroups: [.back, .biceps], description: "Kabel-Rudern für mittleren Rücken"),
-            Exercise(name: "T-Bar Row", muscleGroups: [.back, .biceps], description: "T-Bar Rudern für dicken Rücken"),
-            Exercise(name: "Kreuzheben", muscleGroups: [.back, .legs, .glutes], description: "Deadlift - King of all exercises"),
-            Exercise(name: "Back Extension (Maschine)", muscleGroups: [.back, .glutes], description: "Rückenstrecker an der Maschine"),
-
-            // SCHULTERN (Shoulders)
-            Exercise(name: "Schulterdrücken", muscleGroups: [.shoulders, .triceps], description: "Military Press mit Langhantel"),
-            Exercise(name: "Kurzhantel Schulterdrücken", muscleGroups: [.shoulders, .triceps], description: "Schulterdrücken mit Kurzhanteln"),
-            Exercise(name: "Seitheben", muscleGroups: [.shoulders], description: "Seitliches Heben für mittlere Schulter"),
-            Exercise(name: "Frontheben", muscleGroups: [.shoulders], description: "Frontheben für vordere Schulter"),
-            Exercise(name: "Reverse Fly", muscleGroups: [.shoulders, .back], description: "Umgekehrte Flys für hintere Schulter"),
-            Exercise(name: "Aufrechtes Rudern", muscleGroups: [.shoulders, .back], description: "Upright Row für Schultern und Trapez"),
-            Exercise(name: "Face Pulls", muscleGroups: [.shoulders, .back], description: "Kabel Face Pulls für hintere Schulter"),
-
-            // BEINE (Legs)
-            Exercise(name: "Kniebeugen", muscleGroups: [.legs, .glutes], description: "Squats - Die Königsübung für Beine"),
-            Exercise(name: "Leg Press (Maschine)", muscleGroups: [.legs, .glutes], description: "Kraftvolle Beinpressen-Session"),
-            Exercise(name: "Ausfallschritte", muscleGroups: [.legs, .glutes], description: "Lunges für funktionelle Beinkraft"),
-            Exercise(name: "Leg Extension (Maschine)", muscleGroups: [.legs], description: "Quadrizeps-Isolation an der Maschine"),
-            Exercise(name: "Leg Curl (sitzend, Maschine)", muscleGroups: [.legs, .glutes], description: "Beincurl sitzend für hintere Oberschenkel"),
-            Exercise(name: "Bulgarische Kniebeugen", muscleGroups: [.legs, .glutes], description: "Bulgarian Split Squats"),
-            Exercise(name: "Sumo Squats", muscleGroups: [.legs, .glutes], description: "Breite Kniebeugen für Innenseite"),
-            Exercise(name: "Rumänisches Kreuzheben", muscleGroups: [.legs, .glutes, .back], description: "RDL für hintere Kette"),
-            Exercise(name: "Wadenheben (Maschine)", muscleGroups: [.legs], description: "Gezieltes Wadenheben an der Maschine"),
-            Exercise(name: "Wadenheben sitzend", muscleGroups: [.legs], description: "Seated Calf Raises"),
-
-            // BIZEPS (Biceps)
-            Exercise(name: "Bizeps Curls", muscleGroups: [.biceps], description: "Klassische Bizeps-Curls mit Langhantel"),
-            Exercise(name: "Kurzhantel Curls", muscleGroups: [.biceps], description: "Bizeps-Curls mit Kurzhanteln"),
-            Exercise(name: "Hammer Curls", muscleGroups: [.biceps], description: "Hammer-Curls für Bizeps und Unterarm"),
-            Exercise(name: "Cable Curls", muscleGroups: [.biceps], description: "Bizeps-Curls am Kabelzug"),
-            Exercise(name: "Preacher Curls", muscleGroups: [.biceps], description: "Bizeps-Curls an der Scott-Bank"),
-            Exercise(name: "Concentration Curls", muscleGroups: [.biceps], description: "Konzentrations-Curls für Isolation"),
-
-            // TRIZEPS (Triceps)
-            Exercise(name: "Trizeps Dips", muscleGroups: [.triceps, .chest], description: "Dips für Trizeps-Entwicklung"),
-            Exercise(name: "Close-Grip Bankdrücken", muscleGroups: [.triceps, .chest], description: "Enge Bankdrücken für Trizeps"),
-            Exercise(name: "Trizeps Pushdowns", muscleGroups: [.triceps], description: "Trizeps-Drücken am Kabelzug"),
-            Exercise(name: "Overhead Extension", muscleGroups: [.triceps], description: "Trizeps-Strecken über Kopf"),
-            Exercise(name: "Kurzhantel Trizeps Extension", muscleGroups: [.triceps], description: "French Press mit Kurzhanteln"),
-            Exercise(name: "Diamond Push-ups", muscleGroups: [.triceps, .chest], description: "Enge Liegestütze für Trizeps"),
-
-            // BAUCH (Abs)
-            Exercise(name: "Plank", muscleGroups: [.abs], description: "Planke für Core-Stabilität"),
-            Exercise(name: "Crunch (Maschine)", muscleGroups: [.abs], description: "Crunch-Maschine für Core-Stabilität"),
-            Exercise(name: "Crunches", muscleGroups: [.abs], description: "Klassische Bauchpressen"),
-            Exercise(name: "Russian Twists", muscleGroups: [.abs], description: "Russische Drehungen für seitliche Bauchmuskeln"),
-            Exercise(name: "Leg Raises", muscleGroups: [.abs], description: "Beinheben für unteren Bauch"),
-            Exercise(name: "Mountain Climbers", muscleGroups: [.abs, .cardio], description: "Bergsteiger für Core und Cardio"),
-            Exercise(name: "Dead Bug", muscleGroups: [.abs], description: "Dead Bug für Core-Stabilität"),
-            Exercise(name: "Bicycle Crunches", muscleGroups: [.abs], description: "Fahrrad-Crunches für schräge Bauchmuskeln"),
-            Exercise(name: "Hanging Leg Raises", muscleGroups: [.abs], description: "Hängendes Beinheben"),
-
-            // CARDIO
-            Exercise(name: "Laufband", muscleGroups: [.cardio, .legs], description: "Ausdauertraining auf dem Laufband"),
-            Exercise(name: "Crosstrainer", muscleGroups: [.cardio], description: "Elliptical Training für Ganzkörper-Cardio"),
-            Exercise(name: "Fahrrad", muscleGroups: [.cardio, .legs], description: "Ergometer-Training"),
-            Exercise(name: "Rudergerät", muscleGroups: [.cardio, .back, .legs], description: "Rudern für Cardio und Kraft"),
-            Exercise(name: "Burpees", muscleGroups: [.cardio, .chest, .legs], description: "Explosive Ganzkörper-Übung"),
-            Exercise(name: "Battle Ropes", muscleGroups: [.cardio, .shoulders, .abs], description: "Seil-Training für explosive Kraft"),
-            Exercise(name: "Box Jumps", muscleGroups: [.cardio, .legs], description: "Sprungtraining auf Box"),
-
-            // COMPOUND MOVEMENTS
-            Exercise(name: "Thrusters", muscleGroups: [.legs, .shoulders, .cardio], description: "Kniebeuge zu Schulterdrücken"),
-            Exercise(name: "Clean & Press", muscleGroups: [.legs, .back, .shoulders], description: "Reißen und Drücken"),
-            Exercise(name: "Turkish Get-ups", muscleGroups: [.abs, .shoulders, .legs], description: "Komplexe Aufsteh-Bewegung")
-        ]
-
-        exercises = sampleExercises
-
-        let chestPressIndex = sampleExercises.firstIndex { $0.name == "Chest Press (Maschine)" } ?? 0
-        let chestFlyIndex = sampleExercises.firstIndex { $0.name == "Chest Fly (Maschine)" } ?? 0
-        let legPressIndex = sampleExercises.firstIndex { $0.name == "Leg Press (Maschine)" } ?? 0
-        let legExtensionIndex = sampleExercises.firstIndex { $0.name == "Leg Extension (Maschine)" } ?? 0
-        let legCurlIndex = sampleExercises.firstIndex { $0.name == "Leg Curl (sitzend, Maschine)" } ?? 0
-        let calfRaiseIndex = sampleExercises.firstIndex { $0.name == "Wadenheben (Maschine)" } ?? 0
-        let crunchIndex = sampleExercises.firstIndex { $0.name == "Crunch (Maschine)" } ?? 0
-        let latPulldownIndex = sampleExercises.firstIndex { $0.name == "Lat Pulldown (Maschine)" } ?? 0
-        let seatedRowIndex = sampleExercises.firstIndex { $0.name == "Seated Row (Maschine)" } ?? 0
-        let backExtensionIndex = sampleExercises.firstIndex { $0.name == "Back Extension (Maschine)" } ?? 0
-
-        workouts = [
-            Workout(
-                name: "Tag A – Push",
-                exercises: [
-                    WorkoutExercise(
-                        exercise: sampleExercises[chestPressIndex], // Chest Press (Maschine)
-                        sets: presetSets(reps: 11, range: "10-12", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[chestFlyIndex], // Chest Fly (Maschine)
-                        sets: presetSets(reps: 11, range: "10-12", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[legPressIndex], // Leg Press (Maschine)
-                        sets: presetSets(reps: 11, range: "10-12", count: 4)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[legExtensionIndex], // Leg Extension (Maschine)
-                        sets: presetSets(reps: 13, range: "12-15", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[calfRaiseIndex], // Wadenheben (Maschine)
-                        sets: presetSets(reps: 17, range: "15-20", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[crunchIndex], // Crunch (Maschine)
-                        sets: presetSets(reps: 17, range: "15-20", count: 3)
-                    )
-                ],
-                defaultRestTime: 90,
-                notes: "Push-orientiertes Maschinen-Workout"
-            ),
-            Workout(
-                name: "Tag B – Pull",
-                exercises: [
-                    WorkoutExercise(
-                        exercise: sampleExercises[latPulldownIndex], // Lat Pulldown (Maschine)
-                        sets: presetSets(reps: 11, range: "10-12", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[seatedRowIndex], // Seated Row (Maschine)
-                        sets: presetSets(reps: 11, range: "10-12", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[legCurlIndex], // Leg Curl (sitzend, Maschine)
-                        sets: presetSets(reps: 13, range: "12-15", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[legPressIndex], // Leg Press (Maschine, leichter)
-                        sets: presetSets(reps: 13, range: "12-15", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[backExtensionIndex], // Back Extension (Maschine)
-                        sets: presetSets(reps: 13, range: "12-15", count: 3)
-                    ),
-                    WorkoutExercise(
-                        exercise: sampleExercises[crunchIndex], // Crunch (Maschine)
-                        sets: presetSets(reps: 17, range: "15-20", count: 3)
-                    )
-                ],
-                defaultRestTime: 90,
-                notes: "Pull-orientiertes Maschinen-Workout"
-            ),
-            Workout(
-                name: "Tag C – Ganzkörper & Core",
-                exercises: [
-                    WorkoutExercise(exercise: sampleExercises[chestPressIndex], sets: presetSets(reps: 11, range: "10-12", count: 3)), // Chest Press (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[latPulldownIndex], sets: presetSets(reps: 11, range: "10-12", count: 3)), // Lat Pulldown (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[seatedRowIndex], sets: presetSets(reps: 11, range: "10-12", count: 2)), // Seated Row (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[legPressIndex], sets: presetSets(reps: 11, range: "10-12", count: 4)), // Leg Press (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[legCurlIndex], sets: presetSets(reps: 13, range: "12-15", count: 2)), // Leg Curl (sitzend, Maschine)
-                    WorkoutExercise(exercise: sampleExercises[legExtensionIndex], sets: presetSets(reps: 13, range: "12-15", count: 2)), // Leg Extension (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[calfRaiseIndex], sets: presetSets(reps: 17, range: "15-20", count: 3)), // Wadenheben (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[crunchIndex], sets: presetSets(reps: 17, range: "15-20", count: 3)), // Crunch (Maschine)
-                    WorkoutExercise(exercise: sampleExercises[backExtensionIndex], sets: presetSets(reps: 13, range: "12-15", count: 2))  // Back Extension (Maschine)
-                ],
-                defaultRestTime: 90,
-                notes: "Ganzkörperfokus mit Core-Finisher"
-            )
-        ]
-    }
-
-    private func presetSets(reps: Int, range _: String, count: Int) -> [ExerciseSet] {
-        (0..<count).map { _ in
-            ExerciseSet(reps: reps, weight: 0, restTime: 90, completed: false)
-        }
-    }
-
-    // MARK: - Persistence
-
-    private var documentsDirectory: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-    }
-
-    private var exercisesURL: URL { documentsDirectory.appendingPathComponent("exercises.json") }
-    private var workoutsURL: URL { documentsDirectory.appendingPathComponent("workouts.json") }
-    private var sessionsURL: URL { documentsDirectory.appendingPathComponent("sessions.json") }
-    private var profileURL: URL { documentsDirectory.appendingPathComponent("profile.json") }
-
-    private func loadFromDisk() -> Bool {
-        do {
-            let exerciseData = try Data(contentsOf: exercisesURL)
-            let workoutData = try Data(contentsOf: workoutsURL)
-
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-
-            exercises = try decoder.decode([Exercise].self, from: exerciseData)
-            workouts = try decoder.decode([Workout].self, from: workoutData)
-
-            if let sessionData = try? Data(contentsOf: sessionsURL) {
-                sessionHistory = try decoder.decode([WorkoutSession].self, from: sessionData)
-            } else {
-                sessionHistory = []
-            }
-            
-            // Load user profile if it exists, otherwise use default
-            if let profileData = try? Data(contentsOf: profileURL) {
-                userProfile = try decoder.decode(UserProfile.self, from: profileData)
-            } else {
-                userProfile = UserProfile()
-            }
-
-            return true
-        } catch {
-#if DEBUG
-            print("[WorkoutStore] Failed to load persisted data: \(error.localizedDescription)")
-#endif
-            return false
-        }
-    }
-
-    private func persistExercises() {
-        persist(exercises, to: exercisesURL)
-    }
-
-    private func persistWorkouts() {
-        persist(workouts, to: workoutsURL)
-    }
-
-    private func persistSessions() {
-        persist(sessionHistory, to: sessionsURL)
-    }
     
-    private func persistProfile() {
-        persist(userProfile, to: profileURL)
-    }
-
-    private func applyFileProtection(to url: URL) {
-        do {
-            try FileManager.default.setAttributes(
-                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
-                ofItemAtPath: url.path
-            )
-        } catch {
-#if DEBUG
-            print("[WorkoutStore] Failed to set file protection on \(url.lastPathComponent): \(error.localizedDescription)")
-#endif
+    // MARK: - Sample Data Management
+    func resetToSampleData() {
+        guard let context = modelContext else {
+            print("❌ WorkoutStore: ModelContext ist nil beim Reset zu Sample-Daten")
+            return
+        }
+        
+        Task {
+            // Alle bestehenden Workouts löschen, aber Übungen beibehalten
+            do {
+                let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
+                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+                
+                // Lösche alle Workouts und Sessions
+                for workout in workouts {
+                    context.delete(workout)
+                }
+                for session in sessions {
+                    context.delete(session)
+                }
+                
+                try context.save()
+                print("🗑️ Bestehende Workouts und Sessions gelöscht")
+                
+                // Lade Sample-Workouts neu
+                await DataManager.shared.ensureSampleData(context: context)
+                
+                // Aktive Session zurücksetzen
+                await MainActor.run {
+                    self.activeSessionID = nil
+                }
+                
+                print("✅ Neue Sample-Workouts erfolgreich geladen!")
+                
+            } catch {
+                print("❌ Fehler beim Reset zu Sample-Daten: \(error)")
+            }
         }
     }
 
-    private func persist<T: Encodable>(_ value: T, to url: URL) {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(value)
-            try data.write(to: url, options: .atomic)
-            applyFileProtection(to: url)
-        } catch {
-#if DEBUG
-            print("[WorkoutStore] Failed to persist data to \(url.lastPathComponent): \(error.localizedDescription)")
-#endif
+    // MARK: - Debug Helper
+    func debugState() {
+        print("=== WorkoutStore Debug ===")
+        print("ModelContext: \(modelContext != nil ? "✅ Gesetzt" : "❌ Nil")")
+        print("Active Session ID: \(activeSessionID?.uuidString ?? "Keine")")
+        if let context = modelContext {
+            do {
+                let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
+                let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+                
+                print("Gespeicherte Workouts: \(workouts.count)")
+                for workout in workouts.prefix(5) {
+                    print("  - \(workout.name) (ID: \(workout.id.uuidString.prefix(8)), Übungen: \(workout.exercises.count))")
+                }
+                
+                print("Gespeicherte Übungen: \(exercises.count)")
+                for exercise in exercises.prefix(10) {
+                    print("  - \(exercise.name) (ID: \(exercise.id.uuidString.prefix(8)))")
+                }
+                
+                print("Sessions: \(sessions.count)")
+                for session in sessions.prefix(3) {
+                    print("  - \(session.name) (Datum: \(session.date.formatted(.dateTime.day().month())))")
+                }
+            } catch {
+                print("❌ Fehler beim Abrufen der Debug-Daten: \(error)")
+            }
         }
+        print("========================")
     }
+
+
 }
 
 // MARK: - Analytics Helpers
@@ -718,9 +843,12 @@ extension WorkoutStore {
         let history: [HistoryPoint]
     }
 
-    var totalWorkoutCount: Int { sessionHistory.count }
+    var totalWorkoutCount: Int {
+        getSessionHistory().count
+    }
 
     var averageWorkoutsPerWeek: Double {
+        let sessionHistory = getSessionHistory()
         guard let earliestDate = sessionHistory.min(by: { $0.date < $1.date })?.date else { return 0 }
         let span = max(Date().timeIntervalSince(earliestDate), 1)
         let weeks = max(span / (7 * 24 * 60 * 60), 1)
@@ -737,6 +865,7 @@ extension WorkoutStore {
             return cached.value
         }
 
+        let sessionHistory = getSessionHistory()
         guard !sessionHistory.isEmpty else {
             weekStreakCache = (today, 0)
             return 0
@@ -764,6 +893,7 @@ extension WorkoutStore {
     }
 
     var averageDurationMinutes: Int {
+        let sessionHistory = getSessionHistory()
         let durations = sessionHistory.compactMap { $0.duration }
         guard !durations.isEmpty else { return 0 }
         let total = durations.reduce(0, +)
@@ -774,6 +904,7 @@ extension WorkoutStore {
         let calendar = Calendar.current
         let threshold = calendar.date(byAdding: .weekOfYear, value: -weeks, to: Date()) ?? Date()
 
+        let sessionHistory = getSessionHistory()
         let filtered = sessionHistory.filter { $0.date >= threshold }
         var totals: [MuscleGroup: Double] = [:]
 
@@ -794,6 +925,7 @@ extension WorkoutStore {
             return cached
         }
 
+        let sessionHistory = getSessionHistory()
         let relevantSessions = sessionHistory.filter { workout in
             workout.exercises.contains { $0.exercise.id == exercise.id }
         }
@@ -844,6 +976,7 @@ extension WorkoutStore {
 
     func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
         let calendar = Calendar.current
+        let sessionHistory = getSessionHistory()
         return Dictionary(grouping: sessionHistory.filter { range.contains($0.date) }) { workout in
             calendar.startOfDay(for: workout.date)
         }
@@ -857,8 +990,9 @@ extension WorkoutStore {
     // MARK: - Workout Generation
 
     func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
+        let exercises = getExercises()
         let muscleGroups = selectMuscleGroups(for: preferences)
-        let selectedExercises = selectExercises(for: preferences, targeting: muscleGroups)
+        let selectedExercises = selectExercises(for: preferences, targeting: muscleGroups, from: exercises)
         let workoutExercises = createWorkoutExercises(from: selectedExercises, preferences: preferences)
 
         return Workout(
@@ -886,9 +1020,9 @@ extension WorkoutStore {
         }
     }
 
-    private func selectExercises(for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup]) -> [Exercise] {
+    private func selectExercises(for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup], from exercises: [Exercise]) -> [Exercise] {
         var selectedExercises: [Exercise] = []
-        let availableExercises = filterExercisesByEquipment(preferences.equipment)
+        let availableExercises = filterExercisesByEquipment(preferences.equipment, from: exercises)
 
         // Grundübungen basierend auf Erfahrung
         let compoundExercises = availableExercises.filter { exercise in
@@ -948,7 +1082,7 @@ extension WorkoutStore {
         return Array(selectedExercises.prefix(targetExerciseCount))
     }
 
-    private func filterExercisesByEquipment(_ equipment: EquipmentPreference) -> [Exercise] {
+    private func filterExercisesByEquipment(_ equipment: EquipmentPreference, from exercises: [Exercise]) -> [Exercise] {
         switch equipment {
         case .freeWeights:
             return exercises.filter { exercise in
@@ -1083,18 +1217,6 @@ extension WorkoutStore {
         }
 
         return notes.joined(separator: "\n")
-    }
-}
-
-extension Array {
-    /// Returns a new array with elements partitioned by the predicate while preserving relative order (stable).
-    fileprivate func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
-        var first: [Element] = []
-        var second: [Element] = []
-        for el in self {
-            if isInFirstPartition(el) { first.append(el) } else { second.append(el) }
-        }
-        return first + second
     }
 }
 

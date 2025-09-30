@@ -1,12 +1,33 @@
 import SwiftUI
 import UIKit
+import SwiftData
 
 struct WorkoutDetailView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
-    @Binding var workout: Workout
+    @Environment(\.modelContext) private var modelContext
+
+    let entity: WorkoutEntity
+    @State private var workout: Workout
+
     var isActiveSession: Bool = false
     var onActiveSessionEnd: (() -> Void)? = nil
+
+    init(entity: WorkoutEntity, isActiveSession: Bool = false, onActiveSessionEnd: (() -> Void)? = nil) {
+        self.entity = entity
+        self._workout = State(initialValue: Workout(
+            id: entity.id,
+            name: entity.name,
+            date: entity.date,
+            exercises: [],
+            defaultRestTime: entity.defaultRestTime,
+            duration: entity.duration,
+            notes: entity.notes,
+            isFavorite: entity.isFavorite
+        ))
+        self.isActiveSession = isActiveSession
+        self.onActiveSessionEnd = onActiveSessionEnd
+    }
 
     // Lokaler Timer-State entfernt – wir nutzen den zentralen Store
     @State private var showingCompletionSheet = false
@@ -93,7 +114,9 @@ struct WorkoutDetailView: View {
                             Spacer()
                             
                             Button("Speichern") {
-                                workout.notes = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                let trimmed = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                workout.notes = trimmed
+                                updateEntityNotes(trimmed)
                                 editingNotes = false
                             }
                             .buttonStyle(.borderedProminent)
@@ -133,6 +156,42 @@ struct WorkoutDetailView: View {
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            // Safely remap the entity from the current ModelContext to avoid reading invalid snapshots
+            let currentId = entity.id
+            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate { $0.id == currentId })
+            if let fresh = try? modelContext.fetch(descriptor).first {
+                var mappedExercises: [WorkoutExercise] = []
+                for we in fresh.exercises {
+                    if let exEntity = we.exercise {
+                        // Refetch exercise by id before accessing properties
+                        let exId = exEntity.id
+                        let exDesc = FetchDescriptor<ExerciseEntity>(predicate: #Predicate { $0.id == exId })
+                        if let freshEx = try? modelContext.fetch(exDesc).first {
+                            let groups = freshEx.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+                            let exercise = Exercise(
+                                id: freshEx.id,
+                                name: freshEx.name,
+                                muscleGroups: groups,
+                                description: freshEx.descriptionText,
+                                instructions: freshEx.instructions,
+                                createdAt: freshEx.createdAt
+                            )
+                            let sets = we.sets.map { ExerciseSet(entity: $0) }
+                            mappedExercises.append(WorkoutExercise(id: we.id, exercise: exercise, sets: sets))
+                        }
+                    }
+                }
+                self.workout = Workout(
+                    id: fresh.id,
+                    name: fresh.name,
+                    date: fresh.date,
+                    exercises: mappedExercises,
+                    defaultRestTime: fresh.defaultRestTime,
+                    duration: fresh.duration,
+                    notes: fresh.notes,
+                    isFavorite: fresh.isFavorite
+                )
+            }
             notesText = workout.notes
             if isActiveSession {
                 WorkoutLiveActivityController.shared.start(workoutName: workout.name)
@@ -172,6 +231,7 @@ struct WorkoutDetailView: View {
                             EditButton()
                             Button("Fertig") {
                                 workout.exercises = reorderExercises
+                                reorderEntityExercises(to: reorderExercises)
                                 showingReorderSheet = false
                             }
                         }
@@ -348,7 +408,16 @@ struct WorkoutDetailView: View {
 
                     let setBinding = Binding(
                         get: { workout.exercises[exerciseIndex].sets[setIndex] },
-                        set: { workout.exercises[exerciseIndex].sets[setIndex] = $0 }
+                        set: {
+                            workout.exercises[exerciseIndex].sets[setIndex] = $0
+                            let exId = workout.exercises[exerciseIndex].id
+                            let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+                            let newSet = workout.exercises[exerciseIndex].sets[setIndex]
+                            updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
+                                setEntity.reps = newSet.reps
+                                setEntity.weight = newSet.weight
+                            }
+                        }
                     )
 
                     WorkoutSetCard(
@@ -361,6 +430,11 @@ struct WorkoutDetailView: View {
                         onRestTimeUpdated: { newValue in
                             if isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
                                 workoutStore.setRest(remaining: Int(newValue), total: Int(newValue))
+                            }
+                            let exId = workout.exercises[exerciseIndex].id
+                            let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+                            updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
+                                setEntity.restTime = newValue
                             }
                         },
                         onToggleCompletion: {
@@ -467,12 +541,32 @@ struct WorkoutDetailView: View {
         "\(Int(totalVolume)) kg"
     }
 
-    private var previousVolume: Double? {
-        guard let previous = workoutStore.previousWorkout(before: workout) else { return nil }
-        let volume = previous.exercises.reduce(0) { partialResult, exercise in
-            partialResult + exercise.sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
+    // MARK: - Previous session via SwiftData (fallback to store if unavailable)
+    private func previousSessionSwiftData() -> WorkoutSession? {
+        let templateId: UUID? = workout.id
+        let currentDate = workout.date
+        let predicate = #Predicate<WorkoutSessionEntity> { entity in
+            (entity.templateId == templateId) && (entity.date < currentDate)
         }
-        return volume
+        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        if let entity = try? modelContext.fetch(descriptor).first {
+            return WorkoutSession(entity: entity)
+        }
+        return nil
+    }
+
+    private var previousVolume: Double? {
+        if let prev = previousSessionSwiftData() {
+            let volume = prev.exercises.reduce(0) { partialResult, exercise in
+                partialResult + exercise.sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
+            }
+            return volume
+        }
+        return nil
     }
 
     private var previousVolumeValueText: String {
@@ -481,13 +575,17 @@ struct WorkoutDetailView: View {
     }
 
     private var previousDateText: String {
-        guard let previous = workoutStore.previousWorkout(before: workout) else { return "–" }
-        return previous.date.formatted(.dateTime.day().month().year())
+        if let prev = previousSessionSwiftData() {
+            return prev.date.formatted(.dateTime.day().month().year())
+        }
+        return "–"
     }
 
     private var previousExerciseCountText: String {
-        guard let previous = workoutStore.previousWorkout(before: workout) else { return "–" }
-        return "\(previous.exercises.count)"
+        if let prev = previousSessionSwiftData() {
+            return "\(prev.exercises.count)"
+        }
+        return "–"
     }
 
     private var currentTotalReps: Int {
@@ -495,8 +593,10 @@ struct WorkoutDetailView: View {
     }
 
     private var previousTotalReps: Int? {
-        guard let previous = workoutStore.previousWorkout(before: workout) else { return nil }
-        return previous.exercises.reduce(0) { $0 + $1.sets.reduce(0) { $0 + $1.reps } }
+        if let prev = previousSessionSwiftData() {
+            return prev.exercises.reduce(0) { $0 + $1.sets.reduce(0) { $0 + $1.reps } }
+        }
+        return nil
     }
 
     private var progressDeltaText: String {
@@ -546,6 +646,12 @@ struct WorkoutDetailView: View {
 
     private func toggleCompletion(for exerciseIndex: Int, setIndex: Int) {
         workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
+        let exId = workout.exercises[exerciseIndex].id
+        let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+        let completed = workout.exercises[exerciseIndex].sets[setIndex].completed
+        updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
+            setEntity.completed = completed
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if workout.exercises[exerciseIndex].sets[setIndex].completed {
@@ -577,9 +683,24 @@ struct WorkoutDetailView: View {
     private func finalizeCompletion() {
         workoutStore.stopRest()
         let elapsed = max(Date().timeIntervalSince(workout.date), 0)
-        workout.duration = elapsed
-        workoutStore.updateWorkout(workout)
-        workoutStore.recordSession(from: workout)
+        
+        // Create a session workout with completion data for recording
+        var sessionWorkout = workout
+        sessionWorkout.duration = elapsed
+        
+        // Save the session record with current workout data
+        print("💾 Speichere Session über WorkoutStore.recordSession")
+        workoutStore.recordSession(from: sessionWorkout)
+        
+        // NOW reset the template: Update entity with current exercise structure but reset set completion
+        resetWorkoutTemplateAfterCompletion()
+
+        // End Live Activity when workout is completed
+        if isActiveSession {
+            WorkoutLiveActivityController.shared.end()
+            print("🏁 Live Activity beendet nach Workout-Abschluss")
+        }
+
         completionDuration = elapsed
         
         let generator = UINotificationFeedbackGenerator()
@@ -587,9 +708,31 @@ struct WorkoutDetailView: View {
         
         showingCompletionSheet = true
         showingCompletionConfirmation = false
+        
+        // End the active session and navigate back
         if isActiveSession {
-            onActiveSessionEnd?()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                onActiveSessionEnd?()
+            }
         }
+    }
+    
+    private func resetWorkoutTemplateAfterCompletion() {
+        // Update the template with current workout structure but reset completion states
+        var templateWorkout = workout
+        templateWorkout.duration = nil // Reset duration for template
+        templateWorkout.date = Date() // Reset date to current time for future sessions
+        
+        // Reset all set completion states but keep the weights/reps
+        for exerciseIndex in templateWorkout.exercises.indices {
+            for setIndex in templateWorkout.exercises[exerciseIndex].sets.indices {
+                templateWorkout.exercises[exerciseIndex].sets[setIndex].completed = false
+            }
+        }
+        
+        // Save the updated template
+        workoutStore.updateWorkout(templateWorkout)
+        print("🔄 Workout-Template für zukünftige Sessions zurückgesetzt")
     }
 
     private func addSet(to exerciseIndex: Int) {
@@ -601,6 +744,10 @@ struct WorkoutDetailView: View {
             completed: false
         )
         workout.exercises[exerciseIndex].sets.append(newSet)
+        let exerciseId = workout.exercises[exerciseIndex].id
+        if let last = workout.exercises[exerciseIndex].sets.last {
+            appendEntitySet(exerciseId: exerciseId, newSet: last)
+        }
     }
 
     private func removeSet(at setIndex: Int, for exerciseIndex: Int) {
@@ -609,7 +756,14 @@ struct WorkoutDetailView: View {
 
         let isActive = activeRestForThisWorkout?.exerciseIndex == exerciseIndex &&
                        activeRestForThisWorkout?.setIndex == setIndex
+
+        // Capture id for entity removal
+        let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+        let exerciseId = workout.exercises[exerciseIndex].id
+
         workout.exercises[exerciseIndex].sets.remove(at: setIndex)
+
+        removeEntitySet(exerciseId: exerciseId, setId: setId)
 
         if isActive {
             workoutStore.stopRest()
@@ -632,14 +786,13 @@ struct WorkoutDetailView: View {
     }
 
     private func previousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
-        guard let previousWorkout = workoutStore.previousWorkout(before: workout) else {
+        guard let prev = previousSessionSwiftData() else {
             return (nil, nil)
         }
         let currentExercise = workout.exercises[exerciseIndex].exercise
-        guard let previousExercise = previousWorkout.exercises.first(where: { $0.exercise.id == currentExercise.id }) else {
+        guard let previousExercise = prev.exercises.first(where: { $0.exercise.id == currentExercise.id }) else {
             return (nil, nil)
         }
-
         let sets = previousExercise.sets
         if sets.indices.contains(setIndex) {
             return (sets[setIndex].reps, sets[setIndex].weight)
@@ -647,6 +800,74 @@ struct WorkoutDetailView: View {
             return (last.reps, last.weight)
         } else {
             return (nil, nil)
+        }
+    }
+    
+    private func updateEntityNotes(_ notes: String) {
+        entity.notes = notes
+        do {
+            try modelContext.save()
+            print("✅ Notizen gespeichert")
+        } catch {
+            print("❌ Fehler beim Speichern der Notizen: \(error)")
+        }
+    }
+
+    private func updateEntityDuration(_ duration: TimeInterval, date: Date) {
+        entity.duration = duration
+        entity.date = date
+        try? modelContext.save()
+    }
+
+    private func updateEntitySet(exerciseId: UUID, setId: UUID, mutate: (ExerciseSetEntity) -> Void) {
+        if let ex = entity.exercises.first(where: { $0.id == exerciseId }),
+           let set = ex.sets.first(where: { $0.id == setId }) {
+            mutate(set)
+            do {
+                try modelContext.save()
+                print("✅ Satz aktualisiert")
+            } catch {
+                print("❌ Fehler beim Speichern des Satzes: \(error)")
+            }
+        }
+    }
+
+    private func appendEntitySet(exerciseId: UUID, newSet: ExerciseSet) {
+        if let ex = entity.exercises.first(where: { $0.id == exerciseId }) {
+            let e = ExerciseSetEntity(id: newSet.id, reps: newSet.reps, weight: newSet.weight, restTime: newSet.restTime, completed: newSet.completed)
+            ex.sets.append(e)
+            do {
+                try modelContext.save()
+                print("✅ Neuer Satz hinzugefügt")
+            } catch {
+                print("❌ Fehler beim Hinzufügen des Satzes: \(error)")
+            }
+        }
+    }
+
+    private func removeEntitySet(exerciseId: UUID, setId: UUID) {
+        if let exIndex = entity.exercises.firstIndex(where: { $0.id == exerciseId }) {
+            if let setIndex = entity.exercises[exIndex].sets.firstIndex(where: { $0.id == setId }) {
+                let setEntity = entity.exercises[exIndex].sets.remove(at: setIndex)
+                modelContext.delete(setEntity)
+                do {
+                    try modelContext.save()
+                    print("✅ Satz gelöscht")
+                } catch {
+                    print("❌ Fehler beim Löschen des Satzes: \(error)")
+                }
+            }
+        }
+    }
+
+    private func reorderEntityExercises(to newOrder: [WorkoutExercise]) {
+        let lookup: [UUID: WorkoutExerciseEntity] = Dictionary(uniqueKeysWithValues: entity.exercises.map { ($0.id, $0) })
+        entity.exercises = newOrder.compactMap { lookup[$0.id] }
+        do {
+            try modelContext.save()
+            print("✅ Übungsreihenfolge gespeichert")
+        } catch {
+            print("❌ Fehler beim Speichern der Reihenfolge: \(error)")
         }
     }
 }
@@ -685,11 +906,18 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
         if let tintColor { uiView.tintColor = tintColor }
         
         let stringValue: String
-        if keyboardType == .numberPad {
-            // For weight fields (numberPad), display as integer
+        if keyboardType == .decimalPad {
+            // For weight fields (decimalPad), display as decimal
+            if let doubleValue = Double(String(value)), doubleValue > 0 {
+                stringValue = String(format: "%.1f", doubleValue).replacingOccurrences(of: ".0", with: "")
+            } else {
+                stringValue = ""
+            }
+        } else if keyboardType == .numberPad {
+            // For rep fields (numberPad), display as integer
             stringValue = String(Int(Double(String(value)) ?? 0))
         } else {
-            // For other fields (like reps), display normally
+            // For other fields, display normally
             stringValue = String(value)
         }
         
@@ -711,9 +939,14 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
         
         @objc func textFieldDidChange(_ textField: UITextField) {
             let text = textField.text ?? ""
-            if let newValue = Value(text) {
-                if parent.keyboardType == .numberPad {
-                    // For weight fields, ensure we store as whole number
+            let cleanText = text.replacingOccurrences(of: ",", with: ".")
+            
+            if let newValue = Value(cleanText) {
+                if parent.keyboardType == .decimalPad {
+                    // For weight fields, allow decimal values
+                    parent.value = newValue
+                } else if parent.keyboardType == .numberPad {
+                    // For rep fields, ensure we store as whole number
                     let intValue = Int(Double(String(newValue)) ?? 0)
                     if let convertedValue = Value(String(intValue)) {
                         parent.value = convertedValue
@@ -801,7 +1034,7 @@ private struct WorkoutSetCard: View {
                         SelectAllTextField(
                             value: $set.weight,
                             placeholder: "0",
-                            keyboardType: .numberPad,
+                            keyboardType: .decimalPad,
                             uiFont: UIFont.systemFont(ofSize: 28, weight: .semibold),
                             textColor: set.completed ? UIColor.systemGray3 : nil
                         )
@@ -1025,10 +1258,16 @@ private extension UIFont {
 }
 
 #Preview {
-    let store = WorkoutStore()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self, ExerciseEntity.self, WorkoutSessionEntity.self, UserProfileEntity.self, configurations: config)
+    let exercise = ExerciseEntity(id: UUID(), name: "Bankdrücken")
+    let set = ExerciseSetEntity(id: UUID(), reps: 10, weight: 60, restTime: 90, completed: false)
+    let we = WorkoutExerciseEntity(id: UUID(), exercise: exercise, sets: [set])
+    let workout = WorkoutEntity(id: UUID(), name: "Push Day", exercises: [we], defaultRestTime: 90, notes: "Preview")
+    container.mainContext.insert(workout)
     return NavigationStack {
-        WorkoutDetailView(workout: .constant(store.workouts.first!))
-            .environmentObject(store)
+        WorkoutDetailView(entity: workout)
+            .environmentObject(WorkoutStore())
     }
+    .modelContainer(container)
 }
-

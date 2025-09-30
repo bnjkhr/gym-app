@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import HealthKit
 
 struct ProfileEditView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
@@ -9,6 +10,9 @@ struct ProfileEditView: View {
     @State private var name: String = ""
     @State private var birthDate: Date?
     @State private var weight: String = ""
+    @State private var height: String = ""
+    @State private var biologicalSex: HKBiologicalSex = .notSet
+    @State private var healthKitSyncEnabled: Bool = false
     @State private var goal: FitnessGoal = .general
     @State private var experience: ExperienceLevel = .intermediate
     @State private var equipment: EquipmentPreference = .mixed
@@ -19,6 +23,10 @@ struct ProfileEditView: View {
     @State private var showingCamera = false
     @State private var selectedImage: UIImage?
     @State private var profileImage: UIImage?
+    @State private var showingHealthKitImport = false
+    @State private var isImportingFromHealthKit = false
+    @State private var healthKitError: HealthKitError?
+    @State private var showingHealthKitError = false
     
     private let maxNameLength = 50
     private let weightFormatter: NumberFormatter = {
@@ -56,8 +64,19 @@ struct ProfileEditView: View {
                     
                     // Personal Information
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Persönliche Informationen")
-                            .font(.headline)
+                        HStack {
+                            Text("Persönliche Informationen")
+                                .font(.headline)
+                            Spacer()
+                            if workoutStore.healthKitManager.isHealthDataAvailable {
+                                Button("HealthKit importieren") {
+                                    importFromHealthKit()
+                                }
+                                .font(.caption)
+                                .buttonStyle(.bordered)
+                                .disabled(isImportingFromHealthKit)
+                            }
+                        }
                         
                         VStack(spacing: 16) {
                             HStack {
@@ -90,7 +109,7 @@ struct ProfileEditView: View {
                                 .buttonStyle(.plain)
                             }
                             
-                            if let birthDate, let age = workoutStore.userProfile.age {
+                            if let birthDate, let age = calculateAge(from: birthDate) {
                                 HStack {
                                     Text("Alter")
                                     Spacer()
@@ -109,6 +128,46 @@ struct ProfileEditView: View {
                                         .textFieldStyle(.plain)
                                         .frame(width: 80)
                                     Text("kg")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            
+                            HStack {
+                                Text("Größe")
+                                Spacer()
+                                HStack(spacing: 4) {
+                                    TextField("cm", text: $height)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .textFieldStyle(.plain)
+                                        .frame(width: 80)
+                                    Text("cm")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            
+                            HStack {
+                                Text("Geschlecht")
+                                Spacer()
+                                Picker("Geschlecht", selection: $biologicalSex) {
+                                    Text("Nicht angegeben").tag(HKBiologicalSex.notSet)
+                                    Text("Weiblich").tag(HKBiologicalSex.female)
+                                    Text("Männlich").tag(HKBiologicalSex.male)
+                                    Text("Divers").tag(HKBiologicalSex.other)
+                                }
+                                .pickerStyle(.menu)
+                            }
+                            
+                            if workoutStore.healthKitManager.isHealthDataAvailable {
+                                HStack {
+                                    Text("HealthKit Synchronisation")
+                                    Spacer()
+                                    Toggle("", isOn: $healthKitSyncEnabled)
+                                }
+                                
+                                if healthKitSyncEnabled {
+                                    Text("Workouts werden automatisch in die Health App übertragen.")
+                                        .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -259,12 +318,21 @@ struct ProfileEditView: View {
                 ]
             )
         }
+        .alert("HealthKit Fehler", isPresented: $showingHealthKitError, presenting: healthKitError) { error in
+            Button("OK", role: .cancel) { healthKitError = nil }
+        } message: { error in
+            Text(error.localizedDescription)
+        }
+        .scrollViewKeyboardDismissal() // Dismiss keyboard when tapping in scroll view
         .onAppear {
             // Initialize with current profile data
             let profile = workoutStore.userProfile
             name = profile.name
             birthDate = profile.birthDate
             weight = profile.weight?.formatted(.number.precision(.fractionLength(0...1))) ?? ""
+            height = profile.height?.formatted(.number.precision(.fractionLength(0...1))) ?? ""
+            biologicalSex = profile.biologicalSex ?? .notSet
+            healthKitSyncEnabled = profile.healthKitSyncEnabled
             goal = profile.goal
             experience = profile.experience
             equipment = profile.equipment
@@ -273,21 +341,92 @@ struct ProfileEditView: View {
         }
     }
     
+    private func calculateAge(from birthDate: Date) -> Int? {
+        let calendar = Calendar.current
+        return calendar.dateComponents([.year], from: birthDate, to: Date()).year
+    }
+    
+    private func importFromHealthKit() {
+        guard workoutStore.healthKitManager.isHealthDataAvailable else { return }
+        
+        isImportingFromHealthKit = true
+        
+        Task {
+            do {
+                // Request authorization first if not already authorized
+                if !workoutStore.healthKitManager.isAuthorized {
+                    try await workoutStore.requestHealthKitAuthorization()
+                }
+                
+                // Import data from HealthKit
+                try await workoutStore.importFromHealthKit()
+                
+                // Update UI with imported data
+                await MainActor.run {
+                    let profile = workoutStore.userProfile
+                    if let birthDate = profile.birthDate {
+                        self.birthDate = birthDate
+                    }
+                    if let weight = profile.weight {
+                        self.weight = weight.formatted(.number.precision(.fractionLength(0...1)))
+                    }
+                    if let height = profile.height {
+                        self.height = height.formatted(.number.precision(.fractionLength(0...1)))
+                    }
+                    if let sex = profile.biologicalSex {
+                        self.biologicalSex = sex
+                    }
+                    self.healthKitSyncEnabled = true
+                }
+                
+            } catch let error as HealthKitError {
+                await MainActor.run {
+                    self.healthKitError = error
+                    self.showingHealthKitError = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.healthKitError = HealthKitError.saveFailed
+                    self.showingHealthKitError = true
+                }
+            }
+            
+            await MainActor.run {
+                isImportingFromHealthKit = false
+            }
+        }
+    }
+    
     private func saveProfile() {
         let weightValue = Double(weight.replacingOccurrences(of: ",", with: "."))
+        let heightValue = Double(height.replacingOccurrences(of: ",", with: "."))
         
         workoutStore.updateProfile(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             birthDate: birthDate,
             weight: weightValue,
+            height: heightValue,
+            biologicalSex: biologicalSex != .notSet ? biologicalSex : nil,
             goal: goal,
             experience: experience,
             equipment: equipment,
-            preferredDuration: preferredDuration
+            preferredDuration: preferredDuration,
+            healthKitSyncEnabled: healthKitSyncEnabled
         )
         
         if selectedImage != profileImage {
             workoutStore.updateProfileImage(selectedImage)
+        }
+        
+        // Request HealthKit authorization if sync is enabled but not yet authorized
+        if healthKitSyncEnabled && !workoutStore.healthKitManager.isAuthorized {
+            Task {
+                do {
+                    try await workoutStore.requestHealthKitAuthorization()
+                } catch {
+                    print("HealthKit authorization failed: \(error)")
+                }
+            }
         }
     }
 }

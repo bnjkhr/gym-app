@@ -1,21 +1,30 @@
 import SwiftUI
+import SwiftData
 
 struct WorkoutsView: View {
+    init() {}
+
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [
+        SortDescriptor(\WorkoutEntity.date, order: .reverse)
+    ])
+    private var workoutEntities: [WorkoutEntity]
+
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingAddWorkout = false
 
     var body: some View {
         List {
-            ForEach(workoutStore.workouts) { workout in
+            ForEach(workoutEntities) { entity in
                 NavigationLink {
-                    WorkoutDetailView(workout: binding(for: workout))
+                    WorkoutDetailView(entity: entity)
                         .environmentObject(workoutStore)
                 } label: {
-                    WorkoutRowView(workout: workout)
+                    WorkoutRowView(workout: Workout(entity: entity, in: modelContext))
                 }
             }
-            .onDelete(perform: workoutStore.deleteWorkout)
+            .onDelete(perform: deleteWorkouts)
         }
         .padding(.bottom, 96)
         .toolbar(.hidden, for: .navigationBar)
@@ -38,7 +47,7 @@ struct WorkoutsView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppTheme.darkPurple)
-                .appEdgePadding()
+                .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .padding(.bottom, 6)
             }
@@ -77,19 +86,26 @@ struct WorkoutRowView: View {
 }
 
 private extension WorkoutsView {
-    func binding(for workout: Workout) -> Binding<Workout> {
-        guard let index = workoutStore.workouts.firstIndex(where: { $0.id == workout.id }) else {
-            return .constant(workout)
+    func deleteWorkouts(at offsets: IndexSet) {
+        for index in offsets {
+            let entity = workoutEntities[index]
+            modelContext.delete(entity)
         }
-
-        return Binding(
-            get: { workoutStore.workouts[index] },
-            set: { workoutStore.workouts[index] = $0 }
-        )
+        try? modelContext.save()
     }
 }
 
 #Preview {
-    WorkoutsView()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self, ExerciseEntity.self, WorkoutSessionEntity.self, UserProfileEntity.self, configurations: config)
+    // Seed one workout
+    let exercise = ExerciseEntity(id: UUID(), name: "Kniebeugen")
+    let set = ExerciseSetEntity(id: UUID(), reps: 8, weight: 80, restTime: 120, completed: false)
+    let we = WorkoutExerciseEntity(id: UUID(), exercise: exercise, sets: [set])
+    let workout = WorkoutEntity(id: UUID(), name: "Leg Day", exercises: [we], defaultRestTime: 90)
+    container.mainContext.insert(workout)
+    return WorkoutsView()
         .environmentObject(WorkoutStore())
+        .modelContainer(container)
 }
+

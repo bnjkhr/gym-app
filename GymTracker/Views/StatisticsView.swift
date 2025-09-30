@@ -1,5 +1,10 @@
 import SwiftUI
 import Charts
+import SwiftData
+import HealthKit
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -9,9 +14,7 @@ private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
 }
 
 struct StatisticsView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
-    @Environment(\.colorScheme) private var colorScheme
-
+    @EnvironmentObject private var workoutStore: WorkoutStore
     @State private var headerHidden: Bool = false
     @State private var lastScrollOffset: CGFloat = 0
     @State private var didSetInitialOffset: Bool = false
@@ -30,22 +33,21 @@ struct StatisticsView: View {
                 .frame(height: 0)
 
                 DayStripView(showCalendar: { showingCalendar = true })
-                    .environmentObject(workoutStore)
 
                 // Neue Übersicht (letztes Workout)
                 ProgressOverviewCardView()
-                    .environmentObject(workoutStore)
 
                 // Neue Infobox: Veränderungen (Gewicht/Volumen & Wiederholungen)
                 ProgressDeltaInfoCardView()
+
+                // Herzfrequenz-Bereich
+                HeartRateInsightsView()
                     .environmentObject(workoutStore)
 
                 // Bestehende Bereiche
                 MostUsedExercisesView()
-                    .environmentObject(workoutStore)
 
                 RecentActivityView()
-                    .environmentObject(workoutStore)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -66,7 +68,6 @@ struct StatisticsView: View {
         .coordinateSpace(name: "statisticsScroll")
         .sheet(isPresented: $showingCalendar) {
             CalendarSessionsView()
-                .environmentObject(workoutStore)
         }
     }
 }
@@ -74,10 +75,11 @@ struct StatisticsView: View {
 // MARK: - Neue Karten
 
 private struct ProgressOverviewCardView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
 
     private var lastSession: WorkoutSession? {
-        workoutStore.sessionHistory.sorted { $0.date > $1.date }.first
+        sessionEntities.first.map { WorkoutSession(entity: $0) }
     }
 
     private var lastVolume: Double? {
@@ -105,8 +107,12 @@ private struct ProgressOverviewCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Übersicht")
-                .font(.headline)
+            HStack {
+                Text("Übersicht")
+                    .font(.headline)
+                
+                Spacer()
+            }
 
             HStack(spacing: 12) {
                 statBox(title: "Gewicht", value: lastVolumeText, icon: "scalemass.fill", tint: .mossGreen)
@@ -138,10 +144,11 @@ private struct ProgressOverviewCardView: View {
 }
 
 private struct ProgressDeltaInfoCardView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
 
     private var lastTwoSessions: [WorkoutSession] {
-        workoutStore.sessionHistory.sorted { $0.date > $1.date }.prefix(2).map { $0 }
+        sessionEntities.prefix(2).map { WorkoutSession(entity: $0) }
     }
 
     private var lastSession: WorkoutSession? { lastTwoSessions.first }
@@ -222,21 +229,33 @@ private struct ProgressDeltaInfoCardView: View {
 // MARK: - Bestehende Bereiche (unverändert)
 
 struct MostUsedExercisesView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @Query(sort: [SortDescriptor(\WorkoutEntity.date, order: .reverse)])
+    private var workoutEntities: [WorkoutEntity]
+    @Query(sort: [SortDescriptor(\ExerciseEntity.name, order: .forward)])
+    private var exerciseEntities: [ExerciseEntity]
+
+    @Environment(\.modelContext) private var modelContext
+
+    private var displayWorkouts: [Workout] {
+        workoutEntities.map { Workout(entity: $0) }
+    }
 
     var exerciseUsage: [(Exercise, Int)] {
+        let workouts = displayWorkouts
+        let catalog: [Exercise] = {
+            // Fresh fetch to avoid invalid snapshots
+            let descriptor = FetchDescriptor<ExerciseEntity>(sortBy: [SortDescriptor(\.name, order: .forward)])
+            let freshList = (try? modelContext.fetch(descriptor)) ?? []
+            return safeMapExercises(freshList, in: modelContext)
+        }()
         var usage: [UUID: Int] = [:]
-
-        for workout in workoutStore.workouts {
+        for workout in workouts {
             for workoutExercise in workout.exercises {
                 usage[workoutExercise.exercise.id, default: 0] += 1
             }
         }
-
-        return workoutStore.exercises
-            .map { exercise in
-                (exercise, usage[exercise.id] ?? 0)
-            }
+        return catalog
+            .map { exercise in (exercise, usage[exercise.id] ?? 0) }
             .sorted { $0.1 > $1.1 }
             .prefix(5)
             .map { $0 }
@@ -275,13 +294,13 @@ struct MostUsedExercisesView: View {
 }
 
 struct RecentActivityView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @Query(sort: [SortDescriptor(\WorkoutEntity.date, order: .reverse)])
+    private var workoutEntities: [WorkoutEntity]
+    
+    @Environment(\.modelContext) private var modelContext
 
     var recentWorkouts: [Workout] {
-        workoutStore.workouts
-            .sorted { $0.date > $1.date }
-            .prefix(5)
-            .map { $0 }
+        workoutEntities.prefix(5).map { Workout(entity: $0) }
     }
 
     var body: some View {
@@ -321,8 +340,10 @@ struct RecentActivityView: View {
 
 // MARK: - Day Strip (7-day calendar)
 private struct DayStripView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
     let showCalendar: () -> Void
+
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
 
     private var last7Days: [Date] {
         let cal = Calendar.current
@@ -333,7 +354,21 @@ private struct DayStripView: View {
 
     private var sessionDays: Set<Date> {
         let cal = Calendar.current
-        return Set(workoutStore.sessionHistory.map { cal.startOfDay(for: $0.date) })
+        return Set(sessionEntities.map { cal.startOfDay(for: $0.date) })
+    }
+    
+    private func germanWeekdayAbbreviation(for date: Date) -> String {
+        let weekday = Calendar.current.component(.weekday, from: date)
+        switch weekday {
+        case 1: return "So" // Sunday
+        case 2: return "Mo" // Monday
+        case 3: return "Di" // Tuesday
+        case 4: return "Mi" // Wednesday
+        case 5: return "Do" // Thursday
+        case 6: return "Fr" // Friday
+        case 7: return "Sa" // Saturday
+        default: return ""
+        }
     }
 
     var body: some View {
@@ -355,7 +390,7 @@ private struct DayStripView: View {
                                 .font(.body.weight(isToday ? .bold : .regular))
                                 .foregroundStyle(.primary)
                         }
-                        Text(day, format: .dateTime.weekday(.abbreviated))
+                        Text(germanWeekdayAbbreviation(for: day))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Circle()
@@ -377,8 +412,10 @@ private struct DayStripView: View {
 
 // MARK: - Calendar Sessions Sheet
 private struct CalendarSessionsView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
+
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
 
     @State private var displayedMonth: Date = Date()
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
@@ -407,14 +444,14 @@ private struct CalendarSessionsView: View {
 
     private var sessionDays: Set<Date> {
         let cal = Calendar.current
-        return Set(workoutStore.sessionHistory.map { cal.startOfDay(for: $0.date) })
+        return Set(sessionEntities.map { cal.startOfDay(for: $0.date) })
     }
 
     private func sessions(on date: Date) -> [WorkoutSession] {
         let cal = Calendar.current
         let start = cal.startOfDay(for: date)
-        return workoutStore.sessionHistory.filter { cal.isDate($0.date, inSameDayAs: start) }
-            .sorted { $0.date > $1.date }
+        let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
+        return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -435,9 +472,9 @@ private struct CalendarSessionsView: View {
                 }
                 .appEdgePadding()
 
-                // Weekday symbols (Mon-Sun)
+                // Weekday symbols (Mon-Sun in German)
                 HStack {
-                    ForEach(["M", "D", "M", "D", "F", "S", "S"], id: \.self) { d in
+                    ForEach(["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], id: \.self) { d in
                         Text(d)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -530,3 +567,295 @@ private extension Calendar {
         isDate(date1, equalTo: startOfDay, toGranularity: .day)
     }
 }
+
+#Preview {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: ExerciseEntity.self, ExerciseSetEntity.self, WorkoutExerciseEntity.self, WorkoutEntity.self, WorkoutSessionEntity.self, UserProfileEntity.self, configurations: config)
+
+    // Seed exercises
+    let bench = ExerciseEntity(id: UUID(), name: "Bankdrücken", muscleGroupsRaw: ["chest"], descriptionText: "", instructions: [], createdAt: Date())
+    let squat = ExerciseEntity(id: UUID(), name: "Kniebeugen", muscleGroupsRaw: ["legs"], descriptionText: "", instructions: [], createdAt: Date())
+
+    // Seed a workout with sets
+    let benchSet1 = ExerciseSetEntity(id: UUID(), reps: 10, weight: 60, restTime: 90, completed: false)
+    let benchSet2 = ExerciseSetEntity(id: UUID(), reps: 8, weight: 65, restTime: 90, completed: false)
+    let benchWE = WorkoutExerciseEntity(id: UUID(), exercise: bench, sets: [benchSet1, benchSet2])
+
+    let squatSet1 = ExerciseSetEntity(id: UUID(), reps: 8, weight: 80, restTime: 120, completed: false)
+    let squatWE = WorkoutExerciseEntity(id: UUID(), exercise: squat, sets: [squatSet1])
+
+    let w1 = WorkoutEntity(id: UUID(), name: "Push Day", date: Calendar.current.date(byAdding: .day, value: -2, to: Date())!, exercises: [benchWE], defaultRestTime: 90, duration: 3600, notes: "")
+    let w2 = WorkoutEntity(id: UUID(), name: "Leg Day", date: Calendar.current.date(byAdding: .day, value: -1, to: Date())!, exercises: [squatWE], defaultRestTime: 120, duration: 3000, notes: "")
+
+    // Seed two recent sessions for delta calc
+    let s1BenchSet = ExerciseSetEntity(id: UUID(), reps: 10, weight: 60, restTime: 90, completed: true)
+    let s1BenchWE = WorkoutExerciseEntity(id: UUID(), exercise: bench, sets: [s1BenchSet])
+    let session1 = WorkoutSessionEntity(id: UUID(), templateId: w1.id, name: "Push Day", date: Calendar.current.date(byAdding: .day, value: -3, to: Date())!, exercises: [s1BenchWE], defaultRestTime: 90, duration: 3200, notes: "")
+
+    let s2BenchSet = ExerciseSetEntity(id: UUID(), reps: 12, weight: 62.5, restTime: 90, completed: true)
+    let s2BenchWE = WorkoutExerciseEntity(id: UUID(), exercise: bench, sets: [s2BenchSet])
+    let session2 = WorkoutSessionEntity(id: UUID(), templateId: w1.id, name: "Push Day", date: Calendar.current.date(byAdding: .day, value: -1, to: Date())!, exercises: [s2BenchWE], defaultRestTime: 90, duration: 3300, notes: "")
+
+    container.mainContext.insert(bench)
+    container.mainContext.insert(squat)
+    container.mainContext.insert(w1)
+    container.mainContext.insert(w2)
+    container.mainContext.insert(session1)
+    container.mainContext.insert(session2)
+
+    return NavigationStack { StatisticsView() }
+        .modelContainer(container)
+        .environmentObject(WorkoutStore())
+}
+
+// MARK: - Heart Rate Insights
+struct HeartRateInsightsView: View {
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var heartRateReadings: [HeartRateReading] = []
+    @State private var isLoading = false
+    @State private var error: HealthKitError?
+    @State private var showingError = false
+    @State private var selectedTimeRange: HeartRateTimeRange = .day
+    
+    enum HeartRateTimeRange: String, CaseIterable {
+        case day = "24h"
+        case week = "Woche"
+        case month = "Monat"
+        
+        var displayName: String { rawValue }
+        
+        var timeInterval: TimeInterval {
+            switch self {
+            case .day: return 86400
+            case .week: return 604800
+            case .month: return 2629746
+            }
+        }
+    }
+    
+    private var averageHeartRate: Double {
+        guard !heartRateReadings.isEmpty else { return 0 }
+        return heartRateReadings.reduce(0) { $0 + $1.heartRate } / Double(heartRateReadings.count)
+    }
+    
+    private var maxHeartRate: Double {
+        heartRateReadings.max { $0.heartRate < $1.heartRate }?.heartRate ?? 0
+    }
+    
+    private var minHeartRate: Double {
+        heartRateReadings.min { $0.heartRate < $1.heartRate }?.heartRate ?? 0
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Herzfrequenz")
+                .font(.headline)
+            
+            if !workoutStore.healthKitManager.isHealthDataAvailable {
+                VStack(spacing: 12) {
+                    Image(systemName: "heart.slash")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    Text("HealthKit nicht verfügbar")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+            } else if !workoutStore.healthKitManager.isAuthorized {
+                VStack(spacing: 12) {
+                    Image(systemName: "heart.text.square")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    Text("HealthKit-Berechtigung erforderlich")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Button("Berechtigung erteilen") {
+                        requestAuthorization()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+            } else {
+                VStack(spacing: 12) {
+                    // Time Range Picker
+                    Picker("Zeitraum", selection: $selectedTimeRange) {
+                        ForEach(HeartRateTimeRange.allCases, id: \.self) { range in
+                            Text(range.displayName).tag(range)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedTimeRange) { _, _ in
+                        loadHeartRateData()
+                    }
+                    
+                    if !heartRateReadings.isEmpty {
+                        // Stats
+                        HStack(spacing: 12) {
+                            heartRateStatBox(title: "Ø", value: Int(averageHeartRate), color: .blue)
+                            heartRateStatBox(title: "Max", value: Int(maxHeartRate), color: .red)
+                            heartRateStatBox(title: "Min", value: Int(minHeartRate), color: .green)
+                        }
+                        
+                        // Compact Chart
+                        Chart(heartRateReadings.prefix(20)) { reading in
+                            LineMark(
+                                x: .value("Zeit", reading.timestamp),
+                                y: .value("Herzfrequenz", reading.heartRate)
+                            )
+                            .foregroundStyle(.red)
+                            .interpolationMethod(.cardinal)
+                            
+                            AreaMark(
+                                x: .value("Zeit", reading.timestamp),
+                                y: .value("Herzfrequenz", reading.heartRate)
+                            )
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.red.opacity(0.3), .red.opacity(0.1)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .interpolationMethod(.cardinal)
+                        }
+                        .frame(height: 120)
+                        .chartXAxis(.hidden)
+                        .chartYAxis {
+                            AxisMarks { value in
+                                AxisValueLabel {
+                                    if let heartRate = value.as(Double.self) {
+                                        Text("\(Int(heartRate))")
+                                    }
+                                }
+                                AxisGridLine()
+                                AxisTick()
+                            }
+                        }
+                        .background(Color(.systemBackground))
+                        .cornerRadius(8)
+                    } else if !isLoading {
+                        VStack(spacing: 8) {
+                            Image(systemName: "heart")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                            Text("Keine Herzfrequenzdaten")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text("Für den gewählten Zeitraum sind keine Daten verfügbar.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                    }
+                    
+                    if isLoading {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Lade Herzfrequenzdaten...")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+                .onAppear {
+                    loadHeartRateData()
+                }
+                .alert("Fehler", isPresented: $showingError, presenting: error) { error in
+                    Button("OK", role: .cancel) { self.error = nil }
+                } message: { error in
+                    Text(error.localizedDescription)
+                }
+            }
+        }
+        .appEdgePadding()
+    }
+    
+    private func heartRateStatBox(title: String, value: Int, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text("\(value)")
+                    .font(.callout)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(color)
+                
+                Text("bpm")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Color(.systemBackground))
+        .cornerRadius(6)
+    }
+    
+    private func requestAuthorization() {
+        Task {
+            do {
+                try await workoutStore.requestHealthKitAuthorization()
+                loadHeartRateData()
+            } catch let healthKitError as HealthKitError {
+                await MainActor.run {
+                    self.error = healthKitError
+                    self.showingError = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = HealthKitError.notAuthorized
+                    self.showingError = true
+                }
+            }
+        }
+    }
+    
+    private func loadHeartRateData() {
+        guard workoutStore.healthKitManager.isAuthorized else { return }
+        
+        isLoading = true
+        let endDate = Date()
+        let startDate = endDate.addingTimeInterval(-selectedTimeRange.timeInterval)
+        
+        Task {
+            do {
+                let readings = try await workoutStore.readHeartRateData(from: startDate, to: endDate)
+                
+                await MainActor.run {
+                    self.heartRateReadings = readings
+                    self.isLoading = false
+                }
+            } catch let healthKitError as HealthKitError {
+                await MainActor.run {
+                    self.error = healthKitError
+                    self.showingError = true
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = HealthKitError.notAuthorized
+                    self.showingError = true
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+}
+
