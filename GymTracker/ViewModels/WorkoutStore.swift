@@ -1,4 +1,5 @@
 import Foundation
+import Foundation
 import SwiftUI
 import SwiftData
 import HealthKit
@@ -59,11 +60,38 @@ class WorkoutStore: ObservableObject {
     }
 
     var userProfile: UserProfile {
-        guard let context = modelContext else { return UserProfile() }
+        guard let context = modelContext else { 
+            // Fallback: Load from UserDefaults if SwiftData isn't available
+            return ProfilePersistenceHelper.loadFromUserDefaults()
+        }
         let descriptor = FetchDescriptor<UserProfileEntity>()
         if let entity = try? context.fetch(descriptor).first {
-            return UserProfile(entity: entity)
+            let profile = UserProfile(entity: entity)
+            // Always keep UserDefaults as backup
+            ProfilePersistenceHelper.saveToUserDefaults(profile)
+            return profile
         }
+        
+        // Try to restore from UserDefaults backup
+        let backupProfile = ProfilePersistenceHelper.loadFromUserDefaults()
+        if !backupProfile.name.isEmpty || backupProfile.weight != nil {
+            // Restore to SwiftData
+            updateProfile(
+                name: backupProfile.name,
+                birthDate: backupProfile.birthDate,
+                weight: backupProfile.weight,
+                height: backupProfile.height,
+                biologicalSex: backupProfile.biologicalSex,
+                goal: backupProfile.goal,
+                experience: backupProfile.experience,
+                equipment: backupProfile.equipment,
+                preferredDuration: backupProfile.preferredDuration,
+                healthKitSyncEnabled: backupProfile.healthKitSyncEnabled
+            )
+            print("✅ Profil aus UserDefaults-Backup wiederhergestellt")
+            return backupProfile
+        }
+        
         return UserProfile()
     }
 
@@ -429,54 +457,85 @@ class WorkoutStore: ObservableObject {
     
     // MARK: - Profile Management
     func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false) {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<UserProfileEntity>()
+        // Create updated profile
+        let updatedProfile = UserProfile(
+            name: name,
+            birthDate: birthDate,
+            weight: weight,
+            height: height,
+            biologicalSex: biologicalSex,
+            goal: goal,
+            profileImageData: userProfile.profileImageData, // Keep existing image
+            experience: experience,
+            equipment: equipment,
+            preferredDuration: preferredDuration,
+            healthKitSyncEnabled: healthKitSyncEnabled
+        )
         
-        let entity: UserProfileEntity
-        if let existing = try? context.fetch(descriptor).first {
-            entity = existing
-        } else {
-            entity = UserProfileEntity()
-            context.insert(entity)
+        // Always save to UserDefaults as backup
+        ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
+        
+        // Save to SwiftData if available
+        if let context = modelContext {
+            let descriptor = FetchDescriptor<UserProfileEntity>()
+            
+            let entity: UserProfileEntity
+            if let existing = try? context.fetch(descriptor).first {
+                entity = existing
+            } else {
+                entity = UserProfileEntity()
+                context.insert(entity)
+            }
+            
+            entity.name = name
+            entity.birthDate = birthDate
+            entity.weight = weight
+            entity.height = height
+            entity.biologicalSexRaw = Int16(biologicalSex?.rawValue ?? HKBiologicalSex.notSet.rawValue)
+            entity.healthKitSyncEnabled = healthKitSyncEnabled
+            entity.goalRaw = goal.rawValue
+            entity.experienceRaw = experience.rawValue
+            entity.equipmentRaw = equipment.rawValue
+            entity.preferredDurationRaw = preferredDuration.rawValue
+            entity.updatedAt = Date()
+            
+            try? context.save()
         }
-        
-        entity.name = name
-        entity.birthDate = birthDate
-        entity.weight = weight
-        entity.height = height
-        entity.biologicalSexRaw = Int16(biologicalSex?.rawValue ?? HKBiologicalSex.notSet.rawValue)
-        entity.healthKitSyncEnabled = healthKitSyncEnabled
-        entity.goalRaw = goal.rawValue
-        entity.experienceRaw = experience.rawValue
-        entity.equipmentRaw = equipment.rawValue
-        entity.preferredDurationRaw = preferredDuration.rawValue
-        entity.updatedAt = Date()
-        
-        try? context.save()
         
         // Trigger UI update
         profileUpdateTrigger = UUID()
+        print("✅ Profil gespeichert: \(name) - \(goal.displayName)")
     }
     
     func updateProfileImage(_ image: UIImage?) {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<UserProfileEntity>()
+        // Create updated profile with new image
+        var updatedProfile = userProfile
+        updatedProfile.updateProfileImage(image)
         
-        let entity: UserProfileEntity
-        if let existing = try? context.fetch(descriptor).first {
-            entity = existing
-        } else {
-            entity = UserProfileEntity()
-            context.insert(entity)
+        // Always save to UserDefaults as backup
+        ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
+        
+        // Save to SwiftData if available
+        if let context = modelContext {
+            let descriptor = FetchDescriptor<UserProfileEntity>()
+            
+            let entity: UserProfileEntity
+            if let existing = try? context.fetch(descriptor).first {
+                entity = existing
+            } else {
+                entity = UserProfileEntity()
+                context.insert(entity)
+            }
+            
+            entity.profileImageData = image?.jpegData(compressionQuality: 0.8)
+            entity.updatedAt = Date()
+            
+            try? context.save()
         }
-        
-        entity.profileImageData = image?.jpegData(compressionQuality: 0.8)
-        entity.updatedAt = Date()
-        
-        try? context.save()
         
         // Trigger UI update
         profileUpdateTrigger = UUID()
+        print("✅ Profilbild gespeichert")
     }
     
     // MARK: - HealthKit Integration

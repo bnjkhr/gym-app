@@ -68,6 +68,7 @@
 		ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */; };
 		ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */; };
 		ADD080592E8C7B0F003FAAFB /* UpdatedNotificationExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */; };
+		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
 		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
@@ -163,6 +164,7 @@
 		ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 591279__awchacon__go.wav; sourceTree = "<group>"; };
 		ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSoundSettings.swift; sourceTree = "<group>"; };
 		ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedNotificationExample.swift; sourceTree = "<group>"; };
+		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActionButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -290,6 +292,7 @@
 				11E749042C9E4B9700AB1234 /* WorkoutStore.swift */,
 				AD90F2C32E845AFD003D4DE9 /* Theme.swift */,
 				AD90F2C52E845B05003D4DE9 /* StartView.swift */,
+				ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -494,6 +497,7 @@
 				11E749052C9E4B9700AB1234 /* WorkoutStore.swift in Sources */,
 				AD363DA22E8C6B250015A34D /* HealthKitDebugView.swift in Sources */,
 				ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */,
+				ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */,
 				AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */,
 				AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */,
 				11E7490B2C9E4BC100AB1234 /* StatisticsView.swift in Sources */,
@@ -651,7 +655,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = GymBo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
@@ -692,7 +696,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = GymBo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
