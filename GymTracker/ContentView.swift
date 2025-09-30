@@ -84,6 +84,9 @@ struct ContentView: View {
         .onAppear {
             // Set model context in WorkoutStore immediately when view appears
             workoutStore.modelContext = modelContext
+            
+            // Initialize AudioManager
+            _ = AudioManager.shared
         }
         .task {
             NotificationManager.shared.requestAuthorization()

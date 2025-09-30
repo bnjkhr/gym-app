@@ -63,6 +63,11 @@
 		AD960EA02E8BF83200E91131 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD960E9F2E8BF83200E91131 /* DataManager.swift */; };
 		AD960EA22E8C093D00E91131 /* ExerciseSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD960EA12E8C093D00E91131 /* ExerciseSeeder.swift */; };
 		AD960EA42E8C0A7000E91131 /* SwiftDataSafeMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD960EA32E8C0A7000E91131 /* SwiftDataSafeMapping.swift */; };
+		ADD080512E8C790D003FAAFB /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080502E8C790D003FAAFB /* AudioManager.swift */; };
+		ADD080532E8C7A06003FAAFB /* NotificationSoundExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080522E8C7A06003FAAFB /* NotificationSoundExample.swift */; };
+		ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */; };
+		ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */; };
+		ADD080592E8C7B0F003FAAFB /* UpdatedNotificationExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
 		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
@@ -153,6 +158,11 @@
 		AD960EA12E8C093D00E91131 /* ExerciseSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSeeder.swift; sourceTree = "<group>"; };
 		AD960EA32E8C0A7000E91131 /* SwiftDataSafeMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataSafeMapping.swift; sourceTree = "<group>"; };
 		ADCACAE72E8BDA210039256B /* GymBo-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GymBo-Info.plist"; sourceTree = "<group>"; };
+		ADD080502E8C790D003FAAFB /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
+		ADD080522E8C7A06003FAAFB /* NotificationSoundExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSoundExample.swift; sourceTree = "<group>"; };
+		ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 591279__awchacon__go.wav; sourceTree = "<group>"; };
+		ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSoundSettings.swift; sourceTree = "<group>"; };
+		ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedNotificationExample.swift; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActionButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -215,6 +225,7 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */,
 				AD52FECE2E8B32640048DF0F /* SwiftDataEntities.swift */,
 				11E748EF2C9E4B0F00AB1234 /* GymTrackerApp.swift */,
 				11E748F12C9E4B0F00AB1234 /* ContentView.swift */,
@@ -246,6 +257,10 @@
 				AD363DA42E8C713F0015A34D /* KeyboardDismissalUtilities.swift */,
 				AD363DA62E8C71A00015A34D /* KeyboardDismissalExamples.swift */,
 				AD363DA82E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md */,
+				ADD080502E8C790D003FAAFB /* AudioManager.swift */,
+				ADD080522E8C7A06003FAAFB /* NotificationSoundExample.swift */,
+				ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */,
+				ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */,
 			);
 			path = GymTracker;
 			sourceTree = "<group>";
@@ -413,6 +428,7 @@
 				AD363DA92E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md in Resources */,
 				11E748F72C9E4B1100AB1234 /* Preview Assets.xcassets in Resources */,
 				11E748F42C9E4B1100AB1234 /* Assets.xcassets in Resources */,
+				ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */,
 				AD363D9E2E8C56EA0015A34D /* HealthKit_Integration_README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -453,6 +469,7 @@
 				AD4B5D4C2E8A6CBB0083787B /* ExercisePickerView.swift in Sources */,
 				11E7490F2C9E4BDD00AB1234 /* AddWorkoutView.swift in Sources */,
 				11E749142C9E4C4B00AB1234 /* SettingsView.swift in Sources */,
+				ADD080532E8C7A06003FAAFB /* NotificationSoundExample.swift in Sources */,
 				AD960EA42E8C0A7000E91131 /* SwiftDataSafeMapping.swift in Sources */,
 				AD363DA72E8C71A00015A34D /* KeyboardDismissalExamples.swift in Sources */,
 				AD52FED32E8B362F0048DF0F /* SwiftDataMigration.swift in Sources */,
@@ -460,6 +477,7 @@
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,
 				11E748F02C9E4B0F00AB1234 /* GymTrackerApp.swift in Sources */,
 				ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */,
+				ADD080592E8C7B0F003FAAFB /* UpdatedNotificationExample.swift in Sources */,
 				11E749012C9E4B7A00AB1234 /* Exercise.swift in Sources */,
 				AD363D9C2E8C568F0015A34D /* HealthKitSetupView.swift in Sources */,
 				11E749162C9E4C4B00AB1234 /* WorkoutDetailView.swift in Sources */,
@@ -469,11 +487,13 @@
 				AD363D9A2E8C56740015A34D /* HeartRateView.swift in Sources */,
 				11E749212C9E4D9300AB1234 /* EditWorkoutView.swift in Sources */,
 				DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */,
+				ADD080512E8C790D003FAAFB /* AudioManager.swift in Sources */,
 				AD03A7852E858BA40005AE79 /* ProfileView.swift in Sources */,
 				AD960EA02E8BF83200E91131 /* DataManager.swift in Sources */,
 				AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */,
 				11E749052C9E4B9700AB1234 /* WorkoutStore.swift in Sources */,
 				AD363DA22E8C6B250015A34D /* HealthKitDebugView.swift in Sources */,
+				ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */,
 				AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */,
 				AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */,
 				11E7490B2C9E4BC100AB1234 /* StatisticsView.swift in Sources */,

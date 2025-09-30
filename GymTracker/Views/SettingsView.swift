@@ -12,6 +12,7 @@ private struct SettingsScrollOffsetPreferenceKey: PreferenceKey {
 struct SettingsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var audioManager = AudioManager.shared
     @State private var showingImporter = false
     @State private var showingHealthKitSetup = false
     @State private var alertMessage: String?
@@ -116,6 +117,23 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
                 }
+
+                // Audio Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Audio")
+                        .font(.headline)
+                    
+                    Toggle(isOn: $audioManager.ignoreMuteSwitch) {
+                        Text("Stummschaltung ignorieren")
+                    }
+                    
+                    Text("Sounds werden auch abgespielt, wenn das iPhone stumm geschaltet ist.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
 
                 // Benachrichtigungen Section
                 VStack(alignment: .leading, spacing: 12) {
