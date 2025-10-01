@@ -307,7 +307,7 @@ private struct WeeklyVolumeCardView: View {
                     Text("Gesamtvolumen KW \(weeklyData.weekNumber):")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("\((weeklyData.currentVolume / 1000).formatted(.number.precision(.fractionLength(1)))) kg")
+                    Text("\(weeklyData.currentVolume.formatted(.number.precision(.fractionLength(1)))) kg")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
@@ -360,17 +360,24 @@ private struct MuscleGroupBalanceCardView: View {
             for exercise in session.exercises {
                 let volume = exercise.sets.reduce(0.0) { $0 + (Double($1.reps) * $1.weight) }
                 
-                // Vereinfachte Muskelgruppen-Zuordnung basierend auf Übungsname
-                let exerciseName = exercise.exercise?.name.lowercased() ?? ""
-                if exerciseName.contains("bench") || exerciseName.contains("press") || exerciseName.contains("push") {
+                // Korrekte Muskelgruppen-Zuordnung basierend auf tatsächlichen Muskelgruppen
+                guard let exerciseEntity = exercise.exercise else { continue }
+                let muscleGroupsRaw = exerciseEntity.muscleGroupsRaw
+                
+                // Konvertiere raw strings zu MuscleGroup enums
+                let muscleGroups = muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+                
+                // Bestimme primäre Kategorie basierend auf Muskelgruppen
+                let category = categorizeExercise(muscleGroups: muscleGroups)
+                switch category {
+                case "push":
                     pushVolume += volume
-                } else if exerciseName.contains("pull") || exerciseName.contains("row") || exerciseName.contains("curl") {
+                case "pull":
                     pullVolume += volume
-                } else if exerciseName.contains("squat") || exerciseName.contains("deadlift") || exerciseName.contains("leg") {
+                case "legs":
                     legVolume += volume
-                } else {
-                    // Default zu Push für unbekannte Übungen
-                    pushVolume += volume
+                default:
+                    pushVolume += volume // Fallback
                 }
             }
         }
@@ -388,6 +395,35 @@ private struct MuscleGroupBalanceCardView: View {
                         legRatio >= 0.2 && legRatio <= 0.5
         
         return (pushRatio, pullRatio, legRatio, isBalanced)
+    }
+    
+    // MARK: - Hilfsfunktion für Push/Pull/Legs Zuordnung
+    
+    private func categorizeExercise(muscleGroups: [MuscleGroup]) -> String {
+        // Prioritätsreihenfolge für gemischte Übungen
+        
+        // Spezielle Fälle zuerst:
+        // Kreuzheben und ähnliche (back+legs+glutes) → Pull
+        // Thrusters und ähnliche (shoulders+legs ohne back) → Push
+        
+        // 1. Pull-Übungen haben Vorrang
+        if muscleGroups.contains(.back) || muscleGroups.contains(.biceps) {
+            return "pull"
+        }
+        // 2. Push-Übungen (Brust, Trizeps, oder Schultern ohne Rücken)
+        else if muscleGroups.contains(.chest) || muscleGroups.contains(.triceps) ||
+                (muscleGroups.contains(.shoulders) && !muscleGroups.contains(.back)) {
+            return "push"
+        }
+        // 3. Reine Bein-Übungen (Legs/Glutes ohne Back)
+        else if (muscleGroups.contains(.legs) || muscleGroups.contains(.glutes)) &&
+                !muscleGroups.contains(.back) {
+            return "legs"
+        }
+        // 4. Fallback für Übungen wie reine Abs, Cardio
+        else {
+            return "push" // Default zu Push für neutrale Übungen
+        }
     }
     
     var body: some View {
