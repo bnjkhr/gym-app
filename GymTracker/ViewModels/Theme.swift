@@ -8,6 +8,9 @@ enum AppTheme {
     static let indigo = Color(red: 0.48, green: 0.56, blue: 0.86)   // kühles Indigo/Lavender
 
     static let darkPurple = Color.darkPurple
+    
+    // Moos-Grün (eine erdige, natürliche Grünvariante)
+    static let mossGreen = Color(red: 0.4, green: 0.6, blue: 0.3)
 
     // Hintergrundverlauf für Header-Karten
     static var headerGradient: LinearGradient {
@@ -35,6 +38,8 @@ enum AppTheme {
     // Dunkler Hintergrundbereich
     static let darkBackground = Color.black
 }
+
+
 
 // MARK: - Reusable Styles
 

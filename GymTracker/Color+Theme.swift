@@ -2,7 +2,6 @@ import SwiftUI
 import UIKit
 
 extension Color {
-    static let mossGreen = Color(red: 0.4, green: 0.6, blue: 0.4)
     static let darkPurple = Color(UIColor { trait in
         // Default (Light Mode): the existing darker purple
         let light = UIColor(red: 48/255.0, green: 25/255.0, blue: 52/255.0, alpha: 1.0)
