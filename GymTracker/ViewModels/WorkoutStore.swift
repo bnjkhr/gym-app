@@ -99,6 +99,16 @@ class WorkoutStore: ObservableObject {
     
     init() {}
     
+    deinit {
+        // Ensure proper cleanup to prevent crashes
+        restTimer?.invalidate()
+        restTimer = nil
+        NotificationManager.shared.cancelRestEndNotification()
+        
+        // Note: Can't access @Published properties in deinit due to main actor isolation
+        // The WorkoutLiveActivityController will handle cleanup when the rest state is cleared elsewhere
+    }
+    
     func startSession(for workoutId: UUID) {
         guard let context = modelContext else { 
             print("❌ WorkoutStore: ModelContext ist nil beim Starten einer Session")
@@ -173,13 +183,24 @@ class WorkoutStore: ObservableObject {
     private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise {
         // Safely refetch by id from the current ModelContext to avoid invalid snapshot access
         let id = entity.id
-        var source: ExerciseEntity? = nil
+        let name = entity.name
+        let muscleGroupsRaw = entity.muscleGroupsRaw
+        let equipmentTypeRaw = entity.equipmentTypeRaw
+        let descriptionText = entity.descriptionText
+        let instructions = entity.instructions
+        let createdAt = entity.createdAt
+        
+        // Try to get a fresh reference if possible
+        var source: ExerciseEntity? = entity
         if let context = modelContext {
             let descriptor = FetchDescriptor<ExerciseEntity>(predicate: #Predicate { $0.id == id })
-            source = try? context.fetch(descriptor).first
+            if let fresh = try? context.fetch(descriptor).first {
+                source = fresh
+            }
         }
-        guard let fresh = source else {
-            // Return a placeholder exercise to avoid crash; caller may choose to filter it out
+        
+        guard let validSource = source else {
+            // Return a placeholder exercise to avoid crash
             return Exercise(
                 id: UUID(),
                 name: "Übung nicht verfügbar",
@@ -191,16 +212,17 @@ class WorkoutStore: ObservableObject {
             )
         }
 
-        let groups: [MuscleGroup] = fresh.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
-        let equipmentType = EquipmentType(rawValue: fresh.equipmentTypeRaw) ?? .mixed
+        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+        let equipmentType = EquipmentType(rawValue: validSource.equipmentTypeRaw) ?? .mixed
+        
         return Exercise(
-            id: fresh.id,
-            name: fresh.name,
+            id: validSource.id,
+            name: validSource.name,
             muscleGroups: groups,
             equipmentType: equipmentType,
-            description: fresh.descriptionText,
-            instructions: fresh.instructions,
-            createdAt: fresh.createdAt
+            description: validSource.descriptionText,
+            instructions: validSource.instructions,
+            createdAt: validSource.createdAt
         )
     }
 
@@ -427,12 +449,17 @@ class WorkoutStore: ObservableObject {
             
             // Sync to HealthKit if enabled
             if userProfile.healthKitSyncEnabled && healthKitManager.isAuthorized {
-                Task {
+                Task { [weak self] in
+                    guard let self = self else { return }
                     do {
-                        try await saveWorkoutToHealthKit(session)
-                        print("✅ Workout in HealthKit gespeichert: \(session.name)")
+                        try await self.saveWorkoutToHealthKit(session)
+                        await MainActor.run {
+                            print("✅ Workout in HealthKit gespeichert: \(session.name)")
+                        }
                     } catch {
-                        print("⚠️ Fehler beim Sync zu HealthKit: \(error.localizedDescription)")
+                        await MainActor.run {
+                            print("⚠️ Fehler beim Sync zu HealthKit: \(error.localizedDescription)")
+                        }
                     }
                 }
             }
@@ -549,40 +576,62 @@ class WorkoutStore: ObservableObject {
             throw HealthKitError.notAuthorized
         }
         
-        let data = try await healthKitManager.readProfileData()
+        print("🏥 Starte HealthKit-Import...")
         
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<UserProfileEntity>()
-        
-        let entity: UserProfileEntity
-        if let existing = try? context.fetch(descriptor).first {
-            entity = existing
-        } else {
-            entity = UserProfileEntity()
-            context.insert(entity)
+        do {
+            let data = try await healthKitManager.readProfileData()
+            
+            guard let context = modelContext else { 
+                print("❌ ModelContext nicht verfügbar")
+                return 
+            }
+            
+            let descriptor = FetchDescriptor<UserProfileEntity>()
+            
+            let entity: UserProfileEntity
+            if let existing = try? context.fetch(descriptor).first {
+                entity = existing
+            } else {
+                entity = UserProfileEntity()
+                context.insert(entity)
+            }
+            
+            // Update only if we got valid data from HealthKit
+            var updatedFields: [String] = []
+            
+            if let birthDate = data.birthDate {
+                entity.birthDate = birthDate
+                updatedFields.append("Geburtsdatum")
+            }
+            if let weight = data.weight {
+                entity.weight = weight
+                updatedFields.append("Gewicht")
+            }
+            if let height = data.height {
+                entity.height = height  
+                updatedFields.append("Größe")
+            }
+            if let sex = data.biologicalSex {
+                entity.biologicalSexRaw = Int16(sex.rawValue)
+                updatedFields.append("Geschlecht")
+            }
+            
+            entity.healthKitSyncEnabled = true
+            entity.updatedAt = Date()
+            
+            try context.save()
+            profileUpdateTrigger = UUID()
+            
+            print("✅ HealthKit-Import erfolgreich abgeschlossen")
+            print("   • Aktualisierte Felder: \(updatedFields.joined(separator: ", "))")
+            
+        } catch let error as HealthKitError {
+            print("❌ HealthKit-Fehler: \(error.localizedDescription)")
+            throw error
+        } catch {
+            print("❌ Unbekannter Fehler beim HealthKit-Import: \(error)")
+            throw HealthKitError.saveFailed
         }
-        
-        // Update only if we got valid data from HealthKit
-        if let birthDate = data.birthDate {
-            entity.birthDate = birthDate
-        }
-        if let weight = data.weight {
-            entity.weight = weight
-        }
-        if let height = data.height {
-            entity.height = height
-        }
-        if let sex = data.biologicalSex {
-            entity.biologicalSexRaw = Int16(sex.rawValue)
-        }
-        
-        entity.healthKitSyncEnabled = true
-        entity.updatedAt = Date()
-        
-        try? context.save()
-        
-        // Trigger UI update
-        profileUpdateTrigger = UUID()
     }
     
     func saveWorkoutToHealthKit(_ workoutSession: WorkoutSession) async throws {
@@ -728,13 +777,19 @@ class WorkoutStore: ObservableObject {
 
     private func setupRestTimer() {
         restTimer?.invalidate()
+        restTimer = nil
+        
         guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else { return }
+        
         restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.tickRest()
             }
         }
-        RunLoop.main.add(restTimer!, forMode: .common)
+        
+        if let timer = restTimer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
     }
 
     private func tickRest() {
@@ -788,14 +843,19 @@ class WorkoutStore: ObservableObject {
 
     // Refresh rest timer from wall clock (for example after app resumes from background)
     func refreshRestFromWallClock() {
-        guard var state = activeRestState, state.isRunning, let end = state.endDate else { return }
+        guard var state = activeRestState, state.isRunning, let end = state.endDate else { 
+            return 
+        }
+        
         let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
         state.remainingSeconds = remaining
         activeRestState = state
+        
         if remaining <= 0 {
             // If already elapsed while in background, just stop without duplicating sounds
             stopRest()
         } else {
+            // Only setup timer if we still have remaining time
             setupRestTimer()
         }
     }
@@ -814,7 +874,9 @@ class WorkoutStore: ObservableObject {
             return
         }
         
-        Task {
+        Task { [weak self] in
+            guard let self = self else { return }
+            
             // Alle bestehenden Workouts löschen, aber Übungen beibehalten
             do {
                 let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
@@ -835,8 +897,8 @@ class WorkoutStore: ObservableObject {
                 await DataManager.shared.ensureSampleData(context: context)
                 
                 // Aktive Session zurücksetzen
-                await MainActor.run {
-                    self.activeSessionID = nil
+                await MainActor.run { [weak self] in
+                    self?.activeSessionID = nil
                 }
                 
                 print("✅ Neue Sample-Workouts erfolgreich geladen!")

@@ -75,6 +75,17 @@ struct ProfileEditView: View {
                                 .font(.caption)
                                 .buttonStyle(.bordered)
                                 .disabled(isImportingFromHealthKit)
+                                .overlay {
+                                    if isImportingFromHealthKit {
+                                        HStack(spacing: 4) {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                            Text("Importiere...")
+                                                .font(.caption2)
+                                        }
+                                        .foregroundColor(.secondary)
+                                    }
+                                }
                             }
                         }
                         
@@ -348,10 +359,11 @@ struct ProfileEditView: View {
     
     private func importFromHealthKit() {
         guard workoutStore.healthKitManager.isHealthDataAvailable else { return }
+        guard !isImportingFromHealthKit else { return } // Verhindere mehrfache gleichzeitige Importe
         
         isImportingFromHealthKit = true
         
-        Task {
+        Task { @MainActor in
             do {
                 // Request authorization first if not already authorized
                 if !workoutStore.healthKitManager.isAuthorized {
@@ -362,38 +374,30 @@ struct ProfileEditView: View {
                 try await workoutStore.importFromHealthKit()
                 
                 // Update UI with imported data
-                await MainActor.run {
-                    let profile = workoutStore.userProfile
-                    if let birthDate = profile.birthDate {
-                        self.birthDate = birthDate
-                    }
-                    if let weight = profile.weight {
-                        self.weight = weight.formatted(.number.precision(.fractionLength(0...1)))
-                    }
-                    if let height = profile.height {
-                        self.height = height.formatted(.number.precision(.fractionLength(0...1)))
-                    }
-                    if let sex = profile.biologicalSex {
-                        self.biologicalSex = sex
-                    }
-                    self.healthKitSyncEnabled = true
+                let profile = workoutStore.userProfile
+                if let birthDate = profile.birthDate {
+                    self.birthDate = birthDate
                 }
+                if let weight = profile.weight {
+                    self.weight = weight.formatted(.number.precision(.fractionLength(0...1)))
+                }
+                if let height = profile.height {
+                    self.height = height.formatted(.number.precision(.fractionLength(0...1)))
+                }
+                if let sex = profile.biologicalSex {
+                    self.biologicalSex = sex
+                }
+                self.healthKitSyncEnabled = true
                 
             } catch let error as HealthKitError {
-                await MainActor.run {
-                    self.healthKitError = error
-                    self.showingHealthKitError = true
-                }
+                self.healthKitError = error
+                self.showingHealthKitError = true
             } catch {
-                await MainActor.run {
-                    self.healthKitError = HealthKitError.saveFailed
-                    self.showingHealthKitError = true
-                }
+                self.healthKitError = HealthKitError.saveFailed
+                self.showingHealthKitError = true
             }
             
-            await MainActor.run {
-                isImportingFromHealthKit = false
-            }
+            isImportingFromHealthKit = false
         }
     }
     

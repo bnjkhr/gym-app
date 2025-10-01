@@ -95,32 +95,49 @@ class HealthKitManager: ObservableObject {
             throw HealthKitError.notAvailable
         }
         
-        // Geburtsdatum
-        let birthDate = try readBirthDate()
+        print("📊 Starte HealthKit-Datenimport...")
         
-        // Gewicht (neuester Wert)
-        let weight = try await readWeight()
+        // Mit Timeout für den gesamten Import
+        let profileData = try await withTimeout(seconds: 30) {
+            async let birthDate = self.readBirthDate()
+            async let weight = self.readWeight()
+            async let height = self.readHeight()
+            async let biologicalSex = self.readBiologicalSex()
+            
+            print("   • Lese Profildaten parallel...")
+            
+            let results = try await (
+                birthDate: birthDate,
+                weight: weight,
+                height: height,
+                biologicalSex: biologicalSex
+            )
+            
+            print("✅ HealthKit-Datenimport abgeschlossen")
+            print("   • Geburtsdatum: \(results.birthDate != nil ? "✓" : "✗")")
+            print("   • Gewicht: \(results.weight != nil ? "✓" : "✗")")
+            print("   • Größe: \(results.height != nil ? "✓" : "✗")")
+            
+            return HealthKitProfileData(
+                birthDate: results.birthDate,
+                weight: results.weight,
+                height: results.height,
+                biologicalSex: results.biologicalSex
+            )
+        }
         
-        // Größe (neuester Wert)
-        let height = try await readHeight()
-        
-        // Geschlecht
-        let biologicalSex = try readBiologicalSex()
-        
-        return HealthKitProfileData(
-            birthDate: birthDate,
-            weight: weight,
-            height: height,
-            biologicalSex: biologicalSex
-        )
+        return profileData
     }
     
     private func readBirthDate() throws -> Date? {
         do {
+            print("   • Lese Geburtsdatum...")
             let birthDateComponents = try healthStore.dateOfBirthComponents()
-            return Calendar.current.date(from: birthDateComponents)
+            let birthDate = Calendar.current.date(from: birthDateComponents)
+            print("   • Geburtsdatum: \(birthDate != nil ? "✓" : "✗")")
+            return birthDate
         } catch {
-            print("Fehler beim Lesen des Geburtsdatums: \(error)")
+            print("❌ Fehler beim Lesen des Geburtsdatums: \(error)")
             return nil
         }
     }
@@ -131,37 +148,34 @@ class HealthKitManager: ObservableObject {
         }
         
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
-        let query = HKSampleQuery(
-            sampleType: weightType,
-            predicate: nil,
-            limit: 1,
-            sortDescriptors: [sortDescriptor]
-        ) { _, samples, error in
-            // Handled in continuation
-        }
         
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: weightType,
-                predicate: nil,
-                limit: 1,
-                sortDescriptors: [sortDescriptor]
-            ) { _, samples, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
+        return try await withTimeout(seconds: 10) {
+            try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(
+                    sampleType: weightType,
+                    predicate: nil,
+                    limit: 1,
+                    sortDescriptors: [sortDescriptor]
+                ) { _, samples, error in
+                    if let error = error {
+                        print("❌ Fehler beim Lesen des Gewichts: \(error)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    guard let sample = samples?.first as? HKQuantitySample else {
+                        print("   • Kein Gewichtswert in HealthKit gefunden")
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
+                    let weightInKg = sample.quantity.doubleValue(for: HKUnit.gramUnit(with: .kilo))
+                    print("   • Gewicht: \(weightInKg) kg")
+                    continuation.resume(returning: weightInKg)
                 }
                 
-                guard let sample = samples?.first as? HKQuantitySample else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                let weightInKg = sample.quantity.doubleValue(for: HKUnit.gramUnit(with: .kilo))
-                continuation.resume(returning: weightInKg)
+                self.healthStore.execute(query)
             }
-            
-            healthStore.execute(query)
         }
     }
     
@@ -172,37 +186,44 @@ class HealthKitManager: ObservableObject {
         
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
         
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: heightType,
-                predicate: nil,
-                limit: 1,
-                sortDescriptors: [sortDescriptor]
-            ) { _, samples, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
+        return try await withTimeout(seconds: 10) {
+            try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(
+                    sampleType: heightType,
+                    predicate: nil,
+                    limit: 1,
+                    sortDescriptors: [sortDescriptor]
+                ) { _, samples, error in
+                    if let error = error {
+                        print("❌ Fehler beim Lesen der Größe: \(error)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    guard let sample = samples?.first as? HKQuantitySample else {
+                        print("   • Keine Größe in HealthKit gefunden")
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
+                    let heightInCm = sample.quantity.doubleValue(for: HKUnit.meterUnit(with: .centi))
+                    print("   • Größe: \(heightInCm) cm")
+                    continuation.resume(returning: heightInCm)
                 }
                 
-                guard let sample = samples?.first as? HKQuantitySample else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                
-                let heightInCm = sample.quantity.doubleValue(for: HKUnit.meterUnit(with: .centi))
-                continuation.resume(returning: heightInCm)
+                self.healthStore.execute(query)
             }
-            
-            healthStore.execute(query)
         }
     }
     
     private func readBiologicalSex() throws -> HKBiologicalSex? {
         do {
+            print("   • Lese Geschlecht...")
             let sexObject = try healthStore.biologicalSex()
+            print("   • Geschlecht: \(sexObject.biologicalSex.displayName)")
             return sexObject.biologicalSex
         } catch {
-            print("Fehler beim Lesen des Geschlechts: \(error)")
+            print("❌ Fehler beim Lesen des Geschlechts: \(error)")
             return nil
         }
     }
@@ -217,32 +238,39 @@ class HealthKitManager: ObservableObject {
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate)
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
         
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: heartRateType,
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: [sortDescriptor]
-            ) { _, samples, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
+        // Begrenze die Anzahl der Herzfrequenz-Messwerte um Memory-Probleme zu vermeiden
+        let maxSamples = 1000 // Maximal 1000 Messwerte
+        
+        return try await withTimeout(seconds: 20) {
+            try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(
+                    sampleType: heartRateType,
+                    predicate: predicate,
+                    limit: maxSamples, // Nicht mehr unbegrenzt!
+                    sortDescriptors: [sortDescriptor]
+                ) { _, samples, error in
+                    if let error = error {
+                        print("❌ Fehler beim Lesen der Herzfrequenz: \(error)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    let heartRateReadings = samples?.compactMap { sample -> HeartRateReading? in
+                        guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                        
+                        let heartRate = quantitySample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
+                        return HeartRateReading(
+                            timestamp: quantitySample.startDate,
+                            heartRate: heartRate
+                        )
+                    } ?? []
+                    
+                    print("   • \(heartRateReadings.count) Herzfrequenz-Messwerte geladen")
+                    continuation.resume(returning: heartRateReadings)
                 }
                 
-                let heartRateReadings = samples?.compactMap { sample -> HeartRateReading? in
-                    guard let quantitySample = sample as? HKQuantitySample else { return nil }
-                    
-                    let heartRate = quantitySample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
-                    return HeartRateReading(
-                        timestamp: quantitySample.startDate,
-                        heartRate: heartRate
-                    )
-                } ?? []
-                
-                continuation.resume(returning: heartRateReadings)
+                self.healthStore.execute(query)
             }
-            
-            healthStore.execute(query)
         }
     }
     
@@ -275,7 +303,7 @@ class HealthKitManager: ObservableObject {
         )
         
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            healthStore.save(workout) { success, error in
+            self.healthStore.save(workout) { success, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else if success {
@@ -323,6 +351,7 @@ enum HealthKitError: LocalizedError {
     case notAuthorized
     case invalidType
     case saveFailed
+    case timeout
     
     var errorDescription: String? {
         switch self {
@@ -334,6 +363,33 @@ enum HealthKitError: LocalizedError {
             return "Ungültiger HealthKit-Datentyp"
         case .saveFailed:
             return "Fehler beim Speichern in HealthKit"
+        case .timeout:
+            return "HealthKit-Anfrage hat zu lange gedauert"
+        }
+    }
+}
+
+// MARK: - Timeout Helper
+
+extension HealthKitManager {
+    /// Führt eine async Operation mit Timeout aus
+    private func withTimeout<T>(seconds: Double, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            // Operation Task
+            group.addTask {
+                try await operation()
+            }
+            
+            // Timeout Task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw HealthKitError.timeout
+            }
+            
+            // Return first completed result
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
 }
