@@ -1274,16 +1274,7 @@ private struct WorkoutSetCard: View {
                 showingRestEditor = true
             }
 
-            if isActiveRest {
-                HStack(spacing: 8) {
-                    Label("\(formattedRemaining)", systemImage: "timer")
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                        .contentTransition(.numericText())
-                    Spacer()
-                }
-                .padding(.top, 2)
-            }
+
         }
         .padding(.vertical, 6)
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: set.completed)
@@ -1995,23 +1986,7 @@ private struct ActiveWorkoutSetCard: View {
                 .buttonStyle(.plain)
             }
             
-            // Active rest indicator
-            if isActiveRest {
-                HStack(spacing: 8) {
-                    Image(systemName: "timer")
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                    Text("Aktive Pause: \(formattedRemaining)")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.blue)
-                        .contentTransition(.numericText())
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.blue.opacity(0.1), in: Capsule())
-            }
+
         }
         .padding(20)
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: set.completed)
