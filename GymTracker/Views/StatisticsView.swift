@@ -28,7 +28,8 @@ struct StatisticsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 16) {
+            // Unified background container
+            VStack(spacing: 0) {
                 GeometryReader { geo in
                     Color.clear
                         .preference(
@@ -38,37 +39,63 @@ struct StatisticsView: View {
                 }
                 .frame(height: 0)
 
-                // 1. Consistency / Wochenfortschritt
-                ConsistencyCardView()
-                LastWorkoutCardView()
+                // All statistics cards in unified container
+                VStack(spacing: 0) {
+                    // 1. Consistency / Wochenfortschritt
+                    ConsistencyCardView()
+                    
+                    statisticsDivider()
+                    
+                    LastWorkoutCardView()
 
-                // 2. Neue Rekorde (PR-Highlight)
-                PersonalRecordCardView()
+                    statisticsDivider()
 
-                // 3. Trainingsvolumen pro Woche
-                WeeklyVolumeCardView()
+                    // 2. Neue Rekorde (PR-Highlight)
+                    PersonalRecordCardView()
 
-                // 4. Push/Pull/Legs-Balance
-                MuscleGroupBalanceCardView()
+                    statisticsDivider()
 
-                // 5. Ø Gewicht pro Übung
-                AverageWeightCardView()
+                    // 3. Trainingsvolumen pro Woche
+                    WeeklyVolumeCardView()
 
-                // 6. Workout-Intensität (Session Score)
-                SessionIntensityCardView()
+                    statisticsDivider()
 
-                // 7. Plateau-Check
-                PlateauCheckCardView()
-                
-                // 8. Health Data (Optional, falls verfügbar)
-                HeartRateInsightsView()
-                
-                BodyMetricsInsightsView()
+                    // 4. Push/Pull/Legs-Balance
+                    MuscleGroupBalanceCardView()
+
+                    statisticsDivider()
+
+                    // 5. Ø Gewicht pro Übung
+                    AverageWeightCardView()
+
+                    statisticsDivider()
+
+                    // 6. Workout-Intensität (Session Score)
+                    SessionIntensityCardView()
+
+                    statisticsDivider()
+
+                    // 7. Plateau-Check
+                    PlateauCheckCardView()
+                    
+                    statisticsDivider()
+                    
+                    // 8. Health Data (Optional, falls verfügbar)
+                    HeartRateInsightsView()
+                    
+                    statisticsDivider()
+                    
+                    BodyMetricsInsightsView()
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.regularMaterial)
+                )
+                .padding(.horizontal, 16)
                 
                 // Zusätzlicher Platz am Ende
                 Color.clear.frame(height: 100)
             }
-            .padding(.horizontal, 16)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onPreferenceChange(StatisticsScrollOffsetPreferenceKey.self) { newValue in
@@ -89,6 +116,14 @@ struct StatisticsView: View {
         .sheet(isPresented: $showingCalendar) {
             CalendarSessionsView()
         }
+    }
+    
+    // Helper for creating separator lines
+    private func statisticsDivider() -> some View {
+        Rectangle()
+            .fill(Color(.systemGray5))
+            .frame(height: 0.5)
+            .padding(.horizontal, 20)
     }
 }
 
@@ -182,14 +217,6 @@ private struct ConsistencyCardView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
-        )
     }
 }
 
@@ -245,14 +272,11 @@ private struct PersonalRecordCardView: View {
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(
-                    LinearGradient(
-                        colors: [.purple.opacity(0.8), .mossGreen.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            LinearGradient(
+                colors: [.purple.opacity(0.1), .mossGreen.opacity(0.1)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         )
     }
 }
@@ -344,10 +368,6 @@ private struct WeeklyVolumeCardView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
     }
 }
 
@@ -458,10 +478,6 @@ private struct MuscleGroupBalanceCardView: View {
                 .foregroundStyle(muscleBalance.isBalanced ? Color.mossGreen : .gray)
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
     }
     
     private func balanceBar(title: String, ratio: Double, color: Color) -> some View {
@@ -579,10 +595,6 @@ private struct AverageWeightCardView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
     }
     
     private func exerciseRow(exercise: (name: String, avgWeight: Double, change: Double), isLast: Bool) -> some View {
@@ -691,10 +703,6 @@ private struct SessionIntensityCardView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
     }
 }
 
@@ -774,13 +782,10 @@ private struct PlateauCheckCardView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(plateauAlert != nil ? Color.gray.opacity(0.5) : Color.clear, lineWidth: 2)
-                )
+        .overlay(
+            Rectangle()
+                .stroke(plateauAlert != nil ? Color.gray.opacity(0.3) : Color.clear, lineWidth: 2)
+                .padding(.horizontal, 20)
         )
     }
 }
@@ -1518,10 +1523,6 @@ private struct LastWorkoutCardView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
         .onAppear { loadAverageHeartRate() }
     }
 
@@ -1546,7 +1547,7 @@ private struct LastWorkoutCardView: View {
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemBackground))
+                .fill(Color(.systemGray6))
         )
     }
 
@@ -1759,10 +1760,6 @@ struct HeartRateInsightsView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
     }
     
     private func heartRateStatBox(title: String, value: Int, color: Color) -> some View {
@@ -2185,10 +2182,6 @@ struct BodyMetricsInsightsView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-        )
     }
     
     private func bodyMetricStatBox(title: String, value: String, trend: String, trendIcon: String, color: Color) -> some View {

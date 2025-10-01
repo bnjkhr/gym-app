@@ -781,6 +781,21 @@ struct WorkoutDetailView: View {
                                 userInfo: ["nextExerciseIndex": exerciseIndex + 1]
                             )
                         }
+                    } else if isActiveSession {
+                        // This is the last set of the last exercise - navigate to completion
+                        // Add a small delay and then navigate to completion with animation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            // Trigger haptic feedback for completion
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            
+                            // Navigate to workout completion screen
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("NavigateToWorkoutCompletion"),
+                                object: nil,
+                                userInfo: [:]
+                            )
+                        }
                     }
                 }
             } else if let state = activeRestForThisWorkout,
@@ -1514,7 +1529,7 @@ private struct ActiveWorkoutNavigationView: View {
             // Auto-advance indicator overlay
             if showingAutoAdvanceIndicator {
                 AutoAdvanceIndicator(
-                    nextExerciseName: workout.exercises[safe: currentExerciseIndex + 1]?.exercise.name ?? "Nächste Übung"
+                    nextExerciseName: nextExerciseDisplayName
                 )
             }
             
@@ -1612,10 +1627,38 @@ private struct ActiveWorkoutNavigationView: View {
                     // Reset the flag after navigation is complete (longer delay to prevent conflicts)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         autoAdvancePending = false
-                    }
+                   }
+               }
+           }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToWorkoutCompletion"))) { notification in
+            // Auto-navigate to workout completion screen after completing last set of last exercise
+            autoAdvancePending = true
+            
+            // Show auto-advance indicator before navigation
+            showingAutoAdvanceIndicator = true
+            
+            // Navigate after a brief visual feedback
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                // Use a smooth slide animation for auto-advance to completion
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    currentExerciseIndex = workout.exercises.count // Navigate to completion screen
+                    showingAutoAdvanceIndicator = false
+                }
+                
+                // Reset the flag after navigation is complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    autoAdvancePending = false
                 }
             }
         }
+    }
+    
+    private var nextExerciseDisplayName: String {
+        if currentExerciseIndex >= workout.exercises.count - 1 {
+            return "Workout abschließen"
+        }
+        return workout.exercises[safe: currentExerciseIndex + 1]?.exercise.name ?? "Nächste Übung"
     }
     
     private func applyReorderChanges() {
@@ -2368,6 +2411,10 @@ private struct RestTimerOverlay: View {
 private struct AutoAdvanceIndicator: View {
     let nextExerciseName: String
     
+    private var titleText: String {
+        return nextExerciseName == "Workout abschließen" ? "Workout" : "Nächste Übung"
+    }
+    
     var body: some View {
         VStack {
             Spacer()
@@ -2382,7 +2429,7 @@ private struct AutoAdvanceIndicator: View {
                         .scaleEffect(1.2)
                         .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: true)
                     
-                    Text("Nächste Übung")
+                    Text(titleText)
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
