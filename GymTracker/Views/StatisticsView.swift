@@ -34,6 +34,7 @@ struct StatisticsView: View {
 
                 // 1. Consistency / Wochenfortschritt
                 ConsistencyCardView()
+                LastWorkoutCardView()
 
                 // 2. Neue Rekorde (PR-Highlight)
                 PersonalRecordCardView()
@@ -1328,6 +1329,227 @@ private extension Calendar {
         .environmentObject(WorkoutStore())
 }
 
+// 0. Last Workout Summary
+private struct LastWorkoutCardView: View {
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+
+    @State private var avgHeartRate: Int?
+    @State private var isLoadingHR = false
+
+    private var latestSession: WorkoutSessionEntity? { sessionEntities.first }
+
+    private var sessionDateText: String {
+        guard let date = latestSession?.date else { return "–" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private var durationText: String {
+        guard let dur = latestSession?.duration, dur > 0 else { return "–" }
+        let minutes = Int(dur) / 60
+        let seconds = Int(dur) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private var exerciseCountText: String {
+        guard let s = latestSession else { return "–" }
+        return "\(s.exercises.count)"
+    }
+
+    private var totalVolumeKg: Double {
+        guard let s = latestSession else { return 0 }
+        return s.exercises.reduce(0) { partial, ex in
+            partial + ex.sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
+        }
+    }
+
+    private var totalVolumeText: String {
+        let kg = totalVolumeKg
+        if kg >= 1000 { // show tons for very large
+            let tons = kg / 1000.0
+            return tons.formatted(.number.precision(.fractionLength(2))) + " t"
+        } else {
+            return kg.formatted(.number.precision(.fractionLength(0))) + " kg"
+        }
+    }
+
+    // Gewicht pro Übung (innerhalb der letzten Session)
+    private var perExerciseWeights: [(name: String, weight: Double)] {
+        guard let s = latestSession else { return [] }
+        var dict: [String: Double] = [:]
+        for ex in s.exercises {
+            let name = ex.exercise?.name ?? "Übung"
+            let w = ex.sets.reduce(0.0) { partial, set in partial + (Double(set.reps) * set.weight) }
+            dict[name, default: 0] += w
+        }
+        return dict.map { (name: $0.key, weight: $0.value) }
+            .sorted(by: { a, b in a.weight > b.weight })
+    }
+
+    // Potentielle Rekorde: Wenn das Max-Gewicht in der letzten Session >= historisches Max davor
+    private var potentialPRs: [String] {
+        guard let latest = latestSession else { return [] }
+        let latestDate = latest.date
+        var prs: [String] = []
+        for ex in latest.exercises {
+            let name = ex.exercise?.name ?? "Übung"
+            let latestMax = ex.sets.map { $0.weight }.max() ?? 0
+            // Historisches Max vor dieser Session
+            var historicalMax: Double = 0
+            for s in sessionEntities.dropFirst() { // alle älteren Sessions
+                if s.date >= latestDate { continue }
+                if let match = s.exercises.first(where: { $0.exercise?.id == ex.exercise?.id }) {
+                    let m = match.sets.map { $0.weight }.max() ?? 0
+                    if m > historicalMax { historicalMax = m }
+                }
+            }
+            if latestMax >= historicalMax && latestMax > 0 {
+                prs.append(name)
+            }
+        }
+        // Dedupe
+        return Array(Set(prs))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text("🕒")
+                    .font(.title2)
+                Text("Letztes Workout")
+                    .font(.headline)
+                Spacer()
+                Text(sessionDateText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if latestSession == nil {
+                VStack(spacing: 8) {
+                    Text("Noch keine Workouts")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("Starte ein Training, um Statistiken zu sehen.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            } else {
+                // Top stats row
+                HStack(spacing: 12) {
+                    statBox(title: "Dauer", value: durationText, icon: "clock", tint: .blue)
+                    statBox(title: "Übungen", value: exerciseCountText, icon: "list.bullet", tint: .orange)
+                    statBox(title: "Gewicht", value: totalVolumeText, icon: "scalemass.fill", tint: .mossGreen)
+                    statBox(title: "Ø HF", value: avgHeartRateText, icon: "heart.fill", tint: .red)
+                }
+
+                // Gewicht pro Übung
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Gewicht pro Übung")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    if perExerciseWeights.isEmpty {
+                        Text("Keine Sätze in der letzten Session")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(perExerciseWeights.enumerated()), id: \.offset) { idx, item in
+                            HStack {
+                                Text(item.name)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text("\(item.weight.formatted(.number.precision(.fractionLength(0)))) kg")
+                                    .monospacedDigit()
+                                    .foregroundStyle(.primary)
+                            }
+                            .font(.caption)
+                            if idx < perExerciseWeights.count - 1 { Divider() }
+                        }
+                    }
+                }
+
+                // Mögliche Rekorde
+                HStack(spacing: 6) {
+                    Image(systemName: potentialPRs.isEmpty ? "trophy" : "trophy.fill")
+                        .foregroundStyle(potentialPRs.isEmpty ? Color.secondary : Color.yellow)
+                    if potentialPRs.isEmpty {
+                        Text("Keine neuen Rekorde erkannt")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Mögliche Rekorde: \(potentialPRs.count)")
+                            .font(.caption.weight(.semibold))
+                        if let first = potentialPRs.first { Text("• \(first)").font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
+        .onAppear { loadAverageHeartRate() }
+    }
+
+    private var avgHeartRateText: String {
+        if isLoadingHR { return "…" }
+        guard let hr = avgHeartRate else { return "–" }
+        return "\(hr) bpm"
+    }
+
+    private func statBox(title: String, value: String, icon: String, tint: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .contentTransition(.numericText())
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.systemBackground))
+        )
+    }
+
+    private func loadAverageHeartRate() {
+        guard avgHeartRate == nil, let session = latestSession else { return }
+        guard workoutStore.healthKitManager.isHealthDataAvailable, workoutStore.healthKitManager.isAuthorized else { return }
+
+        let start = session.date
+        let duration = session.duration ?? 60 * 60 // Fallback 60 Min
+        let end = start.addingTimeInterval(duration)
+        isLoadingHR = true
+        Task {
+            do {
+                let readings = try await workoutStore.readHeartRateData(from: start, to: end)
+                let avg = readings.isEmpty ? nil : Int((readings.reduce(0.0) { $0 + $1.heartRate }) / Double(readings.count))
+                await MainActor.run {
+                    self.avgHeartRate = avg
+                    self.isLoadingHR = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.avgHeartRate = nil
+                    self.isLoadingHR = false
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Heart Rate Insights
 struct HeartRateInsightsView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
@@ -2026,6 +2248,4 @@ struct BodyMetricsInsightsView: View {
         }
     }
 }
-
-
 
