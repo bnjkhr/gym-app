@@ -2,6 +2,27 @@ import SwiftUI
 import UIKit
 import SwiftData
 
+
+
+
+
+// MARK: - MuscleGroup Extension
+extension MuscleGroup {
+    var displayName: String {
+        switch self {
+        case .chest: return "Brust"
+        case .back: return "Rücken"
+        case .shoulders: return "Schultern"
+        case .biceps: return "Bizeps"
+        case .triceps: return "Trizeps"
+        case .legs: return "Beine"
+        case .glutes: return "Gesäß"
+        case .abs: return "Bauch"
+        case .cardio: return "Cardio"
+        }
+    }
+}
+
 struct WorkoutDetailView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
@@ -46,115 +67,142 @@ struct WorkoutDetailView: View {
     }
 
     var body: some View {
-        List {
-            // Tab selector
-            progressTabSelector
-            
-            // Selected tab content
-            selectedTabContent
+        Group {
+            if isActiveSession {
+                // New horizontal swipe interface for active workouts
+                ActiveWorkoutNavigationView(
+                    workout: $workout,
+                    workoutStore: workoutStore,
+                    activeRestForThisWorkout: activeRestForThisWorkout,
+                    isActiveRest: isActiveRest,
+                    toggleCompletion: toggleCompletion,
+                    addSet: addSet,
+                    removeSet: removeSet,
+                    updateEntitySet: updateEntitySet,
+                    appendEntitySet: appendEntitySet,
+                    removeEntitySet: removeEntitySet,
+                    previousValues: previousValues,
+                    completeWorkout: completeWorkout,
+                    hasExercises: hasExercises,
+                    reorderEntityExercises: reorderEntityExercises,
+                    finalizeCompletion: finalizeCompletion,
+                    onActiveSessionEnd: onActiveSessionEnd
+                )
+                .navigationTitle(workout.name)
+                .navigationBarTitleDisplayMode(.inline)
+            } else {
+                // Original list-based interface for non-active workouts
+                List {
+                    // Tab selector
+                    progressTabSelector
+                    
+                    // Selected tab content
+                    selectedTabContent
 
-            if let activeRest = activeRestForThisWorkout {
-                // Divider before rest timer
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .frame(height: 0.5)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                
-                restTimerSection(activeRest: activeRest)
-                    .id("activeRest")
-            }
-
-            // Divider before exercises
-            Rectangle()
-                .fill(Color(.systemGray5))
-                .frame(height: 0.5)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-
-            exerciseSections
-
-            if isActiveSession && hasExercises {
-                // Divider before completion
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .frame(height: 0.5)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                
-                completionSection
-            }
-
-            // Notes section - always visible
-            Rectangle()
-                .fill(Color(.systemGray5))
-                .frame(height: 0.5)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-            
-            Section("Notizen") {
-                if editingNotes {
-                    VStack(alignment: .leading, spacing: 12) {
-                        TextEditor(text: $notesText)
-                            .frame(minHeight: 80)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(.systemGray6))
-                            )
+                    if let activeRest = activeRestForThisWorkout {
+                        // Divider before rest timer
+                        Rectangle()
+                            .fill(Color(.systemGray5))
+                            .frame(height: 0.5)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                         
-                        HStack {
-                            Button("Abbrechen") {
-                                notesText = workout.notes
-                                editingNotes = false
-                            }
-                            .buttonStyle(.bordered)
-                            
-                            Spacer()
-                            
-                            Button("Speichern") {
-                                let trimmed = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
-                                workout.notes = trimmed
-                                updateEntityNotes(trimmed)
-                                editingNotes = false
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Color.mossGreen)
-                        }
+                        restTimerSection(activeRest: activeRest)
+                            .id("activeRest")
                     }
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if workout.notes.isEmpty {
-                            Text("Tippe hier, um Notizen hinzuzufügen...")
-                                .foregroundStyle(.secondary)
-                                .italic()
+
+                    // Divider before exercises
+                    Rectangle()
+                        .fill(Color(.systemGray5))
+                        .frame(height: 0.5)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+
+                    exerciseSections
+
+                    if isActiveSession && hasExercises {
+                        // Divider before completion
+                        Rectangle()
+                            .fill(Color(.systemGray5))
+                            .frame(height: 0.5)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        
+                        completionSection
+                    }
+
+                    // Notes section - always visible
+                    Rectangle()
+                        .fill(Color(.systemGray5))
+                        .frame(height: 0.5)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    
+                    Section("Notizen") {
+                        if editingNotes {
+                            VStack(alignment: .leading, spacing: 12) {
+                                TextEditor(text: $notesText)
+                                    .frame(minHeight: 80)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color(.systemGray6))
+                                    )
+                                
+                                HStack {
+                                    Button("Abbrechen") {
+                                        notesText = workout.notes
+                                        editingNotes = false
+                                    }
+                                    .buttonStyle(.bordered)
+                                    
+                                    Spacer()
+                                    
+                                    Button("Speichern") {
+                                        let trimmed = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        workout.notes = trimmed
+                                        updateEntityNotes(trimmed)
+                                        editingNotes = false
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(Color.mossGreen)
+                                }
+                            }
                         } else {
-                            Text(workout.notes)
-                                .foregroundStyle(.primary)
-                        }
-                        
-                        Button {
-                            notesText = workout.notes
-                            editingNotes = true
-                        } label: {
-                            HStack {
-                                Image(systemName: workout.notes.isEmpty ? "plus.circle" : "pencil")
-                                Text(workout.notes.isEmpty ? "Notizen hinzufügen" : "Notizen bearbeiten")
+                            VStack(alignment: .leading, spacing: 8) {
+                                if workout.notes.isEmpty {
+                                    Text("Tippe hier, um Notizen hinzuzufügen...")
+                                        .foregroundStyle(.secondary)
+                                        .italic()
+                                } else {
+                                    Text(workout.notes)
+                                        .foregroundStyle(.primary)
+                                }
+                                
+                                Button {
+                                    notesText = workout.notes
+                                    editingNotes = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: workout.notes.isEmpty ? "plus.circle" : "pencil")
+                                        Text(workout.notes.isEmpty ? "Notizen hinzufügen" : "Notizen bearbeiten")
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .font(.caption)
-                            .foregroundStyle(.blue)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .listRowBackground(Color.clear)
                 }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .navigationTitle(workout.name)
+                .navigationBarTitleDisplayMode(.inline)
             }
-            .listRowBackground(Color.clear)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .navigationTitle(workout.name)
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // Safely remap the entity from the current ModelContext to avoid reading invalid snapshots
             let currentId = entity.id
@@ -579,18 +627,38 @@ struct WorkoutDetailView: View {
     private func previousSessionSwiftData() -> WorkoutSession? {
         let templateId: UUID? = workout.id
         let currentDate = workout.date
+        
+        print("🔍 Suche vorherige Session für Template \(templateId?.uuidString ?? "nil")")
+        print("🔍 Aktuelles Datum: \(currentDate)")
+        
+        // Für aktive Sessions: Verwende das aktuelle Datum statt des Workout-Datums
+        let searchDate = isActiveSession ? Date() : currentDate
+        print("🔍 Such-Datum: \(searchDate)")
+        
         let predicate = #Predicate<WorkoutSessionEntity> { entity in
-            (entity.templateId == templateId) && (entity.date < currentDate)
+            (entity.templateId == templateId) && (entity.date < searchDate)
         }
         var descriptor = FetchDescriptor<WorkoutSessionEntity>(
             predicate: predicate,
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         descriptor.fetchLimit = 1
-        if let entity = try? modelContext.fetch(descriptor).first {
-            return WorkoutSession(entity: entity)
+        
+        do {
+            let entities = try modelContext.fetch(descriptor)
+            print("🔍 Gefundene Sessions: \(entities.count)")
+            
+            if let entity = entities.first {
+                print("🔍 Neueste vorherige Session: \(entity.date)")
+                return WorkoutSession(entity: entity)
+            } else {
+                print("🔍 Keine vorherige Session gefunden")
+                return nil
+            }
+        } catch {
+            print("❌ Fehler beim Laden der Sessions: \(error)")
+            return nil
         }
-        return nil
     }
 
     private var previousVolume: Double? {
@@ -694,6 +762,27 @@ struct WorkoutDetailView: View {
             if workout.exercises[exerciseIndex].sets[setIndex].completed {
                 let rest = Int(workout.exercises[exerciseIndex].sets[setIndex].restTime.rounded())
                 workoutStore.startRest(for: workout, exerciseIndex: exerciseIndex, setIndex: setIndex, totalSeconds: rest)
+                
+                // Check if this was the last set of the current exercise
+                if setIndex == workout.exercises[exerciseIndex].sets.count - 1 {
+                    // This is the last set of this exercise
+                    // Auto-advance to next exercise with visual feedback (only in active session)
+                    if isActiveSession && exerciseIndex < workout.exercises.count - 1 {
+                        // Add a small delay and then navigate with animation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            // Trigger haptic feedback for smooth transition
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
+                            
+                            // Navigate to next exercise with notification
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("NavigateToNextExercise"),
+                                object: nil,
+                                userInfo: ["nextExerciseIndex": exerciseIndex + 1]
+                            )
+                        }
+                    }
+                }
             } else if let state = activeRestForThisWorkout,
                       state.exerciseIndex == exerciseIndex,
                       state.setIndex == setIndex {
@@ -823,21 +912,46 @@ struct WorkoutDetailView: View {
     }
 
     private func previousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
+        // TEMP: Test-Version mit Dummy-Werten zum Testen der UI
+        print("🔍 TEMP: Teste previousValues für Übung \(exerciseIndex), Satz \(setIndex)")
+        
+        // Dummy-Werte für Tests
+        let dummyReps = 10 + setIndex
+        let dummyWeight = 20.0 + Double(exerciseIndex * 5)
+        
+        print("🔍 TEMP: Gebe Dummy-Werte zurück: \(dummyReps) Wdh., \(dummyWeight) kg")
+        return (dummyReps, dummyWeight)
+        
+        /* ORIGINAL CODE - Temporär auskommentiert:
         guard let prev = previousSessionSwiftData() else {
+            print("🔍 Keine vorherige Session gefunden für Workout \(workout.id)")
             return (nil, nil)
         }
+        
+        print("🔍 Vorherige Session gefunden: \(prev.date), \(prev.exercises.count) Übungen")
+        
         let currentExercise = workout.exercises[exerciseIndex].exercise
         guard let previousExercise = prev.exercises.first(where: { $0.exercise.id == currentExercise.id }) else {
+            print("🔍 Übung \(currentExercise.name) nicht in vorheriger Session gefunden")
             return (nil, nil)
         }
+        
+        print("🔍 Übung \(currentExercise.name) gefunden mit \(previousExercise.sets.count) Sätzen")
+        
         let sets = previousExercise.sets
         if sets.indices.contains(setIndex) {
-            return (sets[setIndex].reps, sets[setIndex].weight)
+            let reps = sets[setIndex].reps
+            let weight = sets[setIndex].weight
+            print("🔍 Satz \(setIndex + 1): \(reps) Wdh., \(weight) kg")
+            return (reps, weight)
         } else if let last = sets.last {
+            print("🔍 Verwende letzten Satz: \(last.reps) Wdh., \(last.weight) kg")
             return (last.reps, last.weight)
         } else {
+            print("🔍 Keine Sätze in vorheriger Session")
             return (nil, nil)
         }
+        */
     }
     
     private func updateEntityNotes(_ notes: String) {
@@ -1073,6 +1187,16 @@ private struct WorkoutSetCard: View {
                             .multilineTextAlignment(.center)
                             .frame(width: 80)
                         }
+                        
+                        // Previous reps value
+                        if let prevReps = previousReps {
+                            Text("zuletzt: \(prevReps)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(" ")
+                                .font(.caption2)
+                        }
                     }
                 }
 
@@ -1099,6 +1223,16 @@ private struct WorkoutSetCard: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .padding(.trailing, 2)
+                    }
+                    
+                    // Previous weight value
+                    if let prevWeight = previousWeight, prevWeight > 0 {
+                        Text("zuletzt: \(prevWeight, specifier: "%.1f") kg")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(" ")
+                            .font(.caption2)
                     }
                 }
 
@@ -1310,6 +1444,994 @@ private extension UIFont {
     }
 }
 
+// MARK: - Active Workout Navigation View
+
+private struct ActiveWorkoutNavigationView: View {
+    @Binding var workout: Workout
+    let workoutStore: WorkoutStore
+    let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
+    let isActiveRest: (Int, Int) -> Bool
+    let toggleCompletion: (Int, Int) -> Void
+    let addSet: (Int) -> Void
+    let removeSet: (Int, Int) -> Void
+    let updateEntitySet: (UUID, UUID, (ExerciseSetEntity) -> Void) -> Void
+    let appendEntitySet: (UUID, ExerciseSet) -> Void
+    let removeEntitySet: (UUID, UUID) -> Void
+    let previousValues: (Int, Int) -> (reps: Int?, weight: Double?)
+    let completeWorkout: () -> Void
+    let hasExercises: Bool
+    let reorderEntityExercises: ([WorkoutExercise]) -> Void
+    let finalizeCompletion: () -> Void
+    let onActiveSessionEnd: (() -> Void)?
+    
+    @State private var currentExerciseIndex: Int = 0
+    @State private var showingCompletionConfirmation = false
+    @State private var autoAdvancePending = false
+    @State private var showingAutoAdvanceIndicator = false
+    @State private var showingReorderSheet = false
+    @State private var reorderExercises: [WorkoutExercise] = []
+    
+    var body: some View {
+        ZStack {
+            // Background
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Main content with TabView
+                TabView(selection: $currentExerciseIndex) {
+                    ForEach(workout.exercises.indices, id: \.self) { exerciseIndex in
+                        ActiveWorkoutExerciseView(
+                            exerciseIndex: exerciseIndex,
+                            currentExerciseIndex: currentExerciseIndex,
+                            totalExerciseCount: workout.exercises.count,
+                            workout: $workout,
+                            activeRestForThisWorkout: activeRestForThisWorkout,
+                            isActiveRest: isActiveRest,
+                            toggleCompletion: toggleCompletion,
+                            addSet: addSet,
+                            removeSet: removeSet,
+                            updateEntitySet: updateEntitySet,
+                            appendEntitySet: appendEntitySet,
+                            removeEntitySet: removeEntitySet,
+                            previousValues: previousValues,
+                            onReorderRequested: {
+                                reorderExercises = workout.exercises
+                                showingReorderSheet = true
+                            }
+                        )
+                        .tag(exerciseIndex)
+                    }
+                    
+                    // Completion screen as last page
+                    if hasExercises {
+                        ActiveWorkoutCompletionView(
+                            workout: workout,
+                            showingConfirmation: $showingCompletionConfirmation,
+                            completeAction: {
+                                // Rufe die finale Abschluss-Logik auf
+                                finalizeCompletion()
+                            }
+                        )
+                        .tag(workout.exercises.count)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.easeInOut(duration: 0.6), value: currentExerciseIndex)
+            }
+            
+            // Auto-advance indicator overlay
+            if showingAutoAdvanceIndicator {
+                AutoAdvanceIndicator(
+                    nextExerciseName: workout.exercises[safe: currentExerciseIndex + 1]?.exercise.name ?? "Nächste Übung"
+                )
+            }
+            
+            // Rest timer overlay
+            if let activeRest = activeRestForThisWorkout {
+                RestTimerOverlay(
+                    activeRest: activeRest,
+                    workout: workout,
+                    workoutStore: workoutStore,
+                    navigateToExercise: { exerciseIndex in
+                        withAnimation(.easeInOut(duration: 0.6)) {
+                            currentExerciseIndex = exerciseIndex
+                        }
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $showingReorderSheet) {
+            NavigationStack {
+                List {
+                    ForEach(reorderExercises) { exercise in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(exercise.exercise.name)
+                                    .font(.headline)
+                                Text("\(exercise.sets.count) Sätze")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onMove { indices, newOffset in
+                        reorderExercises.move(fromOffsets: indices, toOffset: newOffset)
+                    }
+                }
+                .navigationTitle("Reihenfolge ändern")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Abbrechen") {
+                            showingReorderSheet = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Fertig") {
+                            applyReorderChanges()
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+                .environment(\.editMode, .constant(.active))
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .onReceive(workoutStore.$activeRestState) { restState in
+            // Only auto-navigate to exercise with active rest if we're not pending an auto-advance
+            if !autoAdvancePending,
+               let restState = restState,
+               restState.workoutId == workout.id,
+               restState.exerciseIndex < workout.exercises.count,
+               currentExerciseIndex != restState.exerciseIndex {
+                
+                // Don't navigate backwards to previous exercise if we just auto-advanced
+                // This prevents the "bounce back" behavior when rest timer ticks
+                let isNavigatingToPreviousExercise = restState.exerciseIndex < currentExerciseIndex
+                
+                if !isNavigatingToPreviousExercise {
+                    withAnimation(.easeInOut(duration: 0.6)) {
+                        currentExerciseIndex = restState.exerciseIndex
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToNextExercise"))) { notification in
+            // Auto-navigate to next exercise after completing last set
+            if let nextIndex = notification.userInfo?["nextExerciseIndex"] as? Int,
+               nextIndex < workout.exercises.count {
+                autoAdvancePending = true
+                
+                // Show auto-advance indicator before navigation
+                showingAutoAdvanceIndicator = true
+                
+                // Navigate after a brief visual feedback
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    // Use a smooth slide animation for auto-advance
+                    withAnimation(.easeInOut(duration: 0.8)) {
+                        currentExerciseIndex = nextIndex
+                        showingAutoAdvanceIndicator = false
+                    }
+                    
+                    // Reset the flag after navigation is complete (longer delay to prevent conflicts)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        autoAdvancePending = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private func applyReorderChanges() {
+        workout.exercises = reorderExercises
+        reorderEntityExercises(reorderExercises)
+        
+        // Adjust current index if needed to prevent out of bounds
+        if currentExerciseIndex >= workout.exercises.count {
+            currentExerciseIndex = max(0, workout.exercises.count - 1)
+        }
+        showingReorderSheet = false
+    }
+}
+
+// MARK: - Exercise Header Card (kept for compatibility but no longer used in active workout)
+
+private struct ActiveWorkoutExerciseView: View {
+    let exerciseIndex: Int
+    let currentExerciseIndex: Int
+    let totalExerciseCount: Int
+    @Binding var workout: Workout
+    let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
+    let isActiveRest: (Int, Int) -> Bool
+    let toggleCompletion: (Int, Int) -> Void
+    let addSet: (Int) -> Void
+    let removeSet: (Int, Int) -> Void
+    let updateEntitySet: (UUID, UUID, (ExerciseSetEntity) -> Void) -> Void
+    let appendEntitySet: (UUID, ExerciseSet) -> Void
+    let removeEntitySet: (UUID, UUID) -> Void
+    let previousValues: (Int, Int) -> (reps: Int?, weight: Double?)
+    let onReorderRequested: () -> Void
+    
+    private var exercise: WorkoutExercise {
+        workout.exercises[exerciseIndex]
+    }
+    
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                // Everything in one big container including progress and add button
+                VStack(spacing: 0) {
+                    // Progress indicator at the top
+                    VStack(spacing: 12) {
+                        // Progress bar
+                        HStack(spacing: 4) {
+                            ForEach(0..<totalExerciseCount, id: \.self) { index in
+                                Rectangle()
+                                    .fill(index <= currentExerciseIndex ? Color.mossGreen : Color(.systemGray4))
+                                    .frame(height: 4)
+                                    .cornerRadius(2)
+                                    .animation(.easeInOut(duration: 0.2), value: currentExerciseIndex)
+                            }
+                        }
+                        
+                        // Exercise info
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Übung \(currentExerciseIndex + 1) von \(totalExerciseCount)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                
+                                HStack(spacing: 8) {
+                                    Text(exercise.exercise.name)
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                        .onLongPressGesture {
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                            onReorderRequested()
+                                        }
+                                    
+                                    Image(systemName: "line.3.horizontal")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                        .onLongPressGesture {
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                            onReorderRequested()
+                                        }
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                    }
+                    .padding(20)
+                    
+                    // Separator after progress
+                    Rectangle()
+                        .fill(Color(.systemGray5))
+                        .frame(height: 0.5)
+                        .padding(.horizontal, 20)
+                    
+                    // All sets
+                    ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { element in
+                        let setIndex = element.offset
+                        let previous = previousValues(exerciseIndex, setIndex)
+                        let isLastSet = setIndex == exercise.sets.count - 1
+                        
+                        let setBinding = Binding(
+                            get: { workout.exercises[exerciseIndex].sets[setIndex] },
+                            set: {
+                                workout.exercises[exerciseIndex].sets[setIndex] = $0
+                                let exId = workout.exercises[exerciseIndex].id
+                                let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+                                let newSet = workout.exercises[exerciseIndex].sets[setIndex]
+                                updateEntitySet(exId, setId) { setEntity in
+                                    setEntity.reps = newSet.reps
+                                    setEntity.weight = newSet.weight
+                                }
+                            }
+                        )
+                        
+                        ActiveWorkoutSetCard(
+                            index: setIndex,
+                            set: setBinding,
+                            isActiveRest: isActiveRest(exerciseIndex, setIndex),
+                            remainingSeconds: activeRestForThisWorkout?.remainingSeconds ?? 0,
+                            previousReps: previous.reps,
+                            previousWeight: previous.weight,
+                            isLastSet: isLastSet,
+                            onRestTimeUpdated: { newValue in
+                                if isActiveRest(exerciseIndex, setIndex) {
+                                    // Update rest time logic here
+                                }
+                                let exId = workout.exercises[exerciseIndex].id
+                                let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+                                updateEntitySet(exId, setId) { setEntity in
+                                    setEntity.restTime = newValue
+                                }
+                            },
+                            onToggleCompletion: {
+                                toggleCompletion(exerciseIndex, setIndex)
+                            },
+                            onDeleteSet: {
+                                removeSet(setIndex, exerciseIndex)
+                            }
+                        )
+                        .onLongPressGesture {
+                            // Option to remove set
+                        }
+                    }
+                    
+                    // Separator before add button
+                    Rectangle()
+                        .fill(Color(.systemGray5))
+                        .frame(height: 0.5)
+                        .padding(.horizontal, 20)
+                    
+                    // Add set button inside the container
+                    Button {
+                        addSet(exerciseIndex)
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                            Text("Satz hinzufügen")
+                                .font(.headline)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.mossGreen, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(20)
+                }
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 16)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+}
+
+// MARK: - Exercise Header Card
+
+private struct ExerciseHeaderCard: View {
+    let exercise: Exercise
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(exercise.name)
+                .font(.title)
+                .fontWeight(.bold)
+            
+            if !exercise.muscleGroups.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(exercise.muscleGroups, id: \.self) { group in
+                            Text(group.displayName)
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.mossGreen.opacity(0.1), in: Capsule())
+                                .foregroundStyle(Color.mossGreen)
+                        }
+                    }
+                    .padding(.horizontal, 1)
+                }
+            }
+            
+            if !exercise.description.isEmpty {
+                Text(exercise.description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Active Workout Set Card
+
+private struct ActiveWorkoutSetCard: View {
+    let index: Int
+    @Binding var set: ExerciseSet
+    var isActiveRest: Bool
+    var remainingSeconds: Int
+    var previousReps: Int?
+    var previousWeight: Double?
+    let isLastSet: Bool
+    var onRestTimeUpdated: (Double) -> Void
+    var onToggleCompletion: () -> Void
+    var onDeleteSet: () -> Void
+
+    @State private var showingRestEditor = false
+    @State private var restMinutes: Int = 0
+    @State private var restSeconds: Int = 0
+    @State private var showingDeleteConfirmation = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Set header
+            HStack(alignment: .firstTextBaseline) {
+                Text("SATZ \(index + 1)")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.secondary)
+                
+                Spacer()
+            }
+            
+            // Main input area
+            HStack(spacing: 20) {
+                // Reps input
+                VStack(spacing: 8) {
+                    Text("Wiederholungen")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                    
+                    SelectAllTextField(
+                        value: $set.reps,
+                        placeholder: "0",
+                        keyboardType: .numberPad,
+                        uiFont: UIFont.systemFont(ofSize: 32, weight: .bold),
+                        textColor: set.completed ? UIColor.systemGray3 : nil
+                    )
+                    .multilineTextAlignment(.center)
+                    .frame(height: 60)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
+                    
+                    // Previous reps value
+                    if let prevReps = previousReps {
+                        Text("zuletzt: \(prevReps)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(" ")
+                            .font(.caption2)
+                    }
+                }
+                
+                // Weight input
+                VStack(spacing: 8) {
+                    Text("Gewicht (kg)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                    
+                    SelectAllTextField(
+                        value: $set.weight,
+                        placeholder: "0",
+                        keyboardType: .decimalPad,
+                        uiFont: UIFont.systemFont(ofSize: 32, weight: .bold),
+                        textColor: set.completed ? UIColor.systemGray3 : nil
+                    )
+                    .multilineTextAlignment(.center)
+                    .frame(height: 60)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
+                    
+                    // Previous weight value
+                    if let prevWeight = previousWeight, prevWeight > 0 {
+                        Text("zuletzt: \(prevWeight, specifier: "%.1f") kg")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(" ")
+                            .font(.caption2)
+                    }
+                }
+            }
+            
+            // Rest time and completion button
+            HStack(spacing: 12) {
+                Button {
+                    restMinutes = Int(set.restTime) / 60
+                    restSeconds = Int(set.restTime) % 60
+                    showingRestEditor = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "hourglass")
+                            .font(.caption)
+                        Text("Pause: \(formattedTime)")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray5), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Button {
+                    // Haptisches Feedback beim Tippen
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    onToggleCompletion()
+                } label: {
+                    if set.completed {
+                        Image(systemName: "checkmark")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Color.mossGreen, in: Circle())
+                    } else {
+                        HStack(spacing: 8) {
+                            Image(systemName: "circle")
+                                .font(.title3)
+                            Text("Abschließen")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(Color.mossGreen)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.mossGreen.opacity(0.1), in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.mossGreen, lineWidth: 1)
+                        )
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            
+            // Active rest indicator
+            if isActiveRest {
+                HStack(spacing: 8) {
+                    Image(systemName: "timer")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                    Text("Aktive Pause: \(formattedRemaining)")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.blue)
+                        .contentTransition(.numericText())
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.blue.opacity(0.1), in: Capsule())
+            }
+        }
+        .padding(20)
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: set.completed)
+        .overlay(alignment: .bottom) {
+            // Add separator between sets (except for last set)
+            if !isLastSet {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 0.5)
+                    .padding(.horizontal, 20)
+            }
+        }
+        .onLongPressGesture {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            showingDeleteConfirmation = true
+        }
+        .confirmationDialog(
+            "Satz \(index + 1) löschen?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Löschen", role: .destructive) {
+                onDeleteSet()
+            }
+            Button("Abbrechen", role: .cancel) { }
+        } message: {
+            Text("Diese Aktion kann nicht rückgängig gemacht werden.")
+        }
+        .sheet(isPresented: $showingRestEditor) {
+            NavigationStack {
+                VStack(spacing: 16) {
+                    Text("Pausenzeit")
+                        .font(.headline)
+
+                    HStack(spacing: 24) {
+                        VStack {
+                            Text("Min")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Picker("Minuten", selection: $restMinutes) {
+                                ForEach(0..<11, id: \.self) { m in
+                                    Text("\(m)").tag(m)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                        }
+                        VStack {
+                            Text("Sek")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Picker("Sekunden", selection: $restSeconds) {
+                                ForEach([0,5,10,15,20,25,30,35,40,45,50,55], id: \.self) { s in
+                                    Text("\(s)").tag(s)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .frame(height: 160)
+
+                    Button("Übernehmen") {
+                        let total = Double(restMinutes * 60 + restSeconds)
+                        set.restTime = max(0, min(total, 600))
+                        onRestTimeUpdated(set.restTime)
+                        showingRestEditor = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.mossGreen)
+                }
+                .padding()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Abbrechen") {
+                            showingRestEditor = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.height(320)])
+        }
+    }
+
+    private var formattedTime: String {
+        let seconds = Int(set.restTime)
+        let minutes = seconds / 60
+        let remaining = seconds % 60
+        if minutes > 0 {
+            return String(format: "%d:%02d", minutes, remaining)
+        } else {
+            return "\(seconds) s"
+        }
+    }
+
+    private var formattedRemaining: String {
+        let minutes = remainingSeconds / 60
+        let seconds = remainingSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
+// MARK: - Active Workout Completion View
+
+private struct ActiveWorkoutCompletionView: View {
+    let workout: Workout
+    @Binding var showingConfirmation: Bool
+    let completeAction: () -> Void
+    
+    private var totalVolume: Double {
+        workout.exercises.reduce(0) { partialResult, exercise in
+            partialResult + exercise.sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
+        }
+    }
+    
+    private var completedSets: Int {
+        workout.exercises.reduce(0) { partialResult, exercise in
+            partialResult + exercise.sets.filter { $0.completed }.count
+        }
+    }
+    
+    private var totalSets: Int {
+        workout.exercises.reduce(0) { partialResult, exercise in
+            partialResult + exercise.sets.count
+        }
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Completion header
+                VStack(spacing: 12) {
+                    Image(systemName: "flag.checkered")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Color.mossGreen)
+                    
+                    Text("Workout abschließen")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    Text("Du bist fast fertig!")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 40)
+                
+                // Summary stats
+                VStack(spacing: 16) {
+                    StatRow(label: "Übungen", value: "\(workout.exercises.count)")
+                    StatRow(label: "Abgeschlossene Sätze", value: "\(completedSets) / \(totalSets)")
+                    StatRow(label: "Gesamtvolumen", value: "\(Int(totalVolume)) kg")
+                }
+                .padding(20)
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                
+                if showingConfirmation {
+                    VStack(spacing: 16) {
+                        Text("Workout wirklich abschließen?")
+                            .font(.headline)
+                            .multilineTextAlignment(.center)
+                        
+                        Text("Die Session wird gespeichert und das Template zurückgesetzt.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        
+                        HStack(spacing: 12) {
+                            Button("Abbrechen") {
+                                showingConfirmation = false
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                            
+                            Button("Abschließen") {
+                                // Starkes haptisches Feedback für finale Bestätigung
+                                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                                generator.impactOccurred()
+                                showingConfirmation = false
+                                completeAction()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(Color.mossGreen)
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(20)
+                    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                } else {
+                    Button {
+                        // Haptisches Feedback beim Workout-Abschluss
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                        showingConfirmation = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.title3)
+                            Text("Workout abschließen")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.vertical, 20)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.mossGreen, in: RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: Color.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 40)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+}
+
+// MARK: - Stat Row
+
+private struct StatRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+        }
+    }
+}
+
+// MARK: - Rest Timer Overlay
+
+private struct RestTimerOverlay: View {
+    let activeRest: WorkoutStore.ActiveRestState
+    let workout: Workout
+    let workoutStore: WorkoutStore
+    let navigateToExercise: (Int) -> Void
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 12) {
+                // Exercise info
+                HStack {
+                    Text("Pause: Satz \(activeRest.setIndex + 1)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text(workout.exercises[safe: activeRest.exerciseIndex]?.exercise.name ?? "Übung")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                
+                // Timer
+                HStack(alignment: .center, spacing: 16) {
+                    Text(formatTime(activeRest.remainingSeconds))
+                        .font(.system(size: activeRest.isRunning ? 34 : 30, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.2), value: activeRest.isRunning)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 10) {
+                        if activeRest.isRunning {
+                            Button { workoutStore.pauseRest() } label: {
+                                Image(systemName: "pause.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.white)
+                            }
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.2), in: Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                            
+                            Button { workoutStore.addRest(seconds: 15) } label: {
+                                Text("+15s")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.2), in: Capsule())
+                            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                        } else {
+                            Button { workoutStore.resumeRest() } label: {
+                                Image(systemName: "play.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.white)
+                            }
+                            .frame(width: 36, height: 36)
+                            .background(Color.green.opacity(0.8), in: Circle())
+                            .disabled(activeRest.remainingSeconds == 0)
+                        }
+                        
+                        Button { workoutStore.stopRest() } label: {
+                            Image(systemName: "stop.fill")
+                                .font(.title3)
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 36, height: 36)
+                        .background(Color.red.opacity(0.8), in: Circle())
+                    }
+                }
+                
+                // Progress bar for remaining time
+                if activeRest.isRunning {
+                    let totalTime = activeRest.totalSeconds > 0 ? activeRest.totalSeconds : 90
+                    let progress = Double(activeRest.remainingSeconds) / Double(totalTime)
+                    
+                    ProgressView(value: progress)
+                        .progressViewStyle(LinearProgressViewStyle(tint: .white))
+                        .scaleEffect(y: 2)
+                        .animation(.linear(duration: 1), value: progress)
+                }
+            }
+            .padding(20)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color.purple.opacity(0.9),
+                        Color.purple.opacity(0.8),
+                        Color.indigo.opacity(0.8)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: 20)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.3), Color.white.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .purple.opacity(0.4), radius: 12, x: 0, y: 6)
+            .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
+            .scaleEffect(activeRest.isRunning ? 1.02 : 1.0)
+            .animation(.easeInOut(duration: 0.3), value: activeRest.isRunning)
+            .onTapGesture {
+                // Navigate to the exercise with active rest
+                navigateToExercise(activeRest.exerciseIndex)
+            }
+        }
+    }
+    
+    private func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let remaining = seconds % 60
+        return String(format: "%d:%02d", minutes, remaining)
+    }
+}
+
+// MARK: - Auto Advance Indicator
+
+private struct AutoAdvanceIndicator: View {
+    let nextExerciseName: String
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                // Arrow icon with animation
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.right")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.mossGreen)
+                        .scaleEffect(1.2)
+                        .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: true)
+                    
+                    Text("Nächste Übung")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                }
+                
+                Text(nextExerciseName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+            .scaleEffect(1.0)
+            .opacity(1.0)
+            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: true)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 32)
+    }
+}
+
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self, ExerciseEntity.self, WorkoutSessionEntity.self, UserProfileEntity.self, configurations: config)
@@ -1319,7 +2441,7 @@ private extension UIFont {
     let workout = WorkoutEntity(id: UUID(), name: "Push Day", exercises: [we], defaultRestTime: 90, notes: "Preview")
     container.mainContext.insert(workout)
     return NavigationStack {
-        WorkoutDetailView(entity: workout)
+        WorkoutDetailView(entity: workout, isActiveSession: true)
             .environmentObject(WorkoutStore())
     }
     .modelContainer(container)
