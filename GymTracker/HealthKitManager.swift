@@ -19,13 +19,16 @@ class HealthKitManager: ObservableObject {
         HKObjectType.quantityType(forIdentifier: .height)!,
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
         HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+        HKObjectType.quantityType(forIdentifier: .bodyFatPercentage)!,
         HKObjectType.workoutType()
     ]
     
     private let writeTypes: Set<HKSampleType> = [
         HKObjectType.workoutType(),
         HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-        HKObjectType.quantityType(forIdentifier: .heartRate)!
+        HKObjectType.quantityType(forIdentifier: .heartRate)!,
+        HKObjectType.quantityType(forIdentifier: .bodyMass)!,
+        HKObjectType.quantityType(forIdentifier: .bodyFatPercentage)!
     ]
     
     private init() {
@@ -49,7 +52,11 @@ class HealthKitManager: ObservableObject {
         print("   Write types: \(writeTypes.count)")
         
         try await healthStore.requestAuthorization(toShare: writeTypes, read: readTypes)
-        await updateAuthorizationStatus()
+        
+        // Force update authorization status on main thread
+        await MainActor.run {
+            updateAuthorizationStatus()
+        }
         
         print("✅ HealthKit-Autorisierung abgeschlossen")
         print("   Status: \(authorizationStatus)")
@@ -59,32 +66,57 @@ class HealthKitManager: ObservableObject {
     private func checkAuthorizationStatus() {
         guard isHealthDataAvailable else { 
             print("❌ HealthKit nicht verfügbar - kann Status nicht prüfen")
+            let wasAuthorized = isAuthorized
+            let prevStatus = authorizationStatus
+            
+            if wasAuthorized || prevStatus != .notDetermined {
+                isAuthorized = false
+                authorizationStatus = .notDetermined
+            }
             return 
         }
         
         // Prüfe verschiedene Datentypen für eine genauere Diagnose
-        let birthDateType = HKObjectType.characteristicType(forIdentifier: .dateOfBirth)!
         let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate)!
+        let bodyMassType = HKObjectType.quantityType(forIdentifier: .bodyMass)!
         let workoutType = HKObjectType.workoutType()
         
-        let birthDateStatus = healthStore.authorizationStatus(for: birthDateType)
         let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
+        let bodyMassStatus = healthStore.authorizationStatus(for: bodyMassType)
         let workoutShareStatus = healthStore.authorizationStatus(for: workoutType)
         
         print("📊 HealthKit Authorization Status:")
-        print("   Geburtsdatum: \(birthDateStatus.debugDescription)")
-        print("   Herzfrequenz: \(heartRateStatus.debugDescription)")  
+        print("   Herzfrequenz: \(heartRateStatus.debugDescription)")
+        print("   Körpergewicht: \(bodyMassStatus.debugDescription)")
         print("   Workout (Schreiben): \(workoutShareStatus.debugDescription)")
         
-        authorizationStatus = birthDateStatus
+        // Einfachere und stabilere Autorisierungslogik
+        let newIsAuthorized = heartRateStatus == .sharingAuthorized || 
+                             bodyMassStatus == .sharingAuthorized ||
+                             workoutShareStatus == .sharingAuthorized
         
-        // Als autorisiert gelten wir, wenn wir wenigstens Read-Zugriff haben
-        isAuthorized = birthDateStatus == .sharingAuthorized || heartRateStatus == .sharingAuthorized
+        let newAuthorizationStatus: HKAuthorizationStatus
+        if newIsAuthorized {
+            newAuthorizationStatus = .sharingAuthorized
+        } else if heartRateStatus == .sharingDenied && bodyMassStatus == .sharingDenied {
+            newAuthorizationStatus = .sharingDenied
+        } else {
+            newAuthorizationStatus = .notDetermined
+        }
+        
+        // Nur aktualisieren wenn sich der Status wirklich geändert hat
+        if isAuthorized != newIsAuthorized {
+            isAuthorized = newIsAuthorized
+        }
+        
+        if authorizationStatus != newAuthorizationStatus {
+            authorizationStatus = newAuthorizationStatus
+        }
         
         print("   Gesamt-Status: \(isAuthorized ? "✅ Autorisiert" : "❌ Nicht autorisiert")")
     }
     
-    private func updateAuthorizationStatus() {
+    func updateAuthorizationStatus() {
         checkAuthorizationStatus()
     }
     
@@ -327,6 +359,152 @@ class HealthKitManager: ObservableObject {
         let minutes = duration / 60.0
         return minutes * 6.5 // Durchschnittswert
     }
+    
+    // MARK: - Health Data Reading
+    
+    func readWeight(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading] {
+        guard let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else {
+            throw HealthKitError.invalidType
+        }
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+        
+        return try await withTimeout(seconds: 20) {
+            try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(
+                    sampleType: weightType,
+                    predicate: predicate,
+                    limit: HKObjectQueryNoLimit,
+                    sortDescriptors: [sortDescriptor]
+                ) { _, samples, error in
+                    if let error = error {
+                        print("❌ Fehler beim Lesen der Gewichtsdaten: \(error)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    let weightReadings = samples?.compactMap { sample -> BodyWeightReading? in
+                        guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                        
+                        let weight = quantitySample.quantity.doubleValue(for: HKUnit.gramUnit(with: .kilo))
+                        return BodyWeightReading(
+                            date: quantitySample.startDate,
+                            weight: weight
+                        )
+                    } ?? []
+                    
+                    print("   • \(weightReadings.count) Gewichtsmessungen geladen")
+                    continuation.resume(returning: weightReadings)
+                }
+                
+                self.healthStore.execute(query)
+            }
+        }
+    }
+    
+    func readBodyFat(from startDate: Date, to endDate: Date) async throws -> [BodyFatReading] {
+        guard let bodyFatType = HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage) else {
+            throw HealthKitError.invalidType
+        }
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+        
+        return try await withTimeout(seconds: 20) {
+            try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(
+                    sampleType: bodyFatType,
+                    predicate: predicate,
+                    limit: HKObjectQueryNoLimit,
+                    sortDescriptors: [sortDescriptor]
+                ) { _, samples, error in
+                    if let error = error {
+                        print("❌ Fehler beim Lesen der Körperfettdaten: \(error)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    let bodyFatReadings = samples?.compactMap { sample -> BodyFatReading? in
+                        guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                        
+                        let bodyFatPercentage = quantitySample.quantity.doubleValue(for: HKUnit.percent())
+                        return BodyFatReading(
+                            date: quantitySample.startDate,
+                            bodyFatPercentage: bodyFatPercentage
+                        )
+                    } ?? []
+                    
+                    print("   • \(bodyFatReadings.count) Körperfett-Messungen geladen")
+                    continuation.resume(returning: bodyFatReadings)
+                }
+                
+                self.healthStore.execute(query)
+            }
+        }
+    }
+    
+    func saveWeight(_ weight: Double, date: Date) async throws {
+        guard isHealthDataAvailable else {
+            throw HealthKitError.notAvailable
+        }
+        
+        guard let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else {
+            throw HealthKitError.invalidType
+        }
+        
+        let weightQuantity = HKQuantity(unit: HKUnit.gramUnit(with: .kilo), doubleValue: weight)
+        let weightSample = HKQuantitySample(
+            type: weightType,
+            quantity: weightQuantity,
+            start: date,
+            end: date,
+            metadata: [HKMetadataKeyWasUserEntered: true]
+        )
+        
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.healthStore.save(weightSample) { success, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: HealthKitError.saveFailed)
+                }
+            }
+        }
+    }
+    
+    func saveBodyFatPercentage(_ fatPercentage: Double, date: Date) async throws {
+        guard isHealthDataAvailable else {
+            throw HealthKitError.notAvailable
+        }
+        
+        guard let bodyFatType = HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage) else {
+            throw HealthKitError.invalidType
+        }
+        
+        let fatPercentageQuantity = HKQuantity(unit: HKUnit.percent(), doubleValue: fatPercentage)
+        let fatPercentageSample = HKQuantitySample(
+            type: bodyFatType,
+            quantity: fatPercentageQuantity,
+            start: date,
+            end: date,
+            metadata: [HKMetadataKeyWasUserEntered: true]
+        )
+        
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.healthStore.save(fatPercentageSample) { success, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: HealthKitError.saveFailed)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Data Models
@@ -342,6 +520,18 @@ struct HeartRateReading: Identifiable {
     let id = UUID()
     let timestamp: Date
     let heartRate: Double // beats per minute
+}
+
+struct BodyWeightReading: Identifiable {
+    let id = UUID()
+    let date: Date
+    let weight: Double // in kg
+}
+
+struct BodyFatReading: Identifiable {
+    let id = UUID()
+    let date: Date
+    let bodyFatPercentage: Double // as decimal (0.0 - 1.0)
 }
 
 // MARK: - Errors

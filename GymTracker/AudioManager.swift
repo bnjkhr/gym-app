@@ -99,24 +99,104 @@ class AudioManager: ObservableObject {
     // MARK: - Notification Sounds
     
     /// Plays a custom notification sound
-    /// - Parameter soundName: Name of the sound file (without extension)
+    /// - Parameter soundName: Name of the sound file (with or without extension)
     func playNotificationSound(_ soundName: String) {
-        guard let soundURL = Bundle.main.url(forResource: soundName, withExtension: "wav") else {
-            print("Sound file not found: \(soundName).wav")
+        // Debug: List all available sound files in the bundle
+        if let resourcePath = Bundle.main.resourcePath {
+            let resourceURL = URL(fileURLWithPath: resourcePath)
+            do {
+                let contents = try FileManager.default.contentsOfDirectory(at: resourceURL, includingPropertiesForKeys: nil)
+                let soundFiles = contents.filter { $0.pathExtension.lowercased() == "wav" }
+                print("Available sound files in bundle:")
+                soundFiles.forEach { print("- \($0.lastPathComponent)") }
+            } catch {
+                print("Could not list bundle contents: \(error)")
+            }
+        }
+        
+        // Try different approaches to find the sound file
+        var soundURL: URL?
+        
+        // Remove .wav extension if present to normalize the name
+        let cleanSoundName = soundName.replacingOccurrences(of: ".wav", with: "")
+        
+        // Method 1: Try with explicit .wav extension
+        soundURL = Bundle.main.url(forResource: cleanSoundName, withExtension: "wav")
+        
+        // Method 2: If not found, try without extension (maybe it's already included)
+        if soundURL == nil {
+            soundURL = Bundle.main.url(forResource: soundName, withExtension: nil)
+        }
+        
+        // Method 3: Try different case variations
+        if soundURL == nil {
+            soundURL = Bundle.main.url(forResource: cleanSoundName.lowercased(), withExtension: "wav")
+        }
+        
+        guard let finalSoundURL = soundURL else {
+            print("❌ Sound file not found: \(soundName)")
+            print("Tried:")
+            print("- \(cleanSoundName).wav")
+            print("- \(soundName)")
+            print("- \(cleanSoundName.lowercased()).wav")
+            
+            // Fallback to system sound
+            AudioServicesPlaySystemSound(1007) // SMS received tone
+            return
+        }
+        
+        print("✅ Found sound file: \(finalSoundURL.lastPathComponent)")
+        
+        // Verify file exists and is readable
+        guard FileManager.default.fileExists(atPath: finalSoundURL.path) else {
+            print("❌ Sound file exists in bundle but not accessible: \(finalSoundURL.path)")
+            AudioServicesPlaySystemSound(1007)
             return
         }
         
         prepareForSound()
         
         var soundID: SystemSoundID = 0
-        AudioServicesCreateSystemSoundID(soundURL as CFURL, &soundID)
+        let status = AudioServicesCreateSystemSoundID(finalSoundURL as CFURL, &soundID)
+        
+        guard status == noErr else {
+            print("❌ Failed to create system sound ID. Status: \(status)")
+            
+            // Try alternative method with AVAudioPlayer
+            playWithAVAudioPlayer(url: finalSoundURL)
+            return
+        }
+        
+        print("✅ Playing sound with ID: \(soundID)")
         
         // Play the sound
         AudioServicesPlaySystemSound(soundID)
         
         // Clean up the sound ID after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             AudioServicesDisposeSystemSoundID(soundID)
+        }
+    }
+    
+    /// Fallback method using AVAudioPlayer
+    private func playWithAVAudioPlayer(url: URL) {
+        print("🔄 Trying AVAudioPlayer fallback for: \(url.lastPathComponent)")
+        
+        do {
+            let audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer.volume = 1.0
+            audioPlayer.prepareToPlay()
+            
+            let success = audioPlayer.play()
+            print(success ? "✅ AVAudioPlayer started successfully" : "❌ AVAudioPlayer failed to start")
+            
+            // Keep a reference to prevent deallocation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                audioPlayer.stop()
+            }
+            
+        } catch {
+            print("❌ AVAudioPlayer error: \(error)")
         }
     }
     

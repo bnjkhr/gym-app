@@ -65,7 +65,7 @@ struct ContentView: View {
             }
             .tabItem {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                Text("Statistiken")
+                Text("Insights")
             }
 
             // Einstellungen Tab
@@ -1333,7 +1333,7 @@ struct WorkoutTileWithMenu: View {
             showingActionSheet = true
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
+                HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(workout.name)
                             .font(.headline)
@@ -1341,6 +1341,7 @@ struct WorkoutTileWithMenu: View {
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                             .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         
                         Text("\(workout.exercises.count) Übungen")
                             .font(.subheadline)
@@ -1349,6 +1350,7 @@ struct WorkoutTileWithMenu: View {
                     
                     Spacer()
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Menu dots at bottom right
                 HStack {
@@ -1359,7 +1361,7 @@ struct WorkoutTileWithMenu: View {
                 }
             }
             .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.secondarySystemBackground))

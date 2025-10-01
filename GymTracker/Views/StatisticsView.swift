@@ -22,7 +22,7 @@ struct StatisticsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: 16) {
                 GeometryReader { geo in
                     Color.clear
                         .preference(
@@ -32,23 +32,36 @@ struct StatisticsView: View {
                 }
                 .frame(height: 0)
 
-                DayStripView(showCalendar: { showingCalendar = true })
+                // 1. Consistency / Wochenfortschritt
+                ConsistencyCardView()
 
-                // Neue Übersicht (letztes Workout)
-                ProgressOverviewCardView()
+                // 2. Neue Rekorde (PR-Highlight)
+                PersonalRecordCardView()
 
-                // Neue Infobox: Veränderungen (Gewicht/Volumen & Wiederholungen)
-                ProgressDeltaInfoCardView()
+                // 3. Trainingsvolumen pro Woche
+                WeeklyVolumeCardView()
 
-                // Herzfrequenz-Bereich
+                // 4. Push/Pull/Legs-Balance
+                MuscleGroupBalanceCardView()
+
+                // 5. Ø Gewicht pro Übung
+                AverageWeightCardView()
+
+                // 6. Workout-Intensität (Session Score)
+                SessionIntensityCardView()
+
+                // 7. Plateau-Check
+                PlateauCheckCardView()
+                
+                // 8. Health Data (Optional, falls verfügbar)
                 HeartRateInsightsView()
-                    .environmentObject(workoutStore)
-
-                // Bestehende Bereiche
-                MostUsedExercisesView()
-
-                RecentActivityView()
+                
+                BodyMetricsInsightsView()
+                
+                // Zusätzlicher Platz am Ende
+                Color.clear.frame(height: 100)
             }
+            .padding(.horizontal, 16)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onPreferenceChange(StatisticsScrollOffsetPreferenceKey.self) { newValue in
@@ -72,14 +85,655 @@ struct StatisticsView: View {
     }
 }
 
-// MARK: - Neue Karten
+// MARK: - Statistics Cards
+
+// 1. Consistency / Wochenfortschritt
+private struct ConsistencyCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var consistencyWeeks: Int {
+        let calendar = Calendar.current
+        let today = Date()
+        var consecutiveWeeks = 0
+        var currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        
+        for i in 0..<12 { // Maximal 12 Wochen zurückschauen
+            let weekStart = calendar.date(byAdding: .weekOfYear, value: -i, to: currentWeekStart) ?? currentWeekStart
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
+            
+            let hasSessionInWeek = sessionEntities.contains { session in
+                session.date >= weekStart && session.date <= weekEnd
+            }
+            
+            if hasSessionInWeek {
+                consecutiveWeeks += 1
+            } else {
+                break
+            }
+        }
+        
+        return consecutiveWeeks
+    }
+    
+    private var consistencyText: (title: String, subtitle: String) {
+        switch consistencyWeeks {
+        case 0:
+            return ("Zeit für einen Neustart!", "Los geht's mit dem Training.")
+        case 1:
+            return ("Du bist 1 Woche dabei.", "Dranbleiben lohnt sich!")
+        case 2:
+            return ("Du bist 2 Wochen in Folge", "im Training. Super Anfang!")
+        case 3...4:
+            return ("Du bist \(consistencyWeeks) Wochen in Folge", "im Training. Gewohnheit bildet sich!")
+        case 5...8:
+            return ("Du bist \(consistencyWeeks) Wochen in Folge", "im Training. Starke Routine!")
+        case 9...12:
+            return ("Du bist \(consistencyWeeks) Wochen in Folge", "im Training. Beeindruckend!")
+        default:
+            return ("Du bist \(consistencyWeeks) Wochen in Folge", "im Training. Unglaublich konstant!")
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text(consistencyWeeks == 0 ? "💪" : "🔥")
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(consistencyText.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(consistencyText.subtitle)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                }
+                
+                Spacer()
+                
+                // Mini Kalender-Indikator
+                VStack(spacing: 2) {
+                    HStack(spacing: 2) {
+                        ForEach(0..<4) { week in
+                            Circle()
+                                .fill(week < min(consistencyWeeks, 4) ? Color.green : Color.gray.opacity(0.3))
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                    HStack(spacing: 2) {
+                        ForEach(0..<3) { week in
+                            Circle()
+                                .fill((week + 4) < min(consistencyWeeks, 7) ? Color.green : Color.gray.opacity(0.3))
+                                .frame(width: 8, height: 8)
+                        }
+                        Circle()
+                            .fill(.clear)
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// 2. Personal Records
+private struct PersonalRecordCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var latestPR: (exercise: String, weight: Double, reps: Int)? {
+        // Vereinfachte PR-Erkennung - könnte später erweitert werden
+        guard let latestSession = sessionEntities.first else { return nil }
+        
+        // Finde die schwerste/beste Übung in der letzten Session
+        var bestExercise: (name: String, weight: Double, reps: Int)?
+        
+        for workoutExercise in latestSession.exercises {
+            guard let heaviestSet = workoutExercise.sets.max(by: { $0.weight < $1.weight }) else { continue }
+            
+            if bestExercise == nil || heaviestSet.weight > bestExercise!.weight {
+                bestExercise = (workoutExercise.exercise?.name ?? "Übung", heaviestSet.weight, heaviestSet.reps)
+            }
+        }
+        
+        return bestExercise.map { (exercise: $0.name, weight: $0.weight, reps: $0.reps) }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("🏆")
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    if let pr = latestPR {
+                        Text("Neuer PR: \(pr.exercise)")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text("\(pr.weight.formatted(.number.precision(.fractionLength(1)))) kg × \(pr.reps)")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text("Kein neuer PR")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        Text("Weiter trainieren!")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Spacer()
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [.purple.opacity(0.8), .green.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+    }
+}
+
+// 3. Weekly Volume
+private struct WeeklyVolumeCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var weeklyData: (currentVolume: Double, previousVolume: Double, weekNumber: Int) {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentWeekNumber = calendar.component(.weekOfYear, from: now)
+        
+        // Aktuelle Woche
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let currentWeekEnd = calendar.dateInterval(of: .weekOfYear, for: now)?.end ?? now
+        
+        // Vorwoche
+        let previousWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: currentWeekStart) ?? currentWeekStart
+        let previousWeekEnd = calendar.date(byAdding: .day, value: 6, to: previousWeekStart) ?? previousWeekStart
+        
+        let currentVolume = sessionEntities
+            .filter { $0.date >= currentWeekStart && $0.date <= currentWeekEnd }
+            .reduce(0.0) { total, session in
+                total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
+                    exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
+                        setTotal + (Double(set.reps) * set.weight)
+                    }
+                }
+            }
+        
+        let previousVolume = sessionEntities
+            .filter { $0.date >= previousWeekStart && $0.date <= previousWeekEnd }
+            .reduce(0.0) { total, session in
+                total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
+                    exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
+                        setTotal + (Double(set.reps) * set.weight)
+                    }
+                }
+            }
+        
+        return (currentVolume, previousVolume, currentWeekNumber)
+    }
+    
+    private var percentageChange: Double {
+        let data = weeklyData
+        guard data.previousVolume > 0 else { return 0 }
+        return ((data.currentVolume - data.previousVolume) / data.previousVolume) * 100
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("📈")
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Gesamtvolumen KW \(weeklyData.weekNumber):")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("\((weeklyData.currentVolume / 1000).formatted(.number.precision(.fractionLength(1)))) kg")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    
+                    if weeklyData.previousVolume > 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: percentageChange >= 0 ? "arrow.up" : "arrow.down")
+                                .font(.caption)
+                                .foregroundStyle(percentageChange >= 0 ? .green : .red)
+                            Text("\(abs(percentageChange).formatted(.number.precision(.fractionLength(0))))% zur Vorwoche")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                // Mini-Chart (vereinfacht)
+                VStack(spacing: 2) {
+                    ForEach(0..<7) { day in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.mossGreen.opacity(Double.random(in: 0.3...1.0)))
+                            .frame(width: 6, height: CGFloat.random(in: 8...24))
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
+    }
+}
+
+// 4. Muscle Group Balance
+private struct MuscleGroupBalanceCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var muscleBalance: (push: Double, pull: Double, legs: Double, isBalanced: Bool) {
+        let recentSessions = sessionEntities.prefix(10) // Letzte 10 Sessions
+        
+        var pushVolume = 0.0
+        var pullVolume = 0.0
+        var legVolume = 0.0
+        
+        for session in recentSessions {
+            for exercise in session.exercises {
+                let volume = exercise.sets.reduce(0.0) { $0 + (Double($1.reps) * $1.weight) }
+                
+                // Vereinfachte Muskelgruppen-Zuordnung basierend auf Übungsname
+                let exerciseName = exercise.exercise?.name.lowercased() ?? ""
+                if exerciseName.contains("bench") || exerciseName.contains("press") || exerciseName.contains("push") {
+                    pushVolume += volume
+                } else if exerciseName.contains("pull") || exerciseName.contains("row") || exerciseName.contains("curl") {
+                    pullVolume += volume
+                } else if exerciseName.contains("squat") || exerciseName.contains("deadlift") || exerciseName.contains("leg") {
+                    legVolume += volume
+                } else {
+                    // Default zu Push für unbekannte Übungen
+                    pushVolume += volume
+                }
+            }
+        }
+        
+        let total = pushVolume + pullVolume + legVolume
+        guard total > 0 else { return (0, 0, 0, true) }
+        
+        let pushRatio = pushVolume / total
+        let pullRatio = pullVolume / total
+        let legRatio = legVolume / total
+        
+        // Balance-Check: Keine Kategorie sollte < 20% oder > 50% haben
+        let isBalanced = pushRatio >= 0.2 && pushRatio <= 0.5 &&
+                        pullRatio >= 0.2 && pullRatio <= 0.5 &&
+                        legRatio >= 0.2 && legRatio <= 0.5
+        
+        return (pushRatio, pullRatio, legRatio, isBalanced)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("⚖️ Push/Pull/Legs Balance")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Circle()
+                    .fill(muscleBalance.isBalanced ? .green : .red)
+                    .frame(width: 12, height: 12)
+            }
+            
+            // Donut Chart (vereinfacht mit Balken)
+            VStack(spacing: 8) {
+                balanceBar(title: "Push", ratio: muscleBalance.push, color: .blue)
+                balanceBar(title: "Pull", ratio: muscleBalance.pull, color: .green)
+                balanceBar(title: "Legs", ratio: muscleBalance.legs, color: .orange)
+            }
+            
+            Text(muscleBalance.isBalanced ? "Ausgewogenes Training 👍" : "Unausgewogen - mehr Varianz ⚠️")
+                .font(.caption)
+                .foregroundStyle(muscleBalance.isBalanced ? .green : .red)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
+    }
+    
+    private func balanceBar(title: String, ratio: Double, color: Color) -> some View {
+        HStack {
+            Text(title)
+                .font(.caption)
+                .frame(width: 40, alignment: .leading)
+            
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 8)
+                    
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color)
+                        .frame(width: geo.size.width * ratio, height: 8)
+                }
+            }
+            .frame(height: 8)
+            
+            Text("\(Int(ratio * 100))%")
+                .font(.caption)
+                .monospacedDigit()
+                .frame(width: 32, alignment: .trailing)
+        }
+    }
+}
+
+// 5. Average Weight per Exercise
+private struct AverageWeightCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var topExercises: [(name: String, avgWeight: Double, change: Double)] {
+        let recentSessions = sessionEntities.prefix(20) // Letzte 20 Sessions
+        let olderSessions = sessionEntities.dropFirst(20).prefix(20) // Davor liegende 20 Sessions
+        
+        var recentWeights: [String: [Double]] = [:]
+        var olderWeights: [String: [Double]] = [:]
+        
+        // Sammle Gewichte für jede Übung
+        for session in recentSessions {
+            for exercise in session.exercises {
+                let name = exercise.exercise?.name ?? "Unbekannt"
+                let weights = exercise.sets.map { $0.weight }
+                recentWeights[name, default: []].append(contentsOf: weights)
+            }
+        }
+        
+        for session in olderSessions {
+            for exercise in session.exercises {
+                let name = exercise.exercise?.name ?? "Unbekannt"
+                let weights = exercise.sets.map { $0.weight }
+                olderWeights[name, default: []].append(contentsOf: weights)
+            }
+        }
+        
+        // Berechne Durchschnitte und Veränderungen
+        var results: [(String, Double, Double)] = []
+        
+        for (name, weights) in recentWeights {
+            guard !weights.isEmpty else { continue }
+            let avgWeight = weights.reduce(0, +) / Double(weights.count)
+            
+            let change: Double
+            if let oldWeights = olderWeights[name], !oldWeights.isEmpty {
+                let oldAvg = oldWeights.reduce(0, +) / Double(oldWeights.count)
+                change = ((avgWeight - oldAvg) / oldAvg) * 100
+            } else {
+                change = 0
+            }
+            
+            results.append((name, avgWeight, change))
+        }
+        
+        return results
+            .sorted { $0.1 > $1.1 } // Nach Gewicht sortieren
+            .prefix(3)
+            .map { $0 }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("💪")
+                    .font(.title2)
+                Text("Ø Gewicht pro Übung")
+                    .font(.headline)
+            }
+            
+            if topExercises.isEmpty {
+                VStack(spacing: 8) {
+                    Text("Keine Daten verfügbar")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("Trainiere mehr, um Statistiken zu sehen.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(topExercises.enumerated()), id: \.offset) { index, exercise in
+                        HStack {
+                            Text(exercise.name)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                            
+                            Spacer()
+                            
+                            Text("Ø \(exercise.avgWeight.formatted(.number.precision(.fractionLength(1)))) kg")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            HStack(spacing: 2) {
+                                Image(systemName: exercise.change >= 0 ? "arrow.up" : "arrow.down")
+                                    .font(.caption2)
+                                    .foregroundStyle(exercise.change >= 0 ? .green : .red)
+                                Text("\(abs(exercise.change).formatted(.number.precision(.fractionLength(0))))%")
+                                    .font(.caption2)
+                                    .foregroundStyle(exercise.change >= 0 ? .green : .red)
+                            }
+                            .frame(width: 44)
+                        }
+                        .padding(.vertical, 4)
+                        
+                        if index < topExercises.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
+    }
+}
+
+// 6. Session Intensity
+private struct SessionIntensityCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var latestSessionScore: Int {
+        guard let latestSession = sessionEntities.first else { return 0 }
+        
+        // Vereinfachte Intensitäts-Berechnung
+        let totalSets = latestSession.exercises.reduce(0) { $0 + $1.sets.count }
+        let avgWeight = latestSession.exercises.reduce(0.0) { sessionTotal, exercise in
+            let exerciseAvg = exercise.sets.reduce(0.0) { $0 + $1.weight } / Double(max(exercise.sets.count, 1))
+            return sessionTotal + exerciseAvg
+        } / Double(max(latestSession.exercises.count, 1))
+        
+        let duration = latestSession.duration ?? 0
+        
+        // Score basierend auf Sätzen, Gewicht und Effizienz
+        let setsScore = min(Double(totalSets) * 5, 50) // Max 50 Punkte für Sätze
+        let weightScore = min(avgWeight / 2, 30) // Max 30 Punkte für Gewicht
+        let efficiencyScore = duration > 0 ? min(Double(totalSets) / (duration / 3600) * 10, 20) : 0 // Max 20 Punkte für Effizienz
+        
+        return Int(setsScore + weightScore + efficiencyScore)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("⚡️")
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Letzte Session")
+                        .font(.headline)
+                    Text("\(latestSessionScore)/100 Intensität")
+                        .font(.headline)
+                }
+                
+                Spacer()
+                
+                // Circular Progress
+                ZStack {
+                    Circle()
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                        .frame(width: 60, height: 60)
+                    
+                    Circle()
+                        .trim(from: 0, to: Double(latestSessionScore) / 100)
+                        .stroke(
+                            LinearGradient(
+                                colors: [.green, .yellow, .orange, .red],
+                                startPoint: .trailing,
+                                endPoint: .leading
+                            ),
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .frame(width: 60, height: 60)
+                        .rotationEffect(.degrees(-90))
+                    
+                    Text("\(latestSessionScore)")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
+    }
+}
+
+// 7. Plateau Check
+private struct PlateauCheckCardView: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    
+    private var plateauAlert: (exercise: String, weeks: Int)? {
+        let recentSessions = sessionEntities.prefix(30) // Letzte 30 Sessions
+        
+        var exerciseProgress: [String: [Double]] = [:]
+        
+        // Sammle max Gewichte pro Übung über Zeit
+        for session in recentSessions {
+            for exercise in session.exercises {
+                let name = exercise.exercise?.name ?? "Unbekannt"
+                let maxWeight = exercise.sets.map { $0.weight }.max() ?? 0
+                exerciseProgress[name, default: []].append(maxWeight)
+            }
+        }
+        
+        // Suche nach Stagnation (4+ Sessions ohne Verbesserung)
+        for (name, weights) in exerciseProgress {
+            guard weights.count >= 4 else { continue }
+            
+            let recentWeights = Array(weights.prefix(8)) // Letzte 8 Einträge
+            let maxRecent = recentWeights.max() ?? 0
+            
+            // Check ob in den letzten 4+ Sessions keine Verbesserung
+            var stagnantCount = 0
+            for weight in recentWeights {
+                if weight < maxRecent * 0.95 { // 5% Toleranz
+                    stagnantCount += 1
+                } else {
+                    break
+                }
+            }
+            
+            if stagnantCount >= 4 {
+                let estimatedWeeks = stagnantCount / 2 // Grobe Schätzung
+                return (name, estimatedWeeks)
+            }
+        }
+        
+        return nil
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text(plateauAlert != nil ? "⚠️" : "✅")
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    if let alert = plateauAlert {
+                        Text("Dein \(alert.exercise) stagniert")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text("seit \(alert.weeks) Wochen.")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text("Zeit für Variation?")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Alles läuft super!")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text("Kein Plateau erkannt.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Spacer()
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(plateauAlert != nil ? Color.orange.opacity(0.5) : Color.clear, lineWidth: 2)
+                )
+        )
+    }
+}
 
 private struct ProgressOverviewCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
 
     private var lastSession: WorkoutSession? {
-        sessionEntities.first.map { WorkoutSession(entity: $0) }
+        let session = sessionEntities.first.map { WorkoutSession(entity: $0) }
+        // Debug information to verify imported sessions are included
+        if let session = session {
+            let isImported = session.notes.contains("Importiert aus")
+            print("📊 Letzte Session für Statistik: \(session.name) (Importiert: \(isImported ? "Ja" : "Nein"))")
+        }
+        return session
     }
 
     private var lastVolume: Double? {
@@ -152,7 +806,13 @@ private struct ProgressDeltaInfoCardView: View {
     private var sessionEntities: [WorkoutSessionEntity]
 
     private var lastTwoSessions: [WorkoutSession] {
-        sessionEntities.prefix(2).map { WorkoutSession(entity: $0) }
+        let sessions = sessionEntities.prefix(2).map { WorkoutSession(entity: $0) }
+        // Debug information
+        let importedCount = sessions.filter { $0.notes.contains("Importiert aus") }.count
+        if importedCount > 0 {
+            print("📊 Delta-Berechnung nutzt \(importedCount) importierte Sessions von \(sessions.count) Gesamt-Sessions")
+        }
+        return sessions
     }
 
     private var lastSession: WorkoutSession? { lastTwoSessions.first }
@@ -698,11 +1358,19 @@ struct HeartRateInsightsView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     
-                    Button("Berechtigung erteilen") {
-                        requestAuthorization()
+                    VStack(spacing: 8) {
+                        Button("Berechtigung erteilen") {
+                            requestAuthorization()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        
+                        NavigationLink("Debug-Informationen") {
+                            HealthKitDebugView()
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
@@ -806,7 +1474,11 @@ struct HeartRateInsightsView: View {
                 }
             }
         }
-        .appEdgePadding()
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
     }
     
     private func heartRateStatBox(title: String, value: Int, color: Color) -> some View {
@@ -836,6 +1508,10 @@ struct HeartRateInsightsView: View {
         Task {
             do {
                 try await workoutStore.requestHealthKitAuthorization()
+                // Status explizit aktualisieren nach Autorisierung
+                await MainActor.run {
+                    workoutStore.healthKitManager.updateAuthorizationStatus()
+                }
                 loadHeartRateData()
             } catch let healthKitError as HealthKitError {
                 await MainActor.run {
@@ -882,4 +1558,438 @@ struct HeartRateInsightsView: View {
         }
     }
 }
+
+// MARK: - Body Metrics Insights
+struct BodyMetricsInsightsView: View {
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var weightReadings: [BodyWeightReading] = []
+    @State private var bodyFatReadings: [BodyFatReading] = []
+    @State private var isLoading = false
+    @State private var error: HealthKitError?
+    @State private var showingError = false
+    @State private var selectedTimeRange: BodyMetricsTimeRange = .month
+    
+    enum BodyMetricsTimeRange: String, CaseIterable {
+        case month = "Monat"
+        case threeMonths = "3 Monate"
+        case sixMonths = "6 Monate"
+        case year = "Jahr"
+        
+        var displayName: String { rawValue }
+        
+        var timeInterval: TimeInterval {
+            switch self {
+            case .month: return 30 * 24 * 3600
+            case .threeMonths: return 90 * 24 * 3600
+            case .sixMonths: return 180 * 24 * 3600
+            case .year: return 365 * 24 * 3600
+            }
+        }
+    }
+    
+    private var currentWeight: Double? {
+        weightReadings.last?.weight
+    }
+    
+    private var currentBodyFat: Double? {
+        bodyFatReadings.last?.bodyFatPercentage
+    }
+    
+    private var weightTrend: WeightTrend {
+        guard weightReadings.count >= 2 else { return .stable }
+        
+        let recent = weightReadings.suffix(5)
+        guard let first = recent.first?.weight, let last = recent.last?.weight else { return .stable }
+        
+        let difference = last - first
+        if difference > 1.0 {
+            return .increasing
+        } else if difference < -1.0 {
+            return .decreasing
+        } else {
+            return .stable
+        }
+    }
+    
+    private var bodyFatTrend: BodyFatTrend {
+        guard bodyFatReadings.count >= 2 else { return .stable }
+        
+        let recent = bodyFatReadings.suffix(5)
+        guard let first = recent.first?.bodyFatPercentage, let last = recent.last?.bodyFatPercentage else { return .stable }
+        
+        let difference = last - first
+        if difference > 2.0 {
+            return .increasing
+        } else if difference < -2.0 {
+            return .decreasing
+        } else {
+            return .stable
+        }
+    }
+    
+    enum WeightTrend {
+        case increasing, decreasing, stable
+        
+        var color: Color {
+            switch self {
+            case .increasing: return .orange
+            case .decreasing: return .green
+            case .stable: return .blue
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .increasing: return "arrow.up.right"
+            case .decreasing: return "arrow.down.right"
+            case .stable: return "arrow.right"
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .increasing: return "Steigend"
+            case .decreasing: return "Fallend"
+            case .stable: return "Stabil"
+            }
+        }
+    }
+    
+    enum BodyFatTrend {
+        case increasing, decreasing, stable
+        
+        var color: Color {
+            switch self {
+            case .increasing: return .red
+            case .decreasing: return .green
+            case .stable: return .blue
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .increasing: return "arrow.up.right"
+            case .decreasing: return "arrow.down.right"
+            case .stable: return "arrow.right"
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .increasing: return "Steigend"
+            case .decreasing: return "Fallend"
+            case .stable: return "Stabil"
+            }
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Körperdaten")
+                .font(.headline)
+            
+            if !workoutStore.healthKitManager.isHealthDataAvailable {
+                VStack(spacing: 12) {
+                    Image(systemName: "figure.stand")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    Text("HealthKit nicht verfügbar")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+            } else if !workoutStore.healthKitManager.isAuthorized {
+                VStack(spacing: 12) {
+                    Image(systemName: "figure.stand.line.dotted.figure.stand")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    Text("HealthKit-Berechtigung erforderlich")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    VStack(spacing: 8) {
+                        Button("Berechtigung erteilen") {
+                            requestAuthorization()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        
+                        NavigationLink("Debug-Informationen") {
+                            HealthKitDebugView()
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+            } else {
+                VStack(spacing: 12) {
+                    // Time Range Picker
+                    Picker("Zeitraum", selection: $selectedTimeRange) {
+                        ForEach(BodyMetricsTimeRange.allCases, id: \.self) { range in
+                            Text(range.displayName).tag(range)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedTimeRange) { _, _ in
+                        loadBodyMetricsData()
+                    }
+                    
+                    if !weightReadings.isEmpty || !bodyFatReadings.isEmpty {
+                        // Current Values and Trends
+                        HStack(spacing: 12) {
+                            if let weight = currentWeight {
+                                bodyMetricStatBox(
+                                    title: "Gewicht",
+                                    value: "\(weight.formatted(.number.precision(.fractionLength(1)))) kg",
+                                    trend: weightTrend.description,
+                                    trendIcon: weightTrend.icon,
+                                    color: weightTrend.color
+                                )
+                            }
+                            
+                            if let bodyFat = currentBodyFat {
+                                bodyMetricStatBox(
+                                    title: "Körperfett",
+                                    value: "\((bodyFat * 100).formatted(.number.precision(.fractionLength(1))))%",
+                                    trend: bodyFatTrend.description,
+                                    trendIcon: bodyFatTrend.icon,
+                                    color: bodyFatTrend.color
+                                )
+                            }
+                        }
+                        
+                        // Weight Chart
+                        if !weightReadings.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Gewichtsverlauf")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                
+                                Chart(weightReadings.suffix(30)) { reading in
+                                    LineMark(
+                                        x: .value("Datum", reading.date),
+                                        y: .value("Gewicht", reading.weight)
+                                    )
+                                    .foregroundStyle(.blue)
+                                    .interpolationMethod(.cardinal)
+                                    
+                                    AreaMark(
+                                        x: .value("Datum", reading.date),
+                                        y: .value("Gewicht", reading.weight)
+                                    )
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.blue.opacity(0.3), .blue.opacity(0.1)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .interpolationMethod(.cardinal)
+                                }
+                                .frame(height: 100)
+                                .chartXAxis(.hidden)
+                                .chartYAxis {
+                                    AxisMarks { value in
+                                        AxisValueLabel {
+                                            if let weight = value.as(Double.self) {
+                                                Text("\(weight.formatted(.number.precision(.fractionLength(0))))kg")
+                                            }
+                                        }
+                                        AxisGridLine()
+                                        AxisTick()
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(8)
+                        }
+                        
+                        // Body Fat Chart
+                        if !bodyFatReadings.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Körperfettverlauf")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                
+                                Chart(bodyFatReadings.suffix(30)) { reading in
+                                    LineMark(
+                                        x: .value("Datum", reading.date),
+                                        y: .value("Körperfett", reading.bodyFatPercentage * 100)
+                                    )
+                                    .foregroundStyle(.orange)
+                                    .interpolationMethod(.cardinal)
+                                    
+                                    AreaMark(
+                                        x: .value("Datum", reading.date),
+                                        y: .value("Körperfett", reading.bodyFatPercentage * 100)
+                                    )
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.orange.opacity(0.3), .orange.opacity(0.1)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .interpolationMethod(.cardinal)
+                                }
+                                .frame(height: 100)
+                                .chartXAxis(.hidden)
+                                .chartYAxis {
+                                    AxisMarks { value in
+                                        AxisValueLabel {
+                                            if let bodyFat = value.as(Double.self) {
+                                                Text("\(bodyFat.formatted(.number.precision(.fractionLength(0))))%")
+                                            }
+                                        }
+                                        AxisGridLine()
+                                        AxisTick()
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(8)
+                        }
+                        
+                    } else if !isLoading {
+                        VStack(spacing: 8) {
+                            Image(systemName: "figure.stand")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                            Text("Keine Körperdaten")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text("Für den gewählten Zeitraum sind keine Daten verfügbar.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                    }
+                    
+                    if isLoading {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Lade Körperdaten...")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+                .onAppear {
+                    loadBodyMetricsData()
+                }
+                .alert("Fehler", isPresented: $showingError, presenting: error) { error in
+                    Button("OK", role: .cancel) { self.error = nil }
+                } message: { error in
+                    Text(error.localizedDescription)
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+        )
+    }
+    
+    private func bodyMetricStatBox(title: String, value: String, trend: String, trendIcon: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            
+            Text(value)
+                .font(.callout)
+                .fontWeight(.semibold)
+                .foregroundStyle(color)
+            
+            HStack(spacing: 2) {
+                Image(systemName: trendIcon)
+                    .font(.caption2)
+                Text(trend)
+                    .font(.caption2)
+            }
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Color(.systemBackground))
+        .cornerRadius(6)
+    }
+    
+    private func requestAuthorization() {
+        Task {
+            do {
+                try await workoutStore.requestHealthKitAuthorization()
+                // Status explizit aktualisieren nach Autorisierung
+                await MainActor.run {
+                    workoutStore.healthKitManager.updateAuthorizationStatus()
+                }
+                loadBodyMetricsData()
+            } catch let healthKitError as HealthKitError {
+                await MainActor.run {
+                    self.error = healthKitError
+                    self.showingError = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = HealthKitError.notAuthorized
+                    self.showingError = true
+                }
+            }
+        }
+    }
+    
+    private func loadBodyMetricsData() {
+        guard workoutStore.healthKitManager.isAuthorized else { return }
+        
+        isLoading = true
+        let endDate = Date()
+        let startDate = endDate.addingTimeInterval(-selectedTimeRange.timeInterval)
+        
+        Task {
+            do {
+                async let weightData = workoutStore.readWeightData(from: startDate, to: endDate)
+                async let bodyFatData = workoutStore.readBodyFatData(from: startDate, to: endDate)
+                
+                let (weights, bodyFats) = try await (weightData, bodyFatData)
+                
+                await MainActor.run {
+                    self.weightReadings = weights
+                    self.bodyFatReadings = bodyFats
+                    self.isLoading = false
+                }
+            } catch let healthKitError as HealthKitError {
+                await MainActor.run {
+                    self.error = healthKitError
+                    self.showingError = true
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = HealthKitError.notAuthorized
+                    self.showingError = true
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+}
+
+
 

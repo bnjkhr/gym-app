@@ -74,7 +74,7 @@ struct ProfileEditView: View {
                                 }
                                 .font(.caption)
                                 .buttonStyle(.bordered)
-                                .disabled(isImportingFromHealthKit)
+                                .disabled(isImportingFromHealthKit || !workoutStore.healthKitManager.isAuthorized && workoutStore.healthKitManager.authorizationStatus == .sharingDenied)
                                 .overlay {
                                     if isImportingFromHealthKit {
                                         HStack(spacing: 4) {
@@ -350,6 +350,21 @@ struct ProfileEditView: View {
             preferredDuration = profile.preferredDuration
             profileImage = profile.profileImage
         }
+        .onReceive(NotificationCenter.default.publisher(for: .profileUpdatedFromHealthKit)) { _ in
+            // Refresh profile data when HealthKit import completes
+            Task { @MainActor in
+                await refreshProfileData()
+            }
+        }
+        .onReceive(workoutStore.healthKitManager.$isAuthorized) { isAuthorized in
+            // Update UI when HealthKit authorization status changes
+            if isAuthorized && !isImportingFromHealthKit {
+                // Auto-import might have already happened in WorkoutStore, but refresh UI just in case
+                Task { @MainActor in
+                    await refreshProfileData()
+                }
+            }
+        }
     }
     
     private func calculateAge(from birthDate: Date) -> Int? {
@@ -365,29 +380,12 @@ struct ProfileEditView: View {
         
         Task { @MainActor in
             do {
-                // Request authorization first if not already authorized
-                if !workoutStore.healthKitManager.isAuthorized {
-                    try await workoutStore.requestHealthKitAuthorization()
-                }
+                // The WorkoutStore.requestHealthKitAuthorization now handles both authorization AND automatic import
+                try await workoutStore.requestHealthKitAuthorization()
                 
-                // Import data from HealthKit
-                try await workoutStore.importFromHealthKit()
-                
-                // Update UI with imported data
-                let profile = workoutStore.userProfile
-                if let birthDate = profile.birthDate {
-                    self.birthDate = birthDate
-                }
-                if let weight = profile.weight {
-                    self.weight = weight.formatted(.number.precision(.fractionLength(0...1)))
-                }
-                if let height = profile.height {
-                    self.height = height.formatted(.number.precision(.fractionLength(0...1)))
-                }
-                if let sex = profile.biologicalSex {
-                    self.biologicalSex = sex
-                }
-                self.healthKitSyncEnabled = true
+                // The data should already be imported and UI updated via notifications
+                // But refresh once more to ensure consistency
+                await refreshProfileData()
                 
             } catch let error as HealthKitError {
                 self.healthKitError = error
@@ -398,6 +396,31 @@ struct ProfileEditView: View {
             }
             
             isImportingFromHealthKit = false
+        }
+    }
+    
+    private func refreshProfileData() async {
+        // Ensure we're on the main actor
+        await MainActor.run {
+            // Get the latest profile data
+            let profile = workoutStore.userProfile
+            
+            // Update UI with imported data
+            if let birthDate = profile.birthDate {
+                self.birthDate = birthDate
+            }
+            if let weight = profile.weight {
+                self.weight = weight.formatted(.number.precision(.fractionLength(0...1)))
+            }
+            if let height = profile.height {
+                self.height = height.formatted(.number.precision(.fractionLength(0...1)))
+            }
+            if let sex = profile.biologicalSex {
+                self.biologicalSex = sex
+            }
+            self.healthKitSyncEnabled = true
+            
+            print("✅ UI updated with HealthKit data")
         }
     }
     

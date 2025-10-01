@@ -568,6 +568,12 @@ class WorkoutStore: ObservableObject {
     
     func requestHealthKitAuthorization() async throws {
         try await healthKitManager.requestAuthorization()
+        
+        // Automatically import profile data after successful authorization
+        if healthKitManager.isAuthorized {
+            print("🔄 HealthKit authorized - importing profile data automatically...")
+            try await importFromHealthKit()
+        }
     }
     
     func importFromHealthKit() async throws {
@@ -619,10 +625,16 @@ class WorkoutStore: ObservableObject {
             entity.updatedAt = Date()
             
             try context.save()
+            
+            // Trigger UI update
             profileUpdateTrigger = UUID()
+            
+            // Post notification for immediate UI updates
+            NotificationCenter.default.post(name: .profileUpdatedFromHealthKit, object: nil)
             
             print("✅ HealthKit-Import erfolgreich abgeschlossen")
             print("   • Aktualisierte Felder: \(updatedFields.joined(separator: ", "))")
+            
             
         } catch let error as HealthKitError {
             print("❌ HealthKit-Fehler: \(error.localizedDescription)")
@@ -651,6 +663,22 @@ class WorkoutStore: ObservableObject {
         }
         
         return try await healthKitManager.readHeartRate(from: startDate, to: endDate)
+    }
+    
+    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading] {
+        guard healthKitManager.isAuthorized else {
+            throw HealthKitError.notAuthorized
+        }
+        
+        return try await healthKitManager.readWeight(from: startDate, to: endDate)
+    }
+    
+    func readBodyFatData(from startDate: Date, to endDate: Date) async throws -> [BodyFatReading] {
+        guard healthKitManager.isAuthorized else {
+            throw HealthKitError.notAuthorized
+        }
+        
+        return try await healthKitManager.readBodyFat(from: startDate, to: endDate)
     }
 
     // MARK: - Favorites
@@ -870,7 +898,7 @@ class WorkoutStore: ObservableObject {
 
     // MARK: - Cache Management
 
-    private func invalidateCaches() {
+    func invalidateCaches() {
         exerciseStatsCache.removeAll()
         weekStreakCache = nil
     }
@@ -914,6 +942,58 @@ class WorkoutStore: ObservableObject {
             } catch {
                 print("❌ Fehler beim Reset zu Sample-Daten: \(error)")
             }
+        }
+    }
+
+    // MARK: - Complete App Reset
+    func resetAllData() async throws {
+        guard let context = modelContext else {
+            print("❌ WorkoutStore: ModelContext ist nil beim kompletten Reset")
+            return
+        }
+        
+        do {
+            // Stop any active timers and sessions
+            stopRest()
+            activeSessionID = nil
+            
+            // Fetch and delete all entities
+            let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
+            
+            // Delete all data
+            for workout in workouts {
+                context.delete(workout)
+            }
+            for session in sessions {
+                context.delete(session)
+            }
+            for exercise in exercises {
+                context.delete(exercise)
+            }
+            for profile in profiles {
+                context.delete(profile)
+            }
+            
+            // Clear all caches
+            invalidateCaches()
+            
+            // Save the empty context
+            try context.save()
+            
+            // Reset published properties to defaults
+            activeRestState = nil
+            weeklyGoal = 5
+            restNotificationsEnabled = true
+            profileUpdateTrigger = UUID()
+            
+            print("✅ Alle App-Daten erfolgreich gelöscht")
+            
+        } catch {
+            print("❌ Fehler beim kompletten Reset: \(error)")
+            throw error
         }
     }
 
@@ -973,7 +1053,11 @@ extension WorkoutStore {
     }
 
     var totalWorkoutCount: Int {
-        getSessionHistory().count
+        let sessions = getSessionHistory()
+        let importedCount = sessions.filter { $0.notes.contains("Importiert aus") }.count
+        let regularCount = sessions.count - importedCount
+        print("📊 Workout-Statistik: Gesamt: \(sessions.count), Importiert: \(importedCount), Regulär: \(regularCount)")
+        return sessions.count
     }
 
     var averageWorkoutsPerWeek: Double {
@@ -1024,6 +1108,16 @@ extension WorkoutStore {
     var averageDurationMinutes: Int {
         let sessionHistory = getSessionHistory()
         let durations = sessionHistory.compactMap { $0.duration }
+        
+        // Debug information for imported workouts
+        let importedSessions = sessionHistory.filter { $0.notes.contains("Importiert aus") }
+        let importedDurations = importedSessions.compactMap { $0.duration }
+        
+        if !importedSessions.isEmpty {
+            print("📊 Dauer-Statistik: Gesamt: \(sessionHistory.count) Sessions, Importiert: \(importedSessions.count)")
+            print("   Durationen verfügbar: Gesamt: \(durations.count), Importiert: \(importedDurations.count)")
+        }
+        
         guard !durations.isEmpty else { return 0 }
         let total = durations.reduce(0, +)
         return Int(total / Double(durations.count) / 60)
@@ -1035,6 +1129,14 @@ extension WorkoutStore {
 
         let sessionHistory = getSessionHistory()
         let filtered = sessionHistory.filter { $0.date >= threshold }
+        
+        // Debug information
+        let importedFiltered = filtered.filter { $0.notes.contains("Importiert aus") }
+        if !importedFiltered.isEmpty {
+            print("📊 Muskelvolumen-Statistik (letzte \(weeks) Wochen):")
+            print("   Gefilterte Sessions: \(filtered.count), davon importiert: \(importedFiltered.count)")
+        }
+        
         var totals: [MuscleGroup: Double] = [:]
 
         for workout in filtered {
@@ -1349,3 +1451,7 @@ extension WorkoutStore {
     }
 }
 
+// MARK: - Notification Extensions
+extension Notification.Name {
+    static let profileUpdatedFromHealthKit = Notification.Name("profileUpdatedFromHealthKit")
+}
