@@ -351,48 +351,82 @@ struct WorkoutDetailView: View {
 
     private func restTimerSection(activeRest: WorkoutStore.ActiveRestState) -> some View {
         Section("Pause") {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: activeRest.isRunning ? 16 : 8) {
                 Text("Aktive Pause: \(activeRest.setIndex + 1) • \(workout.exercises[safe: activeRest.exerciseIndex]?.exercise.name ?? "Übung")")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
                 Text(formatTime(activeRest.remainingSeconds))
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: activeRest.isRunning ? 36 : 28, weight: .bold))
                     .contentTransition(.numericText())
                     .monospacedDigit()
+                    .animation(.easeInOut(duration: 0.2), value: activeRest.isRunning)
 
-                HStack(spacing: 12) {
+                HStack(spacing: activeRest.isRunning ? 4 : 8) {
                     if activeRest.isRunning {
                         Button(role: .cancel) {
                             workoutStore.pauseRest()
                         } label: {
-                            Label("Anhalten", systemImage: "pause.circle.fill")
+                            Text("Anhalten")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.orange, in: Capsule())
                         }
+                        .buttonStyle(.plain)
+                        
+                        Button {
+                            workoutStore.addRest(seconds: 15)
+                        } label: {
+                            Text("+15s")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.blue, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button {
+                            workoutStore.stopRest()
+                        } label: {
+                            Text(activeRest.remainingSeconds == 0 ? "Reset" : "Beenden")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.red, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                     } else {
                         Button {
                             workoutStore.resumeRest()
                         } label: {
-                            Label("Fortsetzen", systemImage: "play.circle.fill")
+                            Text("Fortsetzen")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.green, in: Capsule())
                         }
+                        .buttonStyle(.plain)
                         .disabled(activeRest.remainingSeconds == 0)
-                    }
-
-                    Button {
-                        workoutStore.addRest(seconds: 15)
-                    } label: {
-                        Label("+15s", systemImage: "plus.circle")
-                    }
-
-                    if activeRest.remainingSeconds == 0 {
+                        
                         Button {
                             workoutStore.stopRest()
                         } label: {
-                            Label("Zurücksetzen", systemImage: "gobackward")
+                            Text(activeRest.remainingSeconds == 0 ? "Reset" : "Beenden")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.red, in: Capsule())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .labelStyle(.titleAndIcon)
-                .font(.caption)
+                .animation(.easeInOut(duration: 0.2), value: activeRest.isRunning)
             }
         }
         .listRowBackground(Color.clear)
@@ -576,7 +610,10 @@ struct WorkoutDetailView: View {
 
     private var previousDateText: String {
         if let prev = previousSessionSwiftData() {
-            return prev.date.formatted(.dateTime.day().month().year())
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "de_DE")
+            formatter.setLocalizedDateFormatFromTemplate("ddMMMy")
+            return formatter.string(from: prev.date)
         }
         return "–"
     }
@@ -973,10 +1010,26 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
         }
         
         func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-            // Allow only numeric input
-            let allowedCharacters = CharacterSet.decimalDigits
-            let characterSet = CharacterSet(charactersIn: string)
-            return allowedCharacters.isSuperset(of: characterSet)
+            // Allow only numeric input, comma and dot for decimal fields
+            if parent.keyboardType == .decimalPad {
+                let allowedCharacters = CharacterSet.decimalDigits.union(CharacterSet(charactersIn: ".,"))
+                let characterSet = CharacterSet(charactersIn: string)
+                
+                // Prevent multiple decimal separators
+                if (string == "." || string == ",") {
+                    let currentText = textField.text ?? ""
+                    if currentText.contains(".") || currentText.contains(",") {
+                        return false
+                    }
+                }
+                
+                return allowedCharacters.isSuperset(of: characterSet)
+            } else {
+                // For number pad (reps), only allow digits
+                let allowedCharacters = CharacterSet.decimalDigits
+                let characterSet = CharacterSet(charactersIn: string)
+                return allowedCharacters.isSuperset(of: characterSet)
+            }
         }
     }
 }

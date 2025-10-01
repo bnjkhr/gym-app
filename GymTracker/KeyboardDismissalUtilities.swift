@@ -176,6 +176,7 @@ struct UIKitKeyboardDismissal: UIViewRepresentable {
         
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.dismissKeyboard))
         tapGesture.cancelsTouchesInView = false
+        tapGesture.delaysTouchesBegan = false
         view.addGestureRecognizer(tapGesture)
         
         return view
@@ -197,10 +198,77 @@ struct UIKitKeyboardDismissal: UIViewRepresentable {
     }
 }
 
+/// Enhanced global keyboard dismissal that works with TabView and NavigationStack
+struct GlobalKeyboardDismissal: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = UIColor.clear
+        
+        // Add tap gesture that doesn't interfere with other touches
+        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        tapGesture.cancelsTouchesInView = false
+        tapGesture.delaysTouchesBegan = false
+        tapGesture.requiresExclusiveTouchType = false
+        view.addGestureRecognizer(tapGesture)
+        
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
+    class Coordinator: NSObject {
+        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+            // Only dismiss if we're not tapping on a text input
+            let location = gesture.location(in: gesture.view)
+            guard let view = gesture.view else { return }
+            
+            // Check if the tap location hits any text input views
+            if !isTextInputAt(location: location, in: view) {
+                hideKeyboard()
+            }
+        }
+        
+        private func isTextInputAt(location: CGPoint, in view: UIView) -> Bool {
+            // Convert location to window coordinates
+            guard let window = view.window else { return false }
+            let windowLocation = view.convert(location, to: window)
+            
+            // Check if there's a text input at this location
+            if let hitView = window.hitTest(windowLocation, with: nil) {
+                return isTextInput(hitView)
+            }
+            return false
+        }
+        
+        private func isTextInput(_ view: UIView) -> Bool {
+            if view is UITextField || view is UITextView {
+                return true
+            }
+            
+            // Check for SwiftUI text inputs by class name
+            let className = String(describing: type(of: view))
+            if className.contains("TextField") || className.contains("TextEditor") || className.contains("SearchField") {
+                return true
+            }
+            
+            return false
+        }
+    }
+}
+
 extension View {
     /// Uses UIKit-based keyboard dismissal for more precise control
     func uiKitKeyboardDismissal() -> some View {
         background(UIKitKeyboardDismissal())
+    }
+    
+    /// Enhanced global keyboard dismissal
+    func globalKeyboardDismissal() -> some View {
+        background(GlobalKeyboardDismissal())
     }
 }
 #endif
@@ -296,3 +364,44 @@ class KeyboardMonitor: ObservableObject {
         .environment(\.keyboardDismissalEnabled, true)
  
  */
+
+// MARK: - Simple Global Keyboard Dismissal
+
+/// Simple and reliable keyboard dismissal that works everywhere
+struct SimpleKeyboardDismissal: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        hideKeyboard()
+                    }
+            )
+    }
+}
+
+/// Ultra-simple keyboard dismissal using gesture
+struct TapKeyboardDismissal: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .simultaneousGesture(
+                TapGesture(count: 1)
+                    .onEnded { _ in
+                        hideKeyboard()
+                    }
+            )
+    }
+}
+
+extension View {
+    /// Simple keyboard dismissal - background tap to dismiss
+    func simpleKeyboardDismissal() -> some View {
+        modifier(SimpleKeyboardDismissal())
+    }
+    
+    /// Tap gesture keyboard dismissal
+    func tapKeyboardDismissal() -> some View {
+        modifier(TapKeyboardDismissal())
+    }
+}

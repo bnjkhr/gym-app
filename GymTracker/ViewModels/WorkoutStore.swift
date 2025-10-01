@@ -1,5 +1,4 @@
 import Foundation
-import Foundation
 import SwiftUI
 import SwiftData
 import HealthKit
@@ -698,7 +697,10 @@ class WorkoutStore: ObservableObject {
     func pauseRest() {
         guard var state = activeRestState else { return }
         state.isRunning = false
+        state.endDate = nil // Wichtig: endDate zurücksetzen beim Pausieren
         activeRestState = state
+        restTimer?.invalidate() // Timer stoppen
+        restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         updateLiveActivityRest()
     }
@@ -725,9 +727,12 @@ class WorkoutStore: ObservableObject {
     func addRest(seconds: Int) {
         guard var state = activeRestState else { return }
         state.remainingSeconds = max(0, state.remainingSeconds + seconds)
-        if state.isRunning, let end = state.endDate {
-            state.endDate = end.addingTimeInterval(TimeInterval(seconds))
+        
+        // Nur endDate anpassen wenn Timer läuft
+        if state.isRunning {
+            state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
         }
+        
         activeRestState = state
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
@@ -747,9 +752,12 @@ class WorkoutStore: ObservableObject {
         guard var state = activeRestState else { return }
         state.remainingSeconds = max(0, remaining)
         if let total { state.totalSeconds = max(1, total) }
+        
+        // Nur endDate setzen wenn Timer läuft
         if state.isRunning {
             state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
         }
+        
         activeRestState = state
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()

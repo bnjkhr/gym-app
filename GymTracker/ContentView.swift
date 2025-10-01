@@ -45,7 +45,7 @@ struct ContentView: View {
             }
             .tabItem {
                 Image(systemName: "dumbbell")
-                Text("Workouts")
+                Text("Training")
             }
 
             // Übungen Tab
@@ -65,7 +65,7 @@ struct ContentView: View {
             }
             .tabItem {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                Text("Insights")
+                Text("Statistiken")
             }
 
             // Einstellungen Tab
@@ -79,8 +79,14 @@ struct ContentView: View {
             }
         }
         .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
-        // Entfernt: .dismissKeyboard() weil es Touch-Events blockiert
-        .environment(\.keyboardDismissalEnabled, true) // Enable keyboard dismissal globally
+        .onTapGesture {
+            // Direct keyboard dismissal on any tap
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), 
+                                          to: nil, 
+                                          from: nil, 
+                                          for: nil)
+        }
+        .environment(\.keyboardDismissalEnabled, true)
         .onAppear {
             // Set model context in WorkoutStore immediately when view appears
             workoutStore.modelContext = modelContext
@@ -635,7 +641,7 @@ struct WorkoutsHomeView: View {
             // Greeting header at top
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
-                    Text("Hey")
+                    Text("👋🏼")
                         .font(.largeTitle)
                         .fontWeight(.heavy)
                         .foregroundStyle(.secondary)
@@ -721,21 +727,13 @@ struct WorkoutsHomeView: View {
                     ],
                     spacing: 12
                 ) {
-                    ForEach(sortedWorkouts) { workout in
-                        Menu {
-                            Button("Workout starten") {
-                                startWorkout(with: workout.id)
-                            }
-                            Button("Bearbeiten") {
-                                editWorkout(id: workout.id)
-                            }
-                            Button("Löschen", role: .destructive) {
-                                workoutToDelete = workout
-                            }
-                        } label: {
-                            WorkoutTile(workout: workout)
-                        }
-                        .buttonStyle(.plain)
+                    ForEach(sortedWorkouts, id: \.id) { workout in
+                        WorkoutTileWithMenu(
+                            workout: workout,
+                            onStart: { startWorkout(with: workout.id) },
+                            onEdit: { editWorkout(id: workout.id) },
+                            onDelete: { workoutToDelete = workout }
+                        )
                     }
                 }
             }
@@ -842,7 +840,12 @@ struct WorkoutHighlightCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var dateText: String {
-        workout.date.formatted(.dateTime.weekday(.wide).day().month())
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone.current
+        formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
+        return formatter.string(from: workout.date)
     }
 
     private var tags: [String] {
@@ -911,13 +914,13 @@ struct EmptyStateCard: View {
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
 
-            Text("Lege Workouts an, beobachte deinen Fortschritt und bleib motiviert mit smarten Insights.")
+            Text("Lege Trainings an, beobachte deinen Fortschritt und bleib motiviert mit smarten Insights.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
 
             Button(action: action) {
-                Label("Erstes Workout planen", systemImage: "plus.circle.fill")
+                Label("Erstes Training planen", systemImage: "plus.circle.fill")
                     .fontWeight(.semibold)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
@@ -960,6 +963,16 @@ struct RecentActivityCard: View {
     let deleteSessionAction: (WorkoutSession) -> Void
     let enableActions: Bool
     let showHeader: Bool
+    
+    private var localizedDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone.current
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -968,12 +981,12 @@ struct RecentActivityCard: View {
                     .font(.headline)
                     .padding(.horizontal, 8)
             }
-            ForEach(workouts) { session in
+            ForEach(workouts, id: \.id) { (session: WorkoutSession) in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.name)
                             .font(.subheadline.weight(.semibold))
-                        Text(session.date, style: .date)
+                        Text(localizedDateFormatter.string(from: session.date))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1111,18 +1124,12 @@ struct WeekCalendarStrip: View {
     private var today: Date { Date() }
     
     // Deutsche Wochentag-Abkürzungen
-    private func germanWeekdayAbbreviation(for date: Date) -> String {
-        let weekday = calendar.component(.weekday, from: date)
-        switch weekday {
-        case 1: return "So"  // Sonntag
-        case 2: return "Mo"  // Montag
-        case 3: return "Di"  // Dienstag
-        case 4: return "Mi"  // Mittwoch
-        case 5: return "Do"  // Donnerstag
-        case 6: return "Fr"  // Freitag
-        case 7: return "Sa"  // Samstag
-        default: return "?"
-        }
+    private func localizedWeekdayAbbreviation(for date: Date) -> String {
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "E"
+        return formatter.string(from: date)
     }
 
     var body: some View {
@@ -1130,10 +1137,10 @@ struct WeekCalendarStrip: View {
             HStack(spacing: 18) {
                 ForEach(days, id: \.self) { day in
                     VStack(spacing: 6) {
-                        Text(day, format: .dateTime.day())
+                        Text("\(Calendar.current.component(.day, from: day))")
                             .font(.headline.weight(calendar.isDate(day, inSameDayAs: today) ? .bold : .regular))
                             .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.7))
-                        Text(germanWeekdayAbbreviation(for: day))
+                        Text(localizedWeekdayAbbreviation(for: day))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.6))
                         Circle()
@@ -1167,7 +1174,7 @@ struct WeeklyProgressCard: View {
                 Text("Wochenfortschritt")
                     .font(.headline)
                     .foregroundStyle(.white)
-                Text("\(workoutsThisWeek) von \(max(goal, 1)) Workouts abgeschlossen")
+                Text("\(workoutsThisWeek) von \(max(goal, 1)) Trainings abgeschlossen")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -1216,7 +1223,7 @@ struct WeeklySnapshotCard: View {
                 Text("Diese Woche")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("\(workoutsThisWeek) Workouts")
+                Text("\(workoutsThisWeek) Trainings")
                     .font(.headline)
                 Text("\(minutesThisWeek) Minuten")
                     .font(.subheadline)
@@ -1312,6 +1319,79 @@ struct WorkoutTile: View {
     }
 }
 
+struct WorkoutTileWithMenu: View {
+    let workout: Workout
+    let onStart: () -> Void
+    let onEdit: () -> Void  
+    let onDelete: () -> Void
+    
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showingActionSheet = false
+    
+    var body: some View {
+        Button {
+            showingActionSheet = true
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(workout.name)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .foregroundStyle(.primary)
+                        
+                        Text("\(workout.exercises.count) Übungen")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                
+                // Menu dots at bottom right
+                HStack {
+                    Spacer()
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .confirmationDialog(
+            "Workout-Optionen",
+            isPresented: $showingActionSheet,
+            titleVisibility: .hidden
+        ) {
+            Button("Workout starten") {
+                onStart()
+            }
+            
+            Button("Bearbeiten") {
+                onEdit()
+            }
+            
+            Button("Löschen", role: .destructive) {
+                onDelete()
+            }
+            
+            Button("Abbrechen", role: .cancel) { }
+        }
+    }
+}
+
 struct WorkoutRow: View {
     let workout: Workout
     var body: some View {
@@ -1319,7 +1399,13 @@ struct WorkoutRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(workout.name)
                     .font(.headline)
-                Text(workout.date, style: .date)
+                Text({
+                    let formatter = DateFormatter()
+                    formatter.locale = Locale(identifier: "de_DE")
+                    formatter.dateStyle = .medium
+                    formatter.timeStyle = .none
+                    return formatter.string(from: workout.date)
+                }())
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1382,6 +1468,16 @@ struct CapsuleTag: View {
 // Re-add SessionDetailView to fix missing type
 struct SessionDetailView: View {
     let session: WorkoutSession
+    
+    private var localizedDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone.current
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }
 
     var body: some View {
         NavigationStack {
@@ -1400,7 +1496,7 @@ struct SessionDetailView: View {
                         HStack {
                             Text("Datum")
                             Spacer()
-                            Text(session.date, style: .date)
+                            Text(localizedDateFormatter.string(from: session.date))
                                 .foregroundStyle(.secondary)
                         }
                         if let duration = session.duration {
@@ -1415,7 +1511,7 @@ struct SessionDetailView: View {
                     .listRowBackground(Color.clear)
 
                     Section("Übungen") {
-                        ForEach(session.exercises) { ex in
+                        ForEach(session.exercises, id: \.id) { ex in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ex.exercise.name)
                                     .font(.subheadline.weight(.semibold))
@@ -1447,7 +1543,12 @@ private struct CalendarSessionsView: View {
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
 
     private var monthTitle: String {
-        displayedMonth.formatted(.dateTime.month(.wide).year())
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone.current
+        formatter.setLocalizedDateFormatFromTemplate("MMMMy")
+        return formatter.string(from: displayedMonth)
     }
 
     private var daysInMonth: [Date] {
@@ -1479,6 +1580,14 @@ private struct CalendarSessionsView: View {
         let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
         return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
     }
+    
+    private func localizedWeekdaySymbols() -> [String] {
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        // Get very short weekday symbols (Mo, Di, Mi, etc.)
+        return formatter.veryShortWeekdaySymbols
+    }
 
     var body: some View {
         NavigationStack {
@@ -1498,9 +1607,9 @@ private struct CalendarSessionsView: View {
                 }
                 .padding(.horizontal, 20)
 
-                // Weekday symbols (Mon-Sun in German)
+                // Weekday symbols (localized)
                 HStack {
-                    ForEach(["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], id: \.self) { d in
+                    ForEach(localizedWeekdaySymbols(), id: \.self) { d in
                         Text(d)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -1555,12 +1664,18 @@ private struct CalendarSessionsView: View {
                     .padding(.vertical, 12)
                 } else {
                     List {
-                        ForEach(daySessions) { session in
+                        ForEach(daySessions, id: \.id) { session in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(session.name)
                                     .font(.subheadline.weight(.semibold))
                                 HStack(spacing: 8) {
-                                    Text(session.date, style: .time)
+                                    Text({
+                                        let formatter = DateFormatter()
+                                        formatter.locale = Locale(identifier: "de_DE")
+                                        formatter.timeStyle = .short
+                                        formatter.dateStyle = .none
+                                        return formatter.string(from: session.date)
+                                    }())
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                     Text("• \(session.exercises.count) Übungen")

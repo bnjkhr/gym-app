@@ -91,7 +91,11 @@ private struct ProgressOverviewCardView: View {
 
     private var lastDateText: String {
         guard let session = lastSession else { return "–" }
-        return session.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.setLocalizedDateFormatFromTemplate("ddMM")
+        return formatter.string(from: session.date)
     }
 
     private var lastExerciseCountText: String {
@@ -319,7 +323,13 @@ struct RecentActivityView: View {
                             Text(workout.name)
                                 .fontWeight(.medium)
 
-                            Text(workout.date, style: .date)
+                            Text({
+                                let formatter = DateFormatter()
+                                formatter.locale = Locale(identifier: "de_DE")
+                                formatter.dateStyle = .medium
+                                formatter.timeStyle = .none
+                                return formatter.string(from: workout.date)
+                            }())
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -386,7 +396,7 @@ private struct DayStripView: View {
                                     .fill(Color(.systemGray5))
                                     .frame(width: 28, height: 28)
                             }
-                            Text(day, format: .dateTime.day())
+                            Text("\(cal.component(.day, from: day))")
                                 .font(.body.weight(isToday ? .bold : .regular))
                                 .foregroundStyle(.primary)
                         }
@@ -421,7 +431,11 @@ private struct CalendarSessionsView: View {
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
 
     private var monthTitle: String {
-        displayedMonth.formatted(.dateTime.month(.wide).year())
+        let formatter = DateFormatter()
+        // Always use German for this app
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.setLocalizedDateFormatFromTemplate("MMMMy")
+        return formatter.string(from: displayedMonth)
     }
 
     private var daysInMonth: [Date] {
@@ -472,9 +486,13 @@ private struct CalendarSessionsView: View {
                 }
                 .appEdgePadding()
 
-                // Weekday symbols (Mon-Sun in German)
+                // Weekday symbols (German)
                 HStack {
-                    ForEach(["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], id: \.self) { d in
+                    ForEach({
+                        let formatter = DateFormatter()
+                        formatter.locale = Locale(identifier: "de_DE")
+                        return formatter.veryShortWeekdaySymbols ?? ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+                    }(), id: \.self) { d in
                         Text(d)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -534,7 +552,13 @@ private struct CalendarSessionsView: View {
                                 Text(session.name)
                                     .font(.subheadline.weight(.semibold))
                                 HStack(spacing: 8) {
-                                    Text(session.date, style: .time)
+                                    Text({
+                                        let formatter = DateFormatter()
+                                        formatter.locale = Locale(identifier: "de_DE")
+                                        formatter.timeStyle = .short
+                                        formatter.dateStyle = .none
+                                        return formatter.string(from: session.date)
+                                    }())
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                     Text("• \(session.exercises.count) Übungen")
