@@ -248,21 +248,6 @@ struct WorkoutsHomeView: View {
                     savedWorkoutsSection(storedRoutines: storedRoutines)
                 }
                 .padding(.horizontal, 16)
-
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .frame(height: 0.5)
-                    .padding(.horizontal, 16)
-
-                RecentActivityCard(
-                    workouts: Array(displaySessions.prefix(5)),
-                    startAction: { startSession($0) },
-                    detailAction: { viewSession($0) },
-                    deleteSessionAction: { removeSession(id: $0.id) },
-                    enableActions: true,
-                    showHeader: false
-                )
-                .padding(.horizontal, 16)
             }
             .coordinateSpace(name: "workoutsScroll")
             .transaction { tx in
@@ -1760,3 +1745,4 @@ struct ErrorWorkoutView: View {
 extension Notification.Name {
     static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
 }
+
