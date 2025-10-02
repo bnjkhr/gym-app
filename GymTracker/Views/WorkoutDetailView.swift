@@ -55,7 +55,6 @@ struct WorkoutDetailView: View {
     @State private var completionDuration: TimeInterval = 0
     @State private var showingCompletionConfirmation = false
     @State private var showingReorderSheet = false
-    @State private var reorderExercises: [WorkoutExercise] = []
     @State private var selectedTab: ProgressTab = .overview
     @State private var editingNotes = false
     @State private var notesText = ""
@@ -257,40 +256,20 @@ struct WorkoutDetailView: View {
             }
             .presentationDetents([.medium])
         }
-        .sheet(isPresented: $showingReorderSheet) {
-            NavigationStack {
-                List {
-                    ForEach(reorderExercises) { exercise in
-                        Text(exercise.exercise.name)
-                    }
-                    .onMove { indices, newOffset in
-                        reorderExercises.move(fromOffsets: indices, toOffset: newOffset)
-                    }
+        .sheet(isPresented: $showingReorderSheet, onDismiss: nil) {
+            ReorderExercisesSheet(
+                exercises: workout.exercises,
+                onCancel: {
+                    showingReorderSheet = false
+                },
+                onSave: { reorderedExercises in
+                    workout.exercises = reorderedExercises
+                    reorderEntityExercises(to: reorderedExercises)
+                    showingReorderSheet = false
                 }
-                .navigationTitle("Reihenfolge ändern")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Abbrechen") {
-                            showingReorderSheet = false
-                        }
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        HStack {
-                            EditButton()
-                            Button("Fertig") {
-                                workout.exercises = reorderExercises
-                                reorderEntityExercises(to: reorderExercises)
-                                showingReorderSheet = false
-                            }
-                        }
-                    }
-                }
-            }
-            .presentationDetents([.medium])
-            .onAppear {
-                reorderExercises = workout.exercises
-            }
+            )
         }
+
     }
 
     // MARK: - Tab Interface
@@ -916,7 +895,6 @@ struct WorkoutDetailView: View {
     }
 
     private func prepareReorder() {
-        reorderExercises = workout.exercises
         showingReorderSheet = true
     }
 
@@ -1475,7 +1453,6 @@ private struct ActiveWorkoutNavigationView: View {
     @State private var autoAdvancePending = false
     @State private var showingAutoAdvanceIndicator = false
     @State private var showingReorderSheet = false
-    @State private var reorderExercises: [WorkoutExercise] = []
     
     var body: some View {
         ZStack {
@@ -1502,7 +1479,6 @@ private struct ActiveWorkoutNavigationView: View {
                             removeEntitySet: removeEntitySet,
                             previousValues: previousValues,
                             onReorderRequested: {
-                                reorderExercises = workout.exercises
                                 showingReorderSheet = true
                             }
                         )
@@ -1547,46 +1523,23 @@ private struct ActiveWorkoutNavigationView: View {
                 )
             }
         }
-        .sheet(isPresented: $showingReorderSheet) {
-            NavigationStack {
-                List {
-                    ForEach(reorderExercises) { exercise in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(exercise.exercise.name)
-                                    .font(.headline)
-                                Text("\(exercise.sets.count) Sätze")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "line.3.horizontal")
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
+        .sheet(isPresented: $showingReorderSheet, onDismiss: nil) {
+            ReorderExercisesSheet(
+                exercises: workout.exercises,
+                onCancel: {
+                    showingReorderSheet = false
+                },
+                onSave: { reorderedExercises in
+                    workout.exercises = reorderedExercises
+                    reorderEntityExercises(reorderedExercises)
+                    
+                    // Adjust current index if needed to prevent out of bounds
+                    if currentExerciseIndex >= workout.exercises.count {
+                        currentExerciseIndex = max(0, workout.exercises.count - 1)
                     }
-                    .onMove { indices, newOffset in
-                        reorderExercises.move(fromOffsets: indices, toOffset: newOffset)
-                    }
+                    showingReorderSheet = false
                 }
-                .navigationTitle("Reihenfolge ändern")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Abbrechen") {
-                            showingReorderSheet = false
-                        }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Fertig") {
-                            applyReorderChanges()
-                        }
-                        .fontWeight(.semibold)
-                    }
-                }
-                .environment(\.editMode, .constant(.active))
-            }
-            .presentationDetents([.medium, .large])
+            )
         }
         .onReceive(workoutStore.$activeRestState) { restState in
             // Only auto-navigate to exercise with active rest if we're not pending an auto-advance
@@ -1660,17 +1613,6 @@ private struct ActiveWorkoutNavigationView: View {
         }
         return workout.exercises[safe: currentExerciseIndex + 1]?.exercise.name ?? "Nächste Übung"
     }
-    
-    private func applyReorderChanges() {
-        workout.exercises = reorderExercises
-        reorderEntityExercises(reorderExercises)
-        
-        // Adjust current index if needed to prevent out of bounds
-        if currentExerciseIndex >= workout.exercises.count {
-            currentExerciseIndex = max(0, workout.exercises.count - 1)
-        }
-        showingReorderSheet = false
-    }
 }
 
 // MARK: - Exercise Header Card (kept for compatibility but no longer used in active workout)
@@ -1724,15 +1666,6 @@ private struct ActiveWorkoutExerciseView: View {
                                     Text(exercise.exercise.name)
                                         .font(.headline)
                                         .fontWeight(.semibold)
-                                        .onLongPressGesture {
-                                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                                            generator.impactOccurred()
-                                            onReorderRequested()
-                                        }
-                                    
-                                    Image(systemName: "line.3.horizontal")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
                                         .onLongPressGesture {
                                             let generator = UIImpactFeedbackGenerator(style: .medium)
                                             generator.impactOccurred()
@@ -2467,4 +2400,61 @@ private struct AutoAdvanceIndicator: View {
             .environmentObject(WorkoutStore())
     }
     .modelContainer(container)
+}
+
+// MARK: - Reorder Exercises Sheet
+
+private struct ReorderExercisesSheet: View {
+    let exercises: [WorkoutExercise]
+    let onCancel: () -> Void
+    let onSave: ([WorkoutExercise]) -> Void
+    
+    @State private var reorderedExercises: [WorkoutExercise]
+    
+    init(exercises: [WorkoutExercise], onCancel: @escaping () -> Void, onSave: @escaping ([WorkoutExercise]) -> Void) {
+        self.exercises = exercises
+        self.onCancel = onCancel
+        self.onSave = onSave
+        self._reorderedExercises = State(initialValue: exercises)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(reorderedExercises) { exercise in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(exercise.exercise.name)
+                                .font(.headline)
+                            Text("\(exercise.sets.count) Sätze")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                }
+                .onMove { indices, newOffset in
+                    reorderedExercises.move(fromOffsets: indices, toOffset: newOffset)
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Reihenfolge ändern")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") {
+                        onCancel()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") {
+                        onSave(reorderedExercises)
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
 }
