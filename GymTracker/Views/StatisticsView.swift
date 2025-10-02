@@ -87,10 +87,6 @@ struct StatisticsView: View {
                     
                     BodyMetricsInsightsView()
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(.regularMaterial)
-                )
                 .padding(.horizontal, 16)
                 
                 // Zusätzlicher Platz am Ende
@@ -180,8 +176,7 @@ private struct ConsistencyCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Text(consistencyWeeks == 0 ? "💪" : "🔥")
-                    .font(.title2)
+                // Removed emoji Text here
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(consistencyText.title)
@@ -246,8 +241,7 @@ private struct PersonalRecordCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Text("🏆")
-                    .font(.title2)
+                // Removed emoji Text here
                 
                 VStack(alignment: .leading, spacing: 4) {
                     if let pr = latestPR {
@@ -331,13 +325,12 @@ private struct WeeklyVolumeCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Text("📈")
-                    .font(.title2)
+                // Removed emoji Text here
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Gesamtvolumen KW \(weeklyData.weekNumber):")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    Text("Gesamtvolumen in KW \(weeklyData.weekNumber)")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
                     Text("\(weeklyData.currentVolume.formatted(.number.precision(.fractionLength(1)))) kg")
                         .font(.title2)
                         .fontWeight(.semibold)
@@ -456,7 +449,7 @@ private struct MuscleGroupBalanceCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("⚖️ Push/Pull/Legs Balance")
+                Text("Push/Pull/Legs Balance")
                     .font(.headline)
                 
                 Spacer()
@@ -473,7 +466,7 @@ private struct MuscleGroupBalanceCardView: View {
                 balanceBar(title: "Legs", ratio: muscleBalance.legs, color: .gray)
             }
             
-            Text(muscleBalance.isBalanced ? "Ausgewogenes Training 👍" : "Unausgewogen - mehr Varianz ⚠️")
+            Text(muscleBalance.isBalanced ? "Ausgewogenes Training" : "Unausgewogen - mehr Varianz")
                 .font(.caption)
                 .foregroundStyle(muscleBalance.isBalanced ? Color.mossGreen : .gray)
         }
@@ -569,9 +562,8 @@ private struct AverageWeightCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("💪")
-                    .font(.title2)
-                Text("Ø Gewicht pro Übung")
+
+                Text("Durchschnitt Gewicht pro Übung")
                     .font(.headline)
             }
             
@@ -665,8 +657,7 @@ private struct SessionIntensityCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("⚡️")
-                    .font(.title2)
+                // Removed emoji Text here
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Letzte Session")
@@ -754,8 +745,7 @@ private struct PlateauCheckCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Text(plateauAlert != nil ? "⚠️" : "✅")
-                    .font(.title2)
+                // Removed emoji status Text here
                 
                 VStack(alignment: .leading, spacing: 4) {
                     if let alert = plateauAlert {
@@ -799,7 +789,7 @@ private struct ProgressOverviewCardView: View {
         // Debug information to verify imported sessions are included
         if let session = session {
             let isImported = session.notes.contains("Importiert aus")
-            print("📊 Letzte Session für Statistik: \(session.name) (Importiert: \(isImported ? "Ja" : "Nein"))")
+            print("Letzte Session für Statistik: \(session.name) (Importiert: \(isImported ? "Ja" : "Nein"))")
         }
         return session
     }
@@ -878,7 +868,7 @@ private struct ProgressDeltaInfoCardView: View {
         // Debug information
         let importedCount = sessions.filter { $0.notes.contains("Importiert aus") }.count
         if importedCount > 0 {
-            print("📊 Delta-Berechnung nutzt \(importedCount) importierte Sessions von \(sessions.count) Gesamt-Sessions")
+            print("Delta-Berechnung nutzt \(importedCount) importierte Sessions von \(sessions.count) Gesamt-Sessions")
         }
         return sessions
     }
@@ -1450,8 +1440,7 @@ private struct LastWorkoutCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Text("🕒")
-                    .font(.title2)
+                // Removed emoji Text here
                 Text("Letztes Workout")
                     .font(.headline)
                 Spacer()

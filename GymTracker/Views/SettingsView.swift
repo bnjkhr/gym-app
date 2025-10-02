@@ -17,7 +17,7 @@ enum ImportFormat: String, CaseIterable {
     var description: String {
         switch self {
         case .custom:
-            return "Erstelle eine CSV mit 'Übung,Sätze,Wiederholungen,Gewicht' pro Zeile und importiere sie als Vorlage."
+            return "CSV mit Kopfzeile: Übung;Sätze;Wiederholung;Gewicht (Semikolon). Wiederholung kann ein Bereich (10-12) sein, Gewicht ist optional (Komma/Punkt)."
         case .strong:
             return "Importiere einen Export aus der Strong App (CSV Format)."
         case .hevy:
@@ -33,6 +33,7 @@ struct SettingsView: View {
     @State private var showingHealthKitSetup = false
     @State private var showingImportFormatSelection = false
     @State private var selectedImportFormat: ImportFormat = .custom
+    @State private var showingImportInfo = false
 
     @State private var showingBackupView = false
     @State private var alertMessage: String?
@@ -46,6 +47,38 @@ struct SettingsView: View {
 
     // Max. Importgröße (z. B. 2 MB)
     private let maxImportBytes: Int = 2 * 1024 * 1024
+
+    // MARK: - Helper Rows for aligned bullets in popovers
+    private struct BulletRow: View {
+        let text: String
+        var body: some View {
+            Text(text)
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    private struct IndentedRow: View {
+        let text: String
+        let isCode: Bool
+        var body: some View {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if isCode {
+                    Text(text)
+                        .font(.system(.footnote, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                } else {
+                    Text(text)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .font(.footnote)
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -106,10 +139,17 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                     .disabled(isImporting)
                     
-                    Text("Importiere Workouts aus verschiedenen Apps oder verwende dein eigenes CSV-Format.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
+                    HStack {
+                        Spacer()
+                        Button {
+                            showingImportInfo = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.body)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("CSV-Import Info")
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -261,6 +301,34 @@ struct SettingsView: View {
         .sheet(isPresented: $showingBackupView) {
             BackupView()
                 .environmentObject(workoutStore)
+        }
+        .popover(isPresented: $showingImportInfo, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "tray.and.arrow.down")
+                    Text("CSV-Import Hilfe")
+                        .font(.headline)
+                }
+                .padding(.bottom, 4)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        BulletRow(text: "Eigene CSV: Semikolon-getrennt mit Kopfzeile")
+                        IndentedRow(text: "Übung;Sätze;Wiederholung;Gewicht", isCode: true)
+                        IndentedRow(text: "Wiederholung: Zahl oder Bereich (z. B. 10-12) → wir verwenden den unteren Wert", isCode: false)
+                        IndentedRow(text: "Gewicht: optional, Komma oder Punkt möglich (z. B. 62,5 oder 62.5), Einheit optional", isCode: false)
+                        IndentedRow(text: "Leeres Gewicht wird als 0 kg importiert", isCode: false)
+                        IndentedRow(text: "Beispiel:", isCode: false)
+                        IndentedRow(text: "Chest Press (Maschine);3;10-12;", isCode: true)
+                        IndentedRow(text: "Leg Press (Maschine);4;10-12;100", isCode: true)
+
+                        BulletRow(text: "Strong & Hevy: Export-Dateien der Apps werden unterstützt (unverändert).")
+                    }
+                    .font(.footnote)
+                }
+            }
+            .padding(16)
+            .frame(minWidth: 300, idealWidth: 360)
         }
         .alert("Import", isPresented: $isShowingAlert, actions: {
             Button("OK", role: .cancel) {}
@@ -445,10 +513,48 @@ struct SettingsView: View {
 
         // Kopfzeile erkennen (tolerant)
         if let first = rows.first, first.count >= 4 {
-            let headerJoined = first.joined(separator: " ").lowercased()
-            if headerJoined.contains("übung") || headerJoined.contains("uebung") || headerJoined.contains("exercise") {
+            let normalizedHeader = first.map { $0.lowercased().folding(options: .diacriticInsensitive, locale: .current) }
+            let headerJoined = normalizedHeader.joined(separator: " ")
+            if headerJoined.contains("ubung") || headerJoined.contains("uebung") || headerJoined.contains("exercise") {
                 rows.removeFirst()
             }
+        }
+
+        func parseIntFlexible(_ raw: String) -> Int? {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "x", with: "", options: .caseInsensitive)
+            let digits = trimmed.filter { $0.isNumber }
+            return Int(digits)
+        }
+
+        func parseReps(_ raw: String) -> Int? {
+            let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if s.isEmpty { return nil }
+            // Replace common dashes with hyphen
+            let unified = s.replacingOccurrences(of: "–", with: "-")
+                            .replacingOccurrences(of: "—", with: "-")
+            // If range like "10-12", take lower bound
+            if let rangeSep = unified.firstIndex(of: "-") {
+                let lower = String(unified[..<rangeSep]).trimmingCharacters(in: .whitespaces)
+                return Int(lower)
+            }
+            // Otherwise parse first integer in the string
+            return parseIntFlexible(unified)
+        }
+
+        func parseDoubleFlexible(_ raw: String, delimiter: Character) -> Double? {
+            var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if s.isEmpty { return nil }
+            // Remove unit suffixes
+            s = s.replacingOccurrences(of: " kg", with: "", options: .caseInsensitive)
+                 .replacingOccurrences(of: "kg", with: "", options: .caseInsensitive)
+            // Handle decimal separators smartly
+            if delimiter == ";" {
+                s = s.replacingOccurrences(of: ",", with: ".")
+            } else if s.contains(",") && !s.contains(".") {
+                s = s.replacingOccurrences(of: ",", with: ".")
+            }
+            return Double(s)
         }
 
         var workoutExercises: [WorkoutExercise] = []
@@ -463,24 +569,16 @@ struct SettingsView: View {
 
             let name = row[0].trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Parse Ints robust
-            let sets = Int(row[1].replacingOccurrences(of: " ", with: "")) ?? -1
-            let reps = Int(row[2].replacingOccurrences(of: " ", with: "")) ?? -1
+            // Parse sets (allow formats like "3" or "3x")
+            let sets = parseIntFlexible(row[1]) ?? -1
 
-            // Gewicht: Dezimaltrennzeichen handhaben
-            var weightString = row[3].trimmingCharacters(in: .whitespaces)
-            // Wenn der Spaltentrenner ";" ist, ist "," als Dezimaltrennzeichen wahrscheinlich
-            if delimiter == ";" {
-                weightString = weightString.replacingOccurrences(of: ",", with: ".")
-            } else {
-                // Wenn kein Punkt vorhanden ist, aber ein Komma, interpretiere als Dezimal-Komma
-                if weightString.contains(",") && !weightString.contains(".") {
-                    weightString = weightString.replacingOccurrences(of: ",", with: ".")
-                }
-            }
-            let weight = Double(weightString) ?? -1
+            // Parse reps (single number or range like "10-12", take lower bound)
+            let reps = parseReps(row[2]) ?? -1
 
-            // Validierung (wie zuvor, aber skippen statt throw)
+            // Parse weight (optional, allow empty; comma or dot; optional unit)
+            let weight = parseDoubleFlexible(row[3], delimiter: delimiter) ?? 0.0
+
+            // Validierung (weigth kann 0 sein)
             guard !name.isEmpty && name.count <= 100,
                   sets > 0 && sets <= 50,
                   reps > 0 && reps <= 500,
@@ -1109,3 +1207,4 @@ struct SettingsView: View {
     SettingsView()
         .environmentObject(WorkoutStore())
 }
+
