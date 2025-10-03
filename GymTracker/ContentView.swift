@@ -79,13 +79,6 @@ struct ContentView: View {
             }
         }
         .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
-        .onTapGesture {
-            // Direct keyboard dismissal on any tap
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), 
-                                          to: nil, 
-                                          from: nil, 
-                                          for: nil)
-        }
         .environment(\.keyboardDismissalEnabled, true)
         .onAppear {
             // Set model context in WorkoutStore immediately when view appears
