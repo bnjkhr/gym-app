@@ -52,6 +52,7 @@
 		AD363DA92E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = AD363DA82E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md */; };
 		AD4402CD2E906E81001FC101 /* ExerciseLastUsedMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4402CC2E906E81001FC101 /* ExerciseLastUsedMigration.swift */; };
 		AD4402CF2E906EA2001FC101 /* ExerciseLastUsedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4402CE2E906EA2001FC101 /* ExerciseLastUsedViews.swift */; };
+		AD4402D12E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */; };
 		AD4B5D4C2E8A6CBB0083787B /* ExercisePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4B5D4B2E8A6CBB0083787B /* ExercisePickerView.swift */; };
 		AD4B5D4E2E8A723B0083787B /* AppLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4B5D4D2E8A723B0083787B /* AppLayout.swift */; };
 		AD52FECB2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD52FECA2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift */; };
@@ -154,6 +155,7 @@
 		AD363DA82E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = KEYBOARD_DISMISSAL_GUIDE.md; sourceTree = "<group>"; };
 		AD4402CC2E906E81001FC101 /* ExerciseLastUsedMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLastUsedMigration.swift; sourceTree = "<group>"; };
 		AD4402CE2E906EA2001FC101 /* ExerciseLastUsedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLastUsedViews.swift; sourceTree = "<group>"; };
+		AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseHeaderWithLastUsed.swift; sourceTree = "<group>"; };
 		AD4B5D4B2E8A6CBB0083787B /* ExercisePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerView.swift; sourceTree = "<group>"; };
 		AD4B5D4D2E8A723B0083787B /* AppLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLayout.swift; sourceTree = "<group>"; };
 		AD52FECA2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workout+SwiftDataMapping.swift"; sourceTree = "<group>"; };
@@ -236,6 +238,7 @@
 				ADFCBABF2E90453800B761B1 /* ExerciseRecordViews.swift */,
 				AD4402CC2E906E81001FC101 /* ExerciseLastUsedMigration.swift */,
 				AD4402CE2E906EA2001FC101 /* ExerciseLastUsedViews.swift */,
+				AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -510,6 +513,7 @@
 				AD52FECF2E8B32640048DF0F /* SwiftDataEntities.swift in Sources */,
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,
 				11E748F02C9E4B0F00AB1234 /* GymTrackerApp.swift in Sources */,
+				AD4402D12E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift in Sources */,
 				ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */,
 				AD4402CD2E906E81001FC101 /* ExerciseLastUsedMigration.swift in Sources */,
 				AD4402CF2E906EA2001FC101 /* ExerciseLastUsedViews.swift in Sources */,

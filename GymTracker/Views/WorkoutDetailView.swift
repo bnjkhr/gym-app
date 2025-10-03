@@ -497,76 +497,108 @@ struct WorkoutDetailView: View {
 
     private var exerciseSections: some View {
         ForEach(workout.exercises.indices, id: \.self) { exerciseIndex in
-            Section {
-                ForEach(Array(workout.exercises[exerciseIndex].sets.enumerated()), id: \.element.id) { element in
-                    let setIndex = element.offset
-
-                    let previous = previousValues(for: exerciseIndex, setIndex: setIndex)
-
-                    let setBinding = Binding(
-                        get: { workout.exercises[exerciseIndex].sets[setIndex] },
-                        set: {
-                            workout.exercises[exerciseIndex].sets[setIndex] = $0
-                            let exId = workout.exercises[exerciseIndex].id
-                            let setId = workout.exercises[exerciseIndex].sets[setIndex].id
-                            let newSet = workout.exercises[exerciseIndex].sets[setIndex]
-                            updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
-                                setEntity.reps = newSet.reps
-                                setEntity.weight = newSet.weight
-                            }
-                        }
-                    )
-
-                    WorkoutSetCard(
-                        index: setIndex,
-                        set: setBinding,
-                        isActiveRest: isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex),
-                        remainingSeconds: activeRestForThisWorkout?.remainingSeconds ?? 0,
-                        previousReps: previous.reps,
-                        previousWeight: previous.weight,
-                        currentExercise: workout.exercises[exerciseIndex].exercise,
-                        workoutStore: workoutStore,
-                        onRestTimeUpdated: { newValue in
-                            if isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
-                                workoutStore.setRest(remaining: Int(newValue), total: Int(newValue))
-                            }
-                            let exId = workout.exercises[exerciseIndex].id
-                            let setId = workout.exercises[exerciseIndex].sets[setIndex].id
-                            updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
-                                setEntity.restTime = newValue
-                            }
-                        },
-                        onToggleCompletion: {
-                            toggleCompletion(for: exerciseIndex, setIndex: setIndex)
-                        }
-                    )
-                    .listRowSeparator(.hidden)
-                    .id("exercise_\(exerciseIndex)_set_\(setIndex)")
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            removeSet(at: setIndex, for: exerciseIndex)
-                        } label: {
-                            Label("Löschen", systemImage: "trash")
-                        }
-                    }
-                }
-
-                Button {
-                    addSet(to: exerciseIndex)
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Satz hinzufügen")
-                .buttonStyle(.bordered)
-                .tint(Color.mossGreen)
-            } header: {
-                Text(workout.exercises[exerciseIndex].exercise.name)
-                    .font(.headline)
-                    .onLongPressGesture {
-                        prepareReorder()
-                    }
+            exerciseSection(at: exerciseIndex)
+        }
+    }
+    
+    @ViewBuilder
+    private func exerciseSection(at exerciseIndex: Int) -> some View {
+        Section {
+            ForEach(Array(workout.exercises[exerciseIndex].sets.enumerated()), id: \.element.id) { element in
+                setRow(exerciseIndex: exerciseIndex, setIndex: element.offset)
             }
-            .listRowBackground(Color.clear)
+
+            addSetButton(for: exerciseIndex)
+        } header: {
+            exerciseHeader(for: exerciseIndex)
+        }
+        .listRowBackground(Color.clear)
+    }
+    
+    @ViewBuilder
+    private func setRow(exerciseIndex: Int, setIndex: Int) -> some View {
+        let previous = previousValues(for: exerciseIndex, setIndex: setIndex)
+        let setBinding = createSetBinding(exerciseIndex: exerciseIndex, setIndex: setIndex)
+
+        WorkoutSetCard(
+            index: setIndex,
+            set: setBinding,
+            isActiveRest: isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex),
+            remainingSeconds: activeRestForThisWorkout?.remainingSeconds ?? 0,
+            previousReps: previous.reps,
+            previousWeight: previous.weight,
+            currentExercise: workout.exercises[exerciseIndex].exercise,
+            workoutStore: workoutStore,
+            onRestTimeUpdated: { newValue in
+                handleRestTimeUpdate(exerciseIndex: exerciseIndex, setIndex: setIndex, newValue: newValue)
+            },
+            onToggleCompletion: {
+                toggleCompletion(for: exerciseIndex, setIndex: setIndex)
+            }
+        )
+        .listRowSeparator(.hidden)
+        .id("exercise_\(exerciseIndex)_set_\(setIndex)")
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                removeSet(at: setIndex, for: exerciseIndex)
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func addSetButton(for exerciseIndex: Int) -> some View {
+        Button {
+            addSet(to: exerciseIndex)
+        } label: {
+            Image(systemName: "plus")
+        }
+        .accessibilityLabel("Satz hinzufügen")
+        .buttonStyle(.bordered)
+        .tint(Color.mossGreen)
+    }
+    
+    @ViewBuilder
+    private func exerciseHeader(for exerciseIndex: Int) -> some View {
+        ExerciseHeaderWithLastUsed(
+            exercise: workout.exercises[exerciseIndex].exercise,
+            workoutStore: workoutStore,
+            isActiveSession: isActiveSession,
+            onQuickFill: { weight, reps in
+                quickFillExercise(exerciseIndex: exerciseIndex, weight: weight, reps: reps)
+            },
+            onLongPress: {
+                prepareReorder()
+            }
+        )
+        .padding(.vertical, 4)
+    }
+    
+    private func createSetBinding(exerciseIndex: Int, setIndex: Int) -> Binding<ExerciseSet> {
+        Binding(
+            get: { workout.exercises[exerciseIndex].sets[setIndex] },
+            set: {
+                workout.exercises[exerciseIndex].sets[setIndex] = $0
+                let exId = workout.exercises[exerciseIndex].id
+                let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+                let newSet = workout.exercises[exerciseIndex].sets[setIndex]
+                updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
+                    setEntity.reps = newSet.reps
+                    setEntity.weight = newSet.weight
+                }
+            }
+        )
+    }
+    
+    private func handleRestTimeUpdate(exerciseIndex: Int, setIndex: Int, newValue: Double) {
+        if isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
+            workoutStore.setRest(remaining: Int(newValue), total: Int(newValue))
+        }
+        let exId = workout.exercises[exerciseIndex].id
+        let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+        updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
+            setEntity.restTime = newValue
         }
     }
 
@@ -934,6 +966,23 @@ struct WorkoutDetailView: View {
         }
     }
 
+    private func quickFillExercise(exerciseIndex: Int, weight: Double, reps: Int) {
+        // Fill all incomplete sets with the provided values
+        for setIndex in workout.exercises[exerciseIndex].sets.indices {
+            if !workout.exercises[exerciseIndex].sets[setIndex].completed {
+                workout.exercises[exerciseIndex].sets[setIndex].weight = weight
+                workout.exercises[exerciseIndex].sets[setIndex].reps = reps
+                
+                let exId = workout.exercises[exerciseIndex].id
+                let setId = workout.exercises[exerciseIndex].sets[setIndex].id
+                updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
+                    setEntity.weight = weight
+                    setEntity.reps = reps
+                }
+            }
+        }
+    }
+
     private func prepareReorder() {
         showingReorderSheet = true
     }
@@ -944,7 +993,23 @@ struct WorkoutDetailView: View {
         return String(format: "%d:%02d", minutes, remaining)
     }
 
+    /// Optimierte previousValues - nutzt zuerst Last-Used Felder, dann Fallback auf Session-Historie
     private func previousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
+        let currentExercise = workout.exercises[exerciseIndex].exercise
+        
+        // 🚀 NEU: Zuerst Last-Used Felder prüfen (super schnell!)
+        if let lastUsedMetrics = workoutStore.completeLastMetrics(for: currentExercise),
+           let weight = lastUsedMetrics.weight,
+           let reps = lastUsedMetrics.reps {
+            return (reps, weight)
+        }
+        
+        // Fallback: Alte Methode über Session-Historie (langsamer)
+        return legacyPreviousValues(for: exerciseIndex, setIndex: setIndex)
+    }
+    
+    /// Legacy-Fallback für previousValues - iteriert durch Session-Historie
+    private func legacyPreviousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
         guard let prev = previousSessionSwiftData() else {
             return (nil, nil)
         }
