@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 import HealthKit
+import Combine
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -442,7 +443,13 @@ class WorkoutStore: ObservableObject {
                 notes: workout.notes
             )
             
-            try DataManager.shared.recordSession(session, to: context)
+            let savedEntity = try DataManager.shared.recordSession(session, to: context)
+            
+            // Update ExerciseRecords with new personal bests
+            Task {
+                await ExerciseRecordMigration.updateRecords(from: savedEntity, context: context)
+            }
+            
             invalidateCaches() // stats/streak may change
             print("✅ Workout-Session erfolgreich gespeichert: \(workout.name)")
             
@@ -894,6 +901,83 @@ class WorkoutStore: ObservableObject {
             // Only setup timer if we still have remaining time
             setupRestTimer()
         }
+    }
+
+    // MARK: - ExerciseRecord Management
+    
+    /// Get ExerciseRecord for a specific exercise
+    func getExerciseRecord(for exercise: Exercise) -> ExerciseRecord? {
+        guard let context = modelContext else { return nil }
+        
+        let descriptor = FetchDescriptor<ExerciseRecordEntity>(
+            predicate: #Predicate<ExerciseRecordEntity> { record in
+                record.exerciseId == exercise.id
+            }
+        )
+        
+        guard let entity = try? context.fetch(descriptor).first else { return nil }
+        
+        return ExerciseRecord(
+            id: entity.id,
+            exerciseId: entity.exerciseId,
+            exerciseName: entity.exerciseName,
+            maxWeight: entity.maxWeight,
+            maxWeightReps: entity.maxWeightReps,
+            maxWeightDate: entity.maxWeightDate,
+            maxReps: entity.maxReps,
+            maxRepsWeight: entity.maxRepsWeight,
+            maxRepsDate: entity.maxRepsDate,
+            bestEstimatedOneRepMax: entity.bestEstimatedOneRepMax,
+            bestOneRepMaxWeight: entity.bestOneRepMaxWeight,
+            bestOneRepMaxReps: entity.bestOneRepMaxReps,
+            bestOneRepMaxDate: entity.bestOneRepMaxDate,
+            createdAt: entity.createdAt,
+            updatedAt: entity.updatedAt
+        )
+    }
+    
+    /// Get all ExerciseRecords
+    func getAllExerciseRecords() -> [ExerciseRecord] {
+        guard let context = modelContext else { return [] }
+        
+        let descriptor = FetchDescriptor<ExerciseRecordEntity>(
+            sortBy: [SortDescriptor(\.exerciseName)]
+        )
+        
+        let entities = (try? context.fetch(descriptor)) ?? []
+        
+        return entities.map { entity in
+            ExerciseRecord(
+                id: entity.id,
+                exerciseId: entity.exerciseId,
+                exerciseName: entity.exerciseName,
+                maxWeight: entity.maxWeight,
+                maxWeightReps: entity.maxWeightReps,
+                maxWeightDate: entity.maxWeightDate,
+                maxReps: entity.maxReps,
+                maxRepsWeight: entity.maxRepsWeight,
+                maxRepsDate: entity.maxRepsDate,
+                bestEstimatedOneRepMax: entity.bestEstimatedOneRepMax,
+                bestOneRepMaxWeight: entity.bestOneRepMaxWeight,
+                bestOneRepMaxReps: entity.bestOneRepMaxReps,
+                bestOneRepMaxDate: entity.bestOneRepMaxDate,
+                createdAt: entity.createdAt,
+                updatedAt: entity.updatedAt
+            )
+        }
+    }
+    
+    /// Check if a set would be a new personal record
+    func checkForNewRecord(exercise: Exercise, weight: Double, reps: Int) -> RecordType? {
+        guard let record = getExerciseRecord(for: exercise) else {
+            // If no record exists yet, any completed set is a new record
+            if weight > 0 && reps > 0 {
+                return .maxWeight // Default to weight record for first achievement
+            }
+            return nil
+        }
+        
+        return record.hasNewRecord(weight: weight, reps: reps)
     }
 
     // MARK: - Cache Management

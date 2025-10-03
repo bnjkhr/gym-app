@@ -11,7 +11,8 @@ struct GymTrackerApp: App {
             WorkoutExerciseEntity.self,
             WorkoutEntity.self,
             WorkoutSessionEntity.self,
-            UserProfileEntity.self
+            UserProfileEntity.self,
+            ExerciseRecordEntity.self
         ])
         
         do {
@@ -64,6 +65,11 @@ struct GymTrackerApp: App {
                     
                     // 💪 Initial seed: Beispiel-Workouts nur beim ersten App-Start laden
                     ExerciseSeeder.ensureSampleWorkoutsExist(context: context)
+                    
+                    // 🏆 Migration: ExerciseRecords aus bestehenden Sessions generieren
+                    if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
+                        await ExerciseRecordMigration.migrateExistingData(context: context)
+                    }
                     
                     // Debug again after ensuring exercises exist
                     DataManager.shared.debugDatabaseState(context: context)

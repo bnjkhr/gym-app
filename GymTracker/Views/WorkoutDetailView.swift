@@ -205,14 +205,18 @@ struct WorkoutDetailView: View {
         .onAppear {
             // Safely remap the entity from the current ModelContext to avoid reading invalid snapshots
             let currentId = entity.id
-            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate { $0.id == currentId })
+            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate<WorkoutEntity> { workout in 
+                workout.id == currentId 
+            })
             if let fresh = try? modelContext.fetch(descriptor).first {
                 var mappedExercises: [WorkoutExercise] = []
                 for we in fresh.exercises {
                     if let exEntity = we.exercise {
                         // Refetch exercise by id before accessing properties
                         let exId = exEntity.id
-                        let exDesc = FetchDescriptor<ExerciseEntity>(predicate: #Predicate { $0.id == exId })
+                        let exDesc = FetchDescriptor<ExerciseEntity>(predicate: #Predicate<ExerciseEntity> { ex in
+                            ex.id == exId
+                        })
                         if let freshEx = try? modelContext.fetch(exDesc).first {
                             let groups = freshEx.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
                             let exercise = Exercise(
@@ -333,6 +337,38 @@ struct WorkoutDetailView: View {
                 summaryRow(title: "Letztes Gewicht", value: previousVolumeValueText)
                 summaryRow(title: "Letztes Datum", value: previousDateText)
                 summaryRow(title: "Übungen zuletzt", value: previousExerciseCountText)
+            }
+            
+            // Personal Records Summary
+            if !personalRecordsSummary.isEmpty {
+                Divider()
+                    .padding(.vertical, 4)
+                
+                VStack(spacing: 4) {
+                    Text("Personal Records")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 4) {
+                        ForEach(personalRecordsSummary, id: \.id) { record in
+                            VStack(spacing: 2) {
+                                Text(record.exerciseName)
+                                    .font(.caption2)
+                                    .lineLimit(1)
+                                
+                                if record.maxWeight > 0 {
+                                    Text("\(String(format: "%.0f", record.maxWeight)) kg")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                } else {
+                                    Text("–")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -488,6 +524,8 @@ struct WorkoutDetailView: View {
                         remainingSeconds: activeRestForThisWorkout?.remainingSeconds ?? 0,
                         previousReps: previous.reps,
                         previousWeight: previous.weight,
+                        currentExercise: workout.exercises[exerciseIndex].exercise,
+                        workoutStore: workoutStore,
                         onRestTimeUpdated: { newValue in
                             if isActiveRest(exerciseIndex: exerciseIndex, setIndex: setIndex) {
                                 workoutStore.setRest(remaining: Int(newValue), total: Int(newValue))
@@ -607,35 +645,27 @@ struct WorkoutDetailView: View {
         let templateId: UUID? = workout.id
         let currentDate = workout.date
         
-        print("🔍 Suche vorherige Session für Template \(templateId?.uuidString ?? "nil")")
-        print("🔍 Aktuelles Datum: \(currentDate)")
-        
         // Für aktive Sessions: Verwende das aktuelle Datum statt des Workout-Datums
         let searchDate = isActiveSession ? Date() : currentDate
-        print("🔍 Such-Datum: \(searchDate)")
         
         let predicate = #Predicate<WorkoutSessionEntity> { entity in
             (entity.templateId == templateId) && (entity.date < searchDate)
         }
         var descriptor = FetchDescriptor<WorkoutSessionEntity>(
             predicate: predicate,
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
+            sortBy: [SortDescriptor<WorkoutSessionEntity>(\.date, order: .reverse)]
         )
         descriptor.fetchLimit = 1
         
         do {
             let entities = try modelContext.fetch(descriptor)
-            print("🔍 Gefundene Sessions: \(entities.count)")
             
             if let entity = entities.first {
-                print("🔍 Neueste vorherige Session: \(entity.date)")
-                return WorkoutSession(entity: entity)
+                return WorkoutSession(entity: entity, in: modelContext)
             } else {
-                print("🔍 Keine vorherige Session gefunden")
                 return nil
             }
         } catch {
-            print("❌ Fehler beim Laden der Sessions: \(error)")
             return nil
         }
     }
@@ -713,6 +743,15 @@ struct WorkoutDetailView: View {
             return "\(delta) Wdh. vs. letzte Session"
         }
     }
+    
+    // MARK: - Personal Records
+    
+    private var personalRecordsSummary: [ExerciseRecord] {
+        let exercisesInWorkout = workout.exercises.map { $0.exercise }
+        return exercisesInWorkout.compactMap { exercise in
+            workoutStore.getExerciseRecord(for: exercise)
+        }
+    }
 
     private var hasExercises: Bool {
         workout.exercises.contains { !$0.sets.isEmpty }
@@ -733,6 +772,7 @@ struct WorkoutDetailView: View {
         let exId = workout.exercises[exerciseIndex].id
         let setId = workout.exercises[exerciseIndex].sets[setIndex].id
         let completed = workout.exercises[exerciseIndex].sets[setIndex].completed
+        
         updateEntitySet(exerciseId: exId, setId: setId) { setEntity in
             setEntity.completed = completed
         }
@@ -905,53 +945,31 @@ struct WorkoutDetailView: View {
     }
 
     private func previousValues(for exerciseIndex: Int, setIndex: Int) -> (reps: Int?, weight: Double?) {
-        // TEMP: Test-Version mit Dummy-Werten zum Testen der UI
-        print("🔍 TEMP: Teste previousValues für Übung \(exerciseIndex), Satz \(setIndex)")
-        
-        // Dummy-Werte für Tests
-        let dummyReps = 10 + setIndex
-        let dummyWeight = 20.0 + Double(exerciseIndex * 5)
-        
-        print("🔍 TEMP: Gebe Dummy-Werte zurück: \(dummyReps) Wdh., \(dummyWeight) kg")
-        return (dummyReps, dummyWeight)
-        
-        /* ORIGINAL CODE - Temporär auskommentiert:
         guard let prev = previousSessionSwiftData() else {
-            print("🔍 Keine vorherige Session gefunden für Workout \(workout.id)")
             return (nil, nil)
         }
-        
-        print("🔍 Vorherige Session gefunden: \(prev.date), \(prev.exercises.count) Übungen")
         
         let currentExercise = workout.exercises[exerciseIndex].exercise
         guard let previousExercise = prev.exercises.first(where: { $0.exercise.id == currentExercise.id }) else {
-            print("🔍 Übung \(currentExercise.name) nicht in vorheriger Session gefunden")
             return (nil, nil)
         }
-        
-        print("🔍 Übung \(currentExercise.name) gefunden mit \(previousExercise.sets.count) Sätzen")
         
         let sets = previousExercise.sets
         if sets.indices.contains(setIndex) {
             let reps = sets[setIndex].reps
             let weight = sets[setIndex].weight
-            print("🔍 Satz \(setIndex + 1): \(reps) Wdh., \(weight) kg")
             return (reps, weight)
         } else if let last = sets.last {
-            print("🔍 Verwende letzten Satz: \(last.reps) Wdh., \(last.weight) kg")
             return (last.reps, last.weight)
         } else {
-            print("🔍 Keine Sätze in vorheriger Session")
             return (nil, nil)
         }
-        */
     }
     
     private func updateEntityNotes(_ notes: String) {
         entity.notes = notes
         do {
             try modelContext.save()
-            print("✅ Notizen gespeichert")
         } catch {
             print("❌ Fehler beim Speichern der Notizen: \(error)")
         }
@@ -969,7 +987,6 @@ struct WorkoutDetailView: View {
             mutate(set)
             do {
                 try modelContext.save()
-                print("✅ Satz aktualisiert")
             } catch {
                 print("❌ Fehler beim Speichern des Satzes: \(error)")
             }
@@ -1050,19 +1067,21 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
         if let tintColor { uiView.tintColor = tintColor }
         
         let stringValue: String
-        if keyboardType == .decimalPad {
-            // For weight fields (decimalPad), display as decimal
-            if let doubleValue = Double(String(value)), doubleValue > 0 {
+        if Value.self == Double.self {
+            // For weight fields (Double)
+            let doubleValue = value as? Double ?? 0
+            if doubleValue > 0 {
                 stringValue = String(format: "%.1f", doubleValue).replacingOccurrences(of: ".0", with: "")
             } else {
                 stringValue = ""
             }
-        } else if keyboardType == .numberPad {
-            // For rep fields (numberPad), display as integer
-            stringValue = String(Int(Double(String(value)) ?? 0))
+        } else if Value.self == Int.self {
+            // For rep fields (Int)
+            let intValue = value as? Int ?? 0
+            stringValue = intValue > 0 ? String(intValue) : ""
         } else {
-            // For other fields, display normally
-            stringValue = String(value)
+            // Fallback for other types
+            stringValue = String(describing: value)
         }
         
         if uiView.text != stringValue && !uiView.isFirstResponder {
@@ -1086,25 +1105,10 @@ private struct SelectAllTextField<Value: Numeric & LosslessStringConvertible>: U
             let cleanText = text.replacingOccurrences(of: ",", with: ".")
             
             if let newValue = Value(cleanText) {
-                if parent.keyboardType == .decimalPad {
-                    // For weight fields, allow decimal values
-                    parent.value = newValue
-                } else if parent.keyboardType == .numberPad {
-                    // For rep fields, ensure we store as whole number
-                    let intValue = Int(Double(String(newValue)) ?? 0)
-                    if let convertedValue = Value(String(intValue)) {
-                        parent.value = convertedValue
-                    } else {
-                        parent.value = newValue
-                    }
-                } else {
-                    parent.value = newValue
-                }
+                parent.value = newValue
             } else if text.isEmpty {
                 if let zeroValue = Value("0") {
                     parent.value = zeroValue
-                } else {
-                    parent.value = parent.value // Keep current value if we can't create zero
                 }
             }
         }
@@ -1148,6 +1152,8 @@ private struct WorkoutSetCard: View {
     var remainingSeconds: Int
     var previousReps: Int?
     var previousWeight: Double?
+    var currentExercise: Exercise? // New parameter to check for records
+    var workoutStore: WorkoutStore? // New parameter to check for records
     var onRestTimeUpdated: (Double) -> Void
     var onToggleCompletion: () -> Void
 
@@ -1469,6 +1475,7 @@ private struct ActiveWorkoutNavigationView: View {
                             currentExerciseIndex: currentExerciseIndex,
                             totalExerciseCount: workout.exercises.count,
                             workout: $workout,
+                            workoutStore: workoutStore,
                             activeRestForThisWorkout: activeRestForThisWorkout,
                             isActiveRest: isActiveRest,
                             toggleCompletion: toggleCompletion,
@@ -1622,6 +1629,7 @@ private struct ActiveWorkoutExerciseView: View {
     let currentExerciseIndex: Int
     let totalExerciseCount: Int
     @Binding var workout: Workout
+    let workoutStore: WorkoutStore
     let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
     let isActiveRest: (Int, Int) -> Bool
     let toggleCompletion: (Int, Int) -> Void
@@ -1713,6 +1721,8 @@ private struct ActiveWorkoutExerciseView: View {
                             previousReps: previous.reps,
                             previousWeight: previous.weight,
                             isLastSet: isLastSet,
+                            currentExercise: workout.exercises[exerciseIndex].exercise,
+                            workoutStore: workoutStore,
                             onRestTimeUpdated: { newValue in
                                 if isActiveRest(exerciseIndex, setIndex) {
                                     // Update rest time logic here
@@ -1819,6 +1829,8 @@ private struct ActiveWorkoutSetCard: View {
     var previousReps: Int?
     var previousWeight: Double?
     let isLastSet: Bool
+    var currentExercise: Exercise? // New parameter to check for records
+    var workoutStore: WorkoutStore? // New parameter to check for records
     var onRestTimeUpdated: (Double) -> Void
     var onToggleCompletion: () -> Void
     var onDeleteSet: () -> Void

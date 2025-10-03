@@ -162,6 +162,66 @@ final class WorkoutSessionEntity {
     }
 }
 
+// MARK: - ExerciseRecordEntity
+@Model
+final class ExerciseRecordEntity {
+    @Attribute(.unique) var id: UUID
+    var exerciseId: UUID
+    var exerciseName: String
+    
+    // Record types
+    var maxWeight: Double
+    var maxWeightReps: Int
+    var maxWeightDate: Date
+    
+    var maxReps: Int
+    var maxRepsWeight: Double
+    var maxRepsDate: Date
+    
+    var bestEstimatedOneRepMax: Double
+    var bestOneRepMaxWeight: Double
+    var bestOneRepMaxReps: Int
+    var bestOneRepMaxDate: Date
+    
+    // Metadata
+    var createdAt: Date
+    var updatedAt: Date
+    
+    init(
+        id: UUID = UUID(),
+        exerciseId: UUID,
+        exerciseName: String,
+        maxWeight: Double = 0,
+        maxWeightReps: Int = 0,
+        maxWeightDate: Date = Date(),
+        maxReps: Int = 0,
+        maxRepsWeight: Double = 0,
+        maxRepsDate: Date = Date(),
+        bestEstimatedOneRepMax: Double = 0,
+        bestOneRepMaxWeight: Double = 0,
+        bestOneRepMaxReps: Int = 0,
+        bestOneRepMaxDate: Date = Date(),
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.exerciseId = exerciseId
+        self.exerciseName = exerciseName
+        self.maxWeight = maxWeight
+        self.maxWeightReps = maxWeightReps
+        self.maxWeightDate = maxWeightDate
+        self.maxReps = maxReps
+        self.maxRepsWeight = maxRepsWeight
+        self.maxRepsDate = maxRepsDate
+        self.bestEstimatedOneRepMax = bestEstimatedOneRepMax
+        self.bestOneRepMaxWeight = bestOneRepMaxWeight
+        self.bestOneRepMaxReps = bestOneRepMaxReps
+        self.bestOneRepMaxDate = bestOneRepMaxDate
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
 // MARK: - UserProfileEntity
 @Model
 final class UserProfileEntity {

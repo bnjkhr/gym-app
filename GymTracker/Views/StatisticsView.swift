@@ -217,51 +217,113 @@ private struct ConsistencyCardView: View {
 
 // 2. Personal Records
 private struct PersonalRecordCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var showingAllRecords = false
     
-    private var latestPR: (exercise: String, weight: Double, reps: Int)? {
-        // Vereinfachte PR-Erkennung - könnte später erweitert werden
-        guard let latestSession = sessionEntities.first else { return nil }
-        
-        // Finde die schwerste/beste Übung in der letzten Session
-        var bestExercise: (name: String, weight: Double, reps: Int)?
-        
-        for workoutExercise in latestSession.exercises {
-            guard let heaviestSet = workoutExercise.sets.max(by: { $0.weight < $1.weight }) else { continue }
-            
-            if bestExercise == nil || heaviestSet.weight > bestExercise!.weight {
-                bestExercise = (workoutExercise.exercise?.name ?? "Übung", heaviestSet.weight, heaviestSet.reps)
-            }
-        }
-        
-        return bestExercise.map { (exercise: $0.name, weight: $0.weight, reps: $0.reps) }
+    private var recentRecords: [ExerciseRecord] {
+        let allRecords = workoutStore.getAllExerciseRecords()
+        return Array(allRecords
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(3))
+    }
+    
+    private var totalRecordsCount: Int {
+        workoutStore.getAllExerciseRecords().count
     }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                // Removed emoji Text here
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    if let pr = latestPR {
-                        Text("Neuer PR: \(pr.exercise)")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Text("\(pr.weight.formatted(.number.precision(.fractionLength(1)))) kg × \(pr.reps)")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                    } else {
-                        Text("Kein neuer PR")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                        Text("Weiter trainieren!")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                    }
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "trophy.fill")
+                        .foregroundStyle(Color.orange)
+                        .font(.title3)
+                    
+                    Text("Personal Records")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
                 }
                 
                 Spacer()
+                
+                Button("Alle anzeigen") {
+                    showingAllRecords = true
+                }
+                .font(.caption)
+                .foregroundStyle(.blue)
+            }
+            
+            if recentRecords.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "trophy")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Keine Personal Records")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Führe Trainings aus, um deine ersten Records zu erzielen!")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(recentRecords, id: \.id) { record in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(record.exerciseName)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                
+                                HStack(spacing: 12) {
+                                    if record.maxWeight > 0 {
+                                        Text("\(String(format: "%.0f", record.maxWeight)) kg")
+                                            .font(.caption)
+                                            .foregroundStyle(.blue)
+                                    }
+                                    
+                                    if record.maxReps > 0 {
+                                        Text("\(record.maxReps) Wdh.")
+                                            .font(.caption)
+                                            .foregroundStyle(.green)
+                                    }
+                                    
+                                    if record.bestEstimatedOneRepMax > 0 {
+                                        Text("1RM: \(String(format: "%.0f", record.bestEstimatedOneRepMax)) kg")
+                                            .font(.caption)
+                                            .foregroundStyle(.purple)
+                                    }
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            Text(timeAgo(record.updatedAt))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        if record.id != recentRecords.last?.id {
+                            Divider()
+                        }
+                    }
+                    
+                    if totalRecordsCount > 3 {
+                        HStack {
+                            Spacer()
+                            Text("und \(totalRecordsCount - 3) weitere...")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.top, 4)
+                    }
+                }
             }
         }
         .padding(20)
@@ -272,6 +334,29 @@ private struct PersonalRecordCardView: View {
                 endPoint: .bottomTrailing
             )
         )
+        .sheet(isPresented: $showingAllRecords) {
+            ExerciseRecordsView()
+                .environmentObject(workoutStore)
+        }
+    }
+    
+    private func timeAgo(_ date: Date) -> String {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        if calendar.isDateInToday(date) {
+            return "Heute"
+        } else if calendar.isDateInYesterday(date) {
+            return "Gestern"
+        } else {
+            let days = calendar.dateComponents([.day], from: date, to: now).day ?? 0
+            if days < 7 {
+                return "vor \(days)d"
+            } else {
+                let weeks = days / 7
+                return "vor \(weeks)w"
+            }
+        }
     }
 }
 

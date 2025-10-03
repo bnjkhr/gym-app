@@ -36,6 +36,9 @@
 		AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7822E858B920005AE79 /* ProfileEditView.swift */; };
 		AD03A7852E858BA40005AE79 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7842E858BA40005AE79 /* ProfileView.swift */; };
 		AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7862E858BDF0005AE79 /* ProfileImageView.swift */; };
+		AD2568DC2E9048FE009BE060 /* ExerciseRecordViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABF2E90453800B761B1 /* ExerciseRecordViews.swift */; };
+		AD2568DD2E904916009BE060 /* ExerciseRecordMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */; };
+		AD2568DE2E904996009BE060 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
 		AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CB82E8529B900FECDA1 /* SpeechRecognizer.swift */; };
 		AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD271CBA2E852E1500FECDA1 /* AppIconGenerator.swift */; };
 		AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D972E8C556A0015A34D /* HealthKitManager.swift */; };
@@ -74,6 +77,7 @@
 		ADD080592E8C7B0F003FAAFB /* UpdatedNotificationExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */; };
 		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
+		ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
 		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
 /* End PBXBuildFile section */
@@ -174,6 +178,9 @@
 		ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedNotificationExample.swift; sourceTree = "<group>"; };
 		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecord.swift; sourceTree = "<group>"; };
+		ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordMigration.swift; sourceTree = "<group>"; };
+		ADFCBABF2E90453800B761B1 /* ExerciseRecordViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordViews.swift; sourceTree = "<group>"; };
 		BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActionButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -220,6 +227,9 @@
 				AD52FEE02E8BCBD40048DF0F /* WorkoutWidgets */,
 				AD52FEDB2E8BCBD40048DF0F /* Frameworks */,
 				11E748ED2C9E4B0F00AB1234 /* Products */,
+				ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */,
+				ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */,
+				ADFCBABF2E90453800B761B1 /* ExerciseRecordViews.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -471,6 +481,7 @@
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
 				AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */,
 				3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */,
+				AD2568DD2E904916009BE060 /* ExerciseRecordMigration.swift in Sources */,
 				3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */,
 				AD363DA52E8C713F0015A34D /* KeyboardDismissalUtilities.swift in Sources */,
 				AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */,
@@ -496,6 +507,7 @@
 				ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */,
 				ADAA5A332E8D36AF00549B47 /* BackupManager.swift in Sources */,
 				ADD080592E8C7B0F003FAAFB /* UpdatedNotificationExample.swift in Sources */,
+				AD2568DC2E9048FE009BE060 /* ExerciseRecordViews.swift in Sources */,
 				ADAA5A352E8D36D900549B47 /* BackupView.swift in Sources */,
 				11E749012C9E4B7A00AB1234 /* Exercise.swift in Sources */,
 				AD363D9C2E8C568F0015A34D /* HealthKitSetupView.swift in Sources */,
@@ -513,6 +525,7 @@
 				11E749052C9E4B9700AB1234 /* WorkoutStore.swift in Sources */,
 				AD363DA22E8C6B250015A34D /* HealthKitDebugView.swift in Sources */,
 				ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */,
+				AD2568DE2E904996009BE060 /* ExerciseRecord.swift in Sources */,
 				ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */,
 				AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */,
 				AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */,
@@ -529,6 +542,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */,
 				AD52FEF62E8BCC6B0048DF0F /* WorkoutActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
