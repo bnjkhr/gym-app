@@ -7,6 +7,50 @@ import Combine
 import UIKit
 #endif
 
+// MARK: - Supporting Structures
+
+/// Struktur für Last-Used Metriken einer Übung
+struct ExerciseLastUsedMetrics {
+    let weight: Double?
+    let reps: Int?
+    let setCount: Int?
+    let lastUsedDate: Date?
+    let restTime: TimeInterval?
+    
+    var hasData: Bool {
+        weight != nil && reps != nil
+    }
+    
+    var displayText: String {
+        guard let weight = weight, let reps = reps else { 
+            return "Keine vorherigen Daten" 
+        }
+        return "Letztes Mal: \(weight.formatted())kg × \(reps) Wdh."
+    }
+    
+    var detailedDisplayText: String {
+        guard hasData else { return "Keine vorherigen Daten" }
+        
+        var parts: [String] = []
+        
+        if let weight = weight, let reps = reps {
+            parts.append("\(weight.formatted())kg × \(reps) Wdh.")
+        }
+        
+        if let setCount = setCount {
+            parts.append("\(setCount) Sätze")
+        }
+        
+        if let date = lastUsedDate {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            parts.append("am \(formatter.string(from: date))")
+        }
+        
+        return parts.joined(separator: " • ")
+    }
+}
+
 @MainActor
 class WorkoutStore: ObservableObject {
     @Published var activeSessionID: UUID?
@@ -383,7 +427,45 @@ class WorkoutStore: ObservableObject {
             .map(Workout.init(session:))
     }
 
+    /// Vereinfachte lastMetrics Funktion - nutzt jetzt die gespeicherten Werte für bessere Performance
     func lastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
+        guard let context = modelContext else { return nil }
+        
+        let descriptor = FetchDescriptor<ExerciseEntity>(
+            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+        )
+        
+        guard let exerciseEntity = try? context.fetch(descriptor).first,
+              let weight = exerciseEntity.lastUsedWeight,
+              let setCount = exerciseEntity.lastUsedSetCount else {
+            // Fallback: alte Methode als Backup
+            return legacyLastMetrics(for: exercise)
+        }
+        
+        return (weight, setCount)
+    }
+    
+    /// Erweiterte lastMetrics mit allen verfügbaren Infos
+    func completeLastMetrics(for exercise: Exercise) -> ExerciseLastUsedMetrics? {
+        guard let context = modelContext else { return nil }
+        
+        let descriptor = FetchDescriptor<ExerciseEntity>(
+            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+        )
+        
+        guard let exerciseEntity = try? context.fetch(descriptor).first else { return nil }
+        
+        return ExerciseLastUsedMetrics(
+            weight: exerciseEntity.lastUsedWeight,
+            reps: exerciseEntity.lastUsedReps,
+            setCount: exerciseEntity.lastUsedSetCount,
+            lastUsedDate: exerciseEntity.lastUsedDate,
+            restTime: exerciseEntity.lastUsedRestTime
+        )
+    }
+    
+    /// Legacy-Fallback Methode - iteriert durch Session-History (langsamer)
+    private func legacyLastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
         let sessionHistory = getSessionHistory()
         let sortedSessions = sessionHistory.sorted { $0.date > $1.date }
 
@@ -453,6 +535,9 @@ class WorkoutStore: ObservableObject {
             
             let savedEntity = try DataManager.shared.recordSession(session, to: context)
             
+            // 🆕 NEU: Update Last-Used Metrics für alle Übungen
+            updateLastUsedMetrics(from: session)
+            
             // Update ExerciseRecords with new personal bests
             Task {
                 await ExerciseRecordMigration.updateRecords(from: savedEntity, context: context)
@@ -479,6 +564,50 @@ class WorkoutStore: ObservableObject {
             }
         } catch {
             print("❌ Fehler beim Speichern der Workout-Session: \(error)")
+        }
+    }
+
+    // MARK: - Last-Used Metrics Management
+    
+    /// Aktualisiert die "letzte Verwendung" Daten für alle Übungen in einem abgeschlossenen Workout
+    private func updateLastUsedMetrics(from session: WorkoutSession) {
+        guard let context = modelContext else { return }
+        
+        for workoutExercise in session.exercises {
+            // Hole die ExerciseEntity frisch aus dem Context
+            let descriptor = FetchDescriptor<ExerciseEntity>(
+                predicate: #Predicate<ExerciseEntity> { $0.id == workoutExercise.exercise.id }
+            )
+            
+            guard let exerciseEntity = try? context.fetch(descriptor).first else { 
+                print("⚠️ ExerciseEntity nicht gefunden für: \(workoutExercise.exercise.name)")
+                continue 
+            }
+            
+            // Finde den letzten abgeschlossenen Satz
+            let completedSets = workoutExercise.sets.filter { $0.completed }
+            guard let lastSet = completedSets.last else { 
+                print("ℹ️ Keine abgeschlossenen Sätze für: \(workoutExercise.exercise.name)")
+                continue 
+            }
+            
+            // Aktualisiere die Last-Used Werte nur wenn das neue Workout neuer ist
+            if exerciseEntity.lastUsedDate == nil || session.date > exerciseEntity.lastUsedDate! {
+                exerciseEntity.lastUsedWeight = lastSet.weight
+                exerciseEntity.lastUsedReps = lastSet.reps
+                exerciseEntity.lastUsedSetCount = completedSets.count
+                exerciseEntity.lastUsedDate = session.date
+                exerciseEntity.lastUsedRestTime = lastSet.restTime
+                
+                print("✅ Last-Used aktualisiert für \(exerciseEntity.name): \(lastSet.weight)kg × \(lastSet.reps)")
+            }
+        }
+        
+        do {
+            try context.save()
+            print("✅ Alle Last-Used Metriken gespeichert")
+        } catch {
+            print("❌ Fehler beim Speichern der Last-Used Metriken: \(error)")
         }
     }
 

@@ -12,6 +12,14 @@ final class ExerciseEntity {
     var descriptionText: String
     var instructions: [String]
     var createdAt: Date
+    
+    // 🆕 NEU: Letzte verwendete Werte für bessere UX
+    var lastUsedWeight: Double?
+    var lastUsedReps: Int?
+    var lastUsedSetCount: Int?
+    var lastUsedDate: Date?
+    var lastUsedRestTime: TimeInterval?
+    
     @Relationship(inverse: \WorkoutExerciseEntity.exercise) var usages: [WorkoutExerciseEntity] = []
 
     init(
@@ -21,7 +29,12 @@ final class ExerciseEntity {
         equipmentTypeRaw: String = "mixed",
         descriptionText: String = "",
         instructions: [String] = [],
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        lastUsedWeight: Double? = nil,
+        lastUsedReps: Int? = nil,
+        lastUsedSetCount: Int? = nil,
+        lastUsedDate: Date? = nil,
+        lastUsedRestTime: TimeInterval? = nil
     ) {
         self.id = id
         self.name = name
@@ -30,6 +43,11 @@ final class ExerciseEntity {
         self.descriptionText = descriptionText
         self.instructions = instructions
         self.createdAt = createdAt
+        self.lastUsedWeight = lastUsedWeight
+        self.lastUsedReps = lastUsedReps
+        self.lastUsedSetCount = lastUsedSetCount
+        self.lastUsedDate = lastUsedDate
+        self.lastUsedRestTime = lastUsedRestTime
     }
 }
 

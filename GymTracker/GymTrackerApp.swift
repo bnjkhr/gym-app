@@ -71,6 +71,9 @@ struct GymTrackerApp: App {
                         await ExerciseRecordMigration.migrateExistingData(context: context)
                     }
                     
+                    // 📊 Migration: Last-Used Daten für bessere UX
+                    await ExerciseLastUsedMigration.performInitialMigration(context: context)
+                    
                     // Debug again after ensuring exercises exist
                     DataManager.shared.debugDatabaseState(context: context)
                     
