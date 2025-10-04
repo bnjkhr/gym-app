@@ -147,12 +147,7 @@ struct WorkoutsHomeView: View {
     ])
     private var sessionEntities: [WorkoutSessionEntity]
 
-    @State private var showingAddWorkout = false
-    @State private var showingWorkoutWizard = false
-    @State private var showingManualAdd = false
     @State private var showingSettings = false
-
-    @State private var showingProfileAlert = false
     @State private var showingProfileEditor = false
     @State private var showingCalendar = false
 
@@ -165,15 +160,37 @@ struct WorkoutsHomeView: View {
     // Neu: Zustand für Löschbestätigung
     @State private var workoutToDelete: Workout?
 
-    @State private var quickGeneratedWorkout: Workout?
-    @State private var quickWorkoutName: String = ""
-
     @State private var headerHidden: Bool = false
     @State private var lastScrollOffset: CGFloat = 0
     @State private var didSetInitialOffset: Bool = false
 
     // Explicit initializer to avoid private memberwise init caused by private nested types
     init() {}
+    
+    private func workoutCategory(for workout: Workout) -> String {
+        let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
+        
+        let machineKeywords = ["maschine", "machine", "lat", "press", "curl", "extension", "row"]
+        let freeWeightKeywords = ["hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift", "bench"]
+        
+        let hasMachine = exerciseNames.contains { name in
+            machineKeywords.contains { keyword in name.contains(keyword) }
+        }
+        
+        let hasFreeWeight = exerciseNames.contains { name in
+            freeWeightKeywords.contains { keyword in name.contains(keyword) }
+        }
+        
+        if hasMachine && hasFreeWeight {
+            return "Mixed"
+        } else if hasMachine {
+            return "Maschinen"
+        } else if hasFreeWeight {
+            return "Freie Gewichte"
+        } else {
+            return "Training"
+        }
+    }
 
     private var timeBasedGreeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -236,12 +253,18 @@ struct WorkoutsHomeView: View {
     private var mainScrollView: AnyView {
         AnyView(
             ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 20) {
+                LazyVStack(spacing: 24) {
                     headerSection
+                    
+                    WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
+                    
                     highlightSection(highlightSession: highlightSession)
+                    
                     savedWorkoutsSection(storedRoutines: storedRoutines)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
             .coordinateSpace(name: "workoutsScroll")
             .transaction { tx in
@@ -290,7 +313,7 @@ struct WorkoutsHomeView: View {
     
     private func createBaseView() -> some View {
         ZStack {
-            Color(.systemGroupedBackground)
+            Color(.systemBackground)
                 .ignoresSafeArea()
             
             mainScrollView
@@ -310,15 +333,8 @@ struct WorkoutsHomeView: View {
     
     private func addSheets(to view: some View) -> some View {
         view
-            .sheet(isPresented: $showingAddWorkout) {
-                createAddWorkoutSheet()
-            }
             .sheet(isPresented: $showingProfileEditor) {
                 ProfileEditView()
-                    .environmentObject(workoutStore)
-            }
-            .sheet(isPresented: $showingWorkoutWizard) {
-                WorkoutWizardView(isManualStart: true)
                     .environmentObject(workoutStore)
             }
             .sheet(isPresented: $showingCalendar) {
@@ -327,33 +343,6 @@ struct WorkoutsHomeView: View {
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
                     .environmentObject(workoutStore)
-            }
-            .sheet(isPresented: $showingManualAdd) {
-                AddWorkoutView()
-                    .environmentObject(workoutStore)
-            }
-            .sheet(item: $quickGeneratedWorkout) { workout in
-                GeneratedWorkoutPreviewView(
-                    workout: workout,
-                    workoutName: $quickWorkoutName,
-                    usedProfileInfo: true,
-                    onSave: {
-                        if var w = quickGeneratedWorkout {
-                            w.name = quickWorkoutName
-                            
-                            // Ensure WorkoutStore has ModelContext
-                            if workoutStore.modelContext == nil {
-                                workoutStore.modelContext = modelContext
-                            }
-                            
-                            // Use WorkoutStore's addWorkout method for consistency
-                            workoutStore.addWorkout(w)
-                        }
-                        quickGeneratedWorkout = nil
-                    },
-                    onDismiss: { quickGeneratedWorkout = nil }
-                )
-                .environmentObject(workoutStore)
             }
             .sheet(item: $viewingSession) { session in
                 SessionDetailView(session: session)
@@ -460,188 +449,31 @@ struct WorkoutsHomeView: View {
             } message: { name in
                 Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
             }
-            .alert("Bitte lege zuerst ein Profil an", isPresented: $showingProfileAlert) {
-                Button("Profil anlegen") { showingProfileEditor = true }
-                Button("Abbrechen", role: .cancel) {}
-            } message: {
-                Text("Damit wir dein 1‑Klick‑Workout optimal erstellen können.")
-            }
     }
     
-    private func createAddWorkoutSheet() -> some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text("Neues Workout erstellen")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.top)
-
-                VStack(spacing: 16) {
-                    createWorkoutAssistantButton()
-                    createManualWorkoutButton()
-                    createQuickWorkoutButton()
-                }
-                .padding()
-
-                Spacer()
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") {
-                        showingAddWorkout = false
-                    }
-                }
-            }
-        }
-    }
-    
-    private func createWorkoutAssistantButton() -> some View {
-        Button {
-            showingAddWorkout = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                showingWorkoutWizard = true
-            }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Workout-Assistent")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Text("Personalisiertes Workout basierend auf deinen Zielen")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: "wand.and.stars")
-                    .font(.title2)
-                    .foregroundColor(.blue)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.blue.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-    
-    private func createManualWorkoutButton() -> some View {
-        Button {
-            showingAddWorkout = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                showingManualAdd = true
-            }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Manuell erstellen")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Text("Selbst zusammengestelltes Workout")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: "plus.circle")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
-            )
-        }
-        .buttonStyle(.plain)
-    }
-    
-    private func createQuickWorkoutButton() -> some View {
-        Button {
-            let profile = workoutStore.userProfile
-            let isProfileMissing = profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && profile.weight == nil && profile.birthDate == nil
-            if isProfileMissing {
-                showingProfileAlert = true
-                return
-            }
-            let goal = profile.goal
-            let freq = max(1, min(workoutStore.weeklyGoal, 7))
-            let preferences = WorkoutPreferences(
-                experience: profile.experience,
-                goal: goal,
-                frequency: freq,
-                equipment: profile.equipment,
-                duration: profile.preferredDuration
-            )
-            quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
-            quickWorkoutName = "Mein \(goal.displayName) Workout"
-            showingAddWorkout = false
-        } label: {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("1-Klick-Workout mit Profil erstellen")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    if workoutStore.userProfile.name.isEmpty && workoutStore.userProfile.weight == nil && workoutStore.userProfile.birthDate == nil {
-                        Text("Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.leading)
-                    } else {
-                        Text("Ziel und Trainingsfrequenz werden aus deinem Profil übernommen.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                Spacer()
-                Image(systemName: "bolt.badge.a.fill")
-                    .font(.title2)
-                    .foregroundColor(colorScheme == .dark ? Color.green : Color.mossGreen)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
     @ViewBuilder
     private var headerSection: some View {
         Group {
             // Greeting header at top
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(timeBasedGreeting + ",")
-                        .font(.largeTitle)
-                        .fontWeight(.heavy)
-                        .foregroundStyle(.primary)
-                    
+                VStack(alignment: .leading, spacing: 2) {
                     let trimmedName = workoutStore.userProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmedName.isEmpty {
+                        Text("\(timeBasedGreeting),")
+                            .font(.system(size: 32, weight: .semibold, design: .default))
+                            .foregroundStyle(.primary)
                         Text("\(trimmedName)!")
-                            .font(.largeTitle)
-                            .fontWeight(.heavy)
+                            .font(.system(size: 32, weight: .semibold, design: .default))
                             .foregroundStyle(.primary)
                     } else {
+                        Text("\(timeBasedGreeting),")
+                            .font(.system(size: 32, weight: .semibold, design: .default))
+                            .foregroundStyle(.primary)
                         Button {
                             showingProfileEditor = true
                         } label: {
                             Text("Name!")
-                                .font(.largeTitle)
-                                .fontWeight(.heavy)
+                                .font(.system(size: 32, weight: .semibold, design: .default))
                                 .underline()
                                 .foregroundStyle(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
                         }
@@ -653,20 +485,19 @@ struct WorkoutsHomeView: View {
                 Button {
                     showingSettings = true
                 } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .frame(width: 40, height: 40)
                         .background(
                             Circle()
-                                .fill(Color(.systemGray))
-                                .shadow(color: Color(.systemGray).opacity(0.3), radius: 8, x: 0, y: 4)
+                                .fill(Color(.systemGray5))
                         )
-                        .opacity(0.95)
                 }
                 .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
         }
     }
 
@@ -674,16 +505,14 @@ struct WorkoutsHomeView: View {
     private func highlightSection(highlightSession: WorkoutSession?) -> some View {
         Group {
             if let session = highlightSession {
-                SessionActionButton(
-                    session: session,
-                    startAction: { startSession($0) },
-                    detailAction: { viewSession($0) },
-                    deleteAction: { removeSession(id: $0.id) }
-                ) {
+                Button {
+                    startSession(session)
+                } label: {
                     WorkoutHighlightCard(workout: Workout(session: session))
                 }
+                .buttonStyle(.plain)
             } else {
-                EmptyStateCard(action: { showingAddWorkout = true })
+                EmptyStateCard()
             }
         }
     }
@@ -691,47 +520,27 @@ struct WorkoutsHomeView: View {
     @ViewBuilder
     private func savedWorkoutsSection(storedRoutines: [Workout]) -> some View {
         Group {
-            SectionHeader(title: "Gespeicherte Workouts", subtitle: "Tippe zum Starten oder Bearbeiten")
-
             if storedRoutines.isEmpty {
-                Text("Lege ein neues Workout an, um eine Routine zu speichern.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(spacing: 12) {
+                    Text("Keine Workouts")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    
+                    Text("Erstelle dein erstes Workout im Workouts-Tab")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
             } else {
                 LazyVGrid(
                     columns: [
-                        GridItem(.flexible(), spacing: 8),
-                        GridItem(.flexible(), spacing: 8)
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
                     ],
                     spacing: 12
                 ) {
-                    // Add Workout Button Tile
-                    Button {
-                        showingAddWorkout = true
-                    } label: {
-                        VStack(spacing: 12) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundStyle(colorScheme == .dark ? Color.green : Color.mossGreen)
-                            
-                            Text("Neues Workout")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 100)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.secondarySystemBackground))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [5, 5]))
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-
                     ForEach(sortedWorkouts, id: \.id) { workout in
                         WorkoutTileWithMenu(
                             workout: workout,
@@ -742,10 +551,6 @@ struct WorkoutsHomeView: View {
                     }
                 }
             }
-            
-            // Progress Bar am Ende der Home-View
-            WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
-                .padding(.top, 8)
         }
     }
 
@@ -857,98 +662,122 @@ struct WorkoutHighlightCard: View {
         return formatter.string(from: workout.date)
     }
 
-    private var tags: [String] {
-        let names = workout.exercises.map { $0.exercise.name }
-        if names.count > 3 {
-            return Array(names.prefix(3)) + ["+\(names.count - 3)"]
-        }
-        return names
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(dateText.uppercased())
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .tracking(0.5)
 
                 Text(workout.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
 
-            // Dauer-Chip entfernt, nur noch Anzahl Übungen
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 HStack(spacing: 6) {
-                    Image(systemName: "flame.fill")
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 12, weight: .semibold))
                     Text("\(workout.exercises.count) Übungen")
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundStyle(.white)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.white.opacity(0.2), in: Capsule())
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white.opacity(0.2))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                        )
+                )
+                
+                Spacer()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
+        .frame(minHeight: 140)
+        .padding(24)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            (colorScheme == .dark ? Color.green : Color.mossGreen),
-                            (colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
+                            Color(red: 0.2, green: 0.8, blue: 0.4),  // Vibrant green
+                            Color(red: 0.6, green: 0.2, blue: 0.8)   // Vibrant purple
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
         )
-        .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
         .accessibilityElement(children: .combine)
     }
 }
 
 struct EmptyStateCard: View {
-    let action: () -> Void
-
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Starte deine Trainingsreise")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-
-            Text("Lege Trainings an, beobachte deinen Fortschritt und bleib motiviert mit smarten Insights.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.9))
-                .multilineTextAlignment(.center)
-
-            Button(action: action) {
-                Label("Erstes Training planen", systemImage: "plus.circle.fill")
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
+        VStack(spacing: 20) {
+            VStack(spacing: 12) {
+                Text("Starte deine Trainingsreise")
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
-                    .background(Color.white.opacity(0.18), in: Capsule())
-                    .overlay(Capsule().stroke(Color.white.opacity(0.28), lineWidth: 1))
+                    .multilineTextAlignment(.center)
+
+                Text("Lege Trainings an, beobachte deinen Fortschritt und bleib motiviert mit smarten Insights.")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
             }
+
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                Text("Gehe zum Workouts-Tab")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.white.opacity(0.15))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+            )
         }
-        .padding(32)
-        .frame(maxWidth: .infinity)
+        .padding(28)
+        .frame(maxWidth: .infinity, minHeight: 140)
         .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(AppTheme.headerGradient)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.2, green: 0.8, blue: 0.4),  // Vibrant green
+                            Color(red: 0.6, green: 0.2, blue: 0.8)   // Vibrant purple
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
                 )
         )
-        .shadow(color: Color.black.opacity(0.04), radius: 18, x: 0, y: 10)
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -1178,35 +1007,51 @@ struct WeeklyProgressCard: View {
     }
 
     var body: some View {
-        HStack(alignment: .center) {
+        HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Wochenfortschritt")
-                    .font(.headline)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
-                Text("\(workoutsThisWeek) von \(max(goal, 1)) Trainings abgeschlossen")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.85))
+                
+                Text("\(workoutsThisWeek) von \(max(goal, 1)) Trainings")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.75))
+                
+                Text("abgeschlossen")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.75))
             }
+            
             Spacer()
+            
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.25), lineWidth: 6)
-                    .frame(width: 44, height: 44)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 4)
+                    .frame(width: 50, height: 50)
+                
                 Circle()
                     .trim(from: 0, to: progress)
-                    .stroke(colorScheme == .dark ? Color.green : Color.mossGreen, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .stroke(
+                        Color.white,
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
                     .rotationEffect(.degrees(-90))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 50, height: 50)
+                    .animation(.easeInOut(duration: 1.0), value: progress)
+                
+                Text("\(workoutsThisWeek)")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
             }
         }
-        .padding(16)
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.black.opacity(0.9))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(red: 0.11, green: 0.11, blue: 0.12)) // Dark gray like in iOS
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
         )
     }
 }
@@ -1337,48 +1182,81 @@ struct WorkoutTileWithMenu: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingActionSheet = false
     
+    private func workoutCategory(for workout: Workout) -> String {
+        let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
+        
+        let machineKeywords = ["maschine", "machine", "lat", "press", "curl", "extension", "row"]
+        let freeWeightKeywords = ["hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift", "bench"]
+        
+        let hasMachine = exerciseNames.contains { name in
+            machineKeywords.contains { keyword in name.contains(keyword) }
+        }
+        
+        let hasFreeWeight = exerciseNames.contains { name in
+            freeWeightKeywords.contains { keyword in name.contains(keyword) }
+        }
+        
+        if hasMachine && hasFreeWeight {
+            return "Mixed"
+        } else if hasMachine {
+            return "Maschinen"
+        } else if hasFreeWeight {
+            return "Freie Gewichte"
+        } else {
+            return "Training"
+        }
+    }
+    
     var body: some View {
         Button {
-            showingActionSheet = true
+            onStart()
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(workout.name)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        
-                        Text("\(workout.exercises.count) Übungen")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workout.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Text(workoutCategory(for: workout))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                HStack {
+                    Text("\(workout.exercises.count) Übungen")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
                     
                     Spacer()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                // Menu dots at bottom right
-                HStack {
-                    Spacer()
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    
+                    Button {
+                        showingActionSheet = true
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.systemBackground))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color(.systemGray5), lineWidth: 1)
                     )
             )
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(.plain)
         .confirmationDialog(
@@ -1386,10 +1264,6 @@ struct WorkoutTileWithMenu: View {
             isPresented: $showingActionSheet,
             titleVisibility: .hidden
         ) {
-            Button("Workout starten") {
-                onStart()
-            }
-            
             Button("Bearbeiten") {
                 onEdit()
             }

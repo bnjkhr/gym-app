@@ -7,7 +7,7 @@ enum AppTheme {
     static let purple = Color(red: 0.36, green: 0.20, blue: 0.60)   // dunkleres Purple
     static let indigo = Color(red: 0.48, green: 0.56, blue: 0.86)   // kühles Indigo/Lavender
 
-    static let darkPurple = Color.darkPurple
+    static let darkPurple = Color(red: 0.36, green: 0.20, blue: 0.60)
     
     // Moos-Grün (eine erdige, natürliche Grünvariante)
     static let mossGreen = Color(red: 0.4, green: 0.6, blue: 0.3)
@@ -59,8 +59,7 @@ struct GradientCardBackground: View {
 extension View {
     func bigAppleTitleStyle() -> some View {
         self
-            .font(.system(size: 48, weight: .heavy, design: .rounded))
-            .tracking(-0.5)
+            .font(.title.weight(.bold))
             .foregroundStyle(.white)
     }
 
@@ -82,12 +81,15 @@ extension View {
 #Preview("Theme Card") {
     ZStack { Color.black.ignoresSafeArea() }
         .overlay(
-            VStack(spacing: 20) {
+            VStack(spacing: 8) {
                 Text("Starte deine\nTrainingsreise").bigAppleTitleStyle()
+                
                 GradientCardBackground()
-                    .frame(height: 220)
-                    .padding()
+                    .frame(height: 120)
+                    .padding(.horizontal, 16)
             }
         )
 }
+
+
 
