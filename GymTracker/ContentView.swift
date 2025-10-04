@@ -45,7 +45,7 @@ struct ContentView: View {
             }
             .tabItem {
                 Image(systemName: "dumbbell")
-                Text("Training")
+                Text("Home")
             }
 
 
