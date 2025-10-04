@@ -705,14 +705,7 @@ struct WorkoutHighlightCard: View {
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.2, green: 0.8, blue: 0.4),  // Vibrant green
-                            Color(red: 0.6, green: 0.2, blue: 0.8)   // Vibrant purple
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    Color(red: 0.15, green: 0.08, blue: 0.25)  // Very dark purple
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
