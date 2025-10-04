@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import Charts
 import SwiftData
 import HealthKit
@@ -26,6 +27,13 @@ struct StatisticsView: View {
     @State private var didSetInitialOffset: Bool = false
     @State private var showingCalendar: Bool = false
 
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+
+    private var displaySessions: [WorkoutSession] {
+        sessionEntities.map { WorkoutSession(entity: $0) }
+    }
+
     var body: some View {
         ScrollView {
             // Unified background container
@@ -41,6 +49,13 @@ struct StatisticsView: View {
 
                 // All statistics cards in unified container
                 VStack(spacing: 0) {
+                    // Kalenderband ganz oben in der Insights-View
+                    WeekCalendarStrip(sessions: displaySessions, showCalendar: { showingCalendar = true })
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                    
+                    statisticsDivider()
+                    
                     // 1. Consistency / Wochenfortschritt
                     ConsistencyCardView()
                     

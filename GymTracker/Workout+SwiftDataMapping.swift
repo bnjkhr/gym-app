@@ -16,9 +16,7 @@ extension Workout {
             isFavorite: entity.isFavorite
         )
     }
-}
-
-extension Workout {
+    
     init(entity: WorkoutEntity, in context: ModelContext) {
         // Refetch workout by id from the provided context to ensure a valid instance
         let workoutId = entity.id

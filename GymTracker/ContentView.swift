@@ -176,6 +176,16 @@ struct WorkoutsHomeView: View {
     // Explicit initializer to avoid private memberwise init caused by private nested types
     init() {}
 
+    private var timeBasedGreeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Guten Morgen"
+        case 12..<18: return "Guten Tag"
+        case 18..<22: return "Guten Abend"
+        default: return "Gute Nacht"
+        }
+    }
+
     private var weekStart: Date {
         let calendar = Calendar.current
         return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
@@ -610,17 +620,18 @@ struct WorkoutsHomeView: View {
         Group {
             // Greeting header at top
             HStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Text("👋🏼")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(timeBasedGreeting + ",")
                         .font(.largeTitle)
                         .fontWeight(.heavy)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
+                    
                     let trimmedName = workoutStore.userProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmedName.isEmpty {
                         Text("\(trimmedName)!")
                             .font(.largeTitle)
                             .fontWeight(.heavy)
-                            .lineLimit(1)
+                            .foregroundStyle(.primary)
                     } else {
                         Button {
                             showingProfileEditor = true
@@ -629,9 +640,9 @@ struct WorkoutsHomeView: View {
                                 .font(.largeTitle)
                                 .fontWeight(.heavy)
                                 .underline()
+                                .foregroundStyle(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
                         }
                         .buttonStyle(.plain)
-                        .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
                     }
                 }
                 Spacer()
@@ -653,11 +664,6 @@ struct WorkoutsHomeView: View {
                 .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            WeekCalendarStrip(sessions: displaySessions, showCalendar: { showingCalendar = true })
-                .padding(.top, 4)
-
-            WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
         }
     }
 
@@ -707,6 +713,10 @@ struct WorkoutsHomeView: View {
                     }
                 }
             }
+            
+            // Progress Bar am Ende der Home-View
+            WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
+                .padding(.top, 8)
         }
     }
 
