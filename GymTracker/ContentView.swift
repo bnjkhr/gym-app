@@ -44,7 +44,7 @@ struct ContentView: View {
                     }
             }
             .tabItem {
-                Image(systemName: "dumbbell")
+                Image(systemName: "house")
                 Text("Home")
             }
 
@@ -54,7 +54,7 @@ struct ContentView: View {
                     .environmentObject(workoutStore)
             }
             .tabItem {
-                Image(systemName: "figure.strengthtraining.functional")
+                Image(systemName: "dumbbell")
                 Text("Workouts")
             }
 
