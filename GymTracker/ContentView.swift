@@ -48,7 +48,15 @@ struct ContentView: View {
                 Text("Home")
             }
 
-
+            // Workouts Tab
+            NavigationStack {
+                WorkoutsTabView()
+                    .environmentObject(workoutStore)
+            }
+            .tabItem {
+                Image(systemName: "figure.strengthtraining.functional")
+                Text("Workouts")
+            }
 
             // Insights Tab
             NavigationStack {
@@ -58,16 +66,6 @@ struct ContentView: View {
             .tabItem {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                 Text("Insights")
-            }
-
-            // Einstellungen Tab
-            NavigationStack {
-                SettingsView()
-                    .environmentObject(workoutStore)
-            }
-            .tabItem {
-                Image(systemName: "gearshape")
-                Text("Einstellungen")
             }
         }
         .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
@@ -152,6 +150,7 @@ struct WorkoutsHomeView: View {
     @State private var showingAddWorkout = false
     @State private var showingWorkoutWizard = false
     @State private var showingManualAdd = false
+    @State private var showingSettings = false
 
     @State private var showingProfileAlert = false
     @State private var showingProfileEditor = false
@@ -324,6 +323,10 @@ struct WorkoutsHomeView: View {
             }
             .sheet(isPresented: $showingCalendar) {
                 CalendarSessionsView()
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+                    .environmentObject(workoutStore)
             }
             .sheet(isPresented: $showingManualAdd) {
                 AddWorkoutView()
@@ -648,16 +651,16 @@ struct WorkoutsHomeView: View {
                 Spacer()
 
                 Button {
-                    showingAddWorkout = true
+                    showingSettings = true
                 } label: {
-                    Image(systemName: "plus")
+                    Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
                         .background(
                             Circle()
-                                .fill((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.8))
-                                .shadow(color: (colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), radius: 8, x: 0, y: 4)
+                                .fill(Color(.systemGray))
+                                .shadow(color: Color(.systemGray).opacity(0.3), radius: 8, x: 0, y: 4)
                         )
                         .opacity(0.95)
                 }
@@ -703,6 +706,32 @@ struct WorkoutsHomeView: View {
                     ],
                     spacing: 12
                 ) {
+                    // Add Workout Button Tile
+                    Button {
+                        showingAddWorkout = true
+                    } label: {
+                        VStack(spacing: 12) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 24, weight: .medium))
+                                .foregroundStyle(colorScheme == .dark ? Color.green : Color.mossGreen)
+                            
+                            Text("Neues Workout")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 100)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.secondarySystemBackground))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [5, 5]))
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+
                     ForEach(sortedWorkouts, id: \.id) { workout in
                         WorkoutTileWithMenu(
                             workout: workout,
