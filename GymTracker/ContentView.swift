@@ -48,15 +48,7 @@ struct ContentView: View {
                 Text("Training")
             }
 
-            // Übungen Tab
-            NavigationStack {
-                ExercisesView()
-                    .environmentObject(workoutStore)
-            }
-            .tabItem {
-                Image(systemName: "list.bullet.rectangle")
-                Text("Übungen")
-            }
+
 
             // Insights Tab
             NavigationStack {

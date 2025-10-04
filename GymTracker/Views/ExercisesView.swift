@@ -117,7 +117,7 @@ struct ExercisesView: View {
             .padding(.top, 80)
             .padding(.trailing, 20)
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.automatic, for: .navigationBar)
         .onChange(of: searchText, initial: true) { oldValue, newValue in
             let current = newValue
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

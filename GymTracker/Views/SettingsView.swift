@@ -36,6 +36,7 @@ struct SettingsView: View {
     @State private var showingImportInfo = false
 
     @State private var showingBackupView = false
+    @State private var showingExercisesView = false
     @State private var alertMessage: String?
     @State private var isShowingAlert = false
     @State private var isImporting = false
@@ -96,6 +97,27 @@ struct SettingsView: View {
                     }
                     
                     Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                
+                // Übungen verwalten Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Übungen")
+                        .font(.headline)
+                    
+                    Button {
+                        showingExercisesView = true
+                    } label: {
+                        Label("Übungen verwalten", systemImage: "list.bullet.rectangle")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Text("Verwalte deine Übungsdatenbank: Übungen hinzufügen, bearbeiten oder löschen.")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                         .padding(.top, 4)
@@ -301,6 +323,21 @@ struct SettingsView: View {
         .sheet(isPresented: $showingBackupView) {
             BackupView()
                 .environmentObject(workoutStore)
+        }
+        .sheet(isPresented: $showingExercisesView) {
+            NavigationStack {
+                ExercisesView()
+                    .environmentObject(workoutStore)
+                    .navigationTitle("Übungen")
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Fertig") {
+                                showingExercisesView = false
+                            }
+                        }
+                    }
+            }
         }
         .popover(isPresented: $showingImportInfo, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
             VStack(alignment: .leading, spacing: 12) {
