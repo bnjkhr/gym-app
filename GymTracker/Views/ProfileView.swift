@@ -56,7 +56,7 @@ struct ProfileView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.mossGreen, in: Capsule())
+                        .background(AppTheme.mossGreen, in: Capsule())
                 }
             }
             
@@ -94,7 +94,7 @@ struct ProfileView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.mossGreen, AppTheme.darkPurple],
+                        colors: [AppTheme.mossGreen, AppTheme.deepBlue],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )

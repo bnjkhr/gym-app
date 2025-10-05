@@ -2,11 +2,10 @@ import SwiftUI
 import UIKit
 
 extension Color {
+    @available(*, deprecated, message: "Use AppTheme.deepBlue instead")
     static let darkPurple = Color(UIColor { trait in
-        // Default (Light Mode): the existing darker purple
-        let light = UIColor(red: 48/255.0, green: 25/255.0, blue: 52/255.0, alpha: 1.0)
-        // Dark Mode: use a lighter, more legible purple
-        let dark = UIColor.systemPurple
+        let light = UIColor(red: 30/255.0, green: 58/255.0, blue: 138/255.0, alpha: 1.0)
+        let dark = UIColor(red: 11/255.0, green: 21/255.0, blue: 51/255.0, alpha: 1.0)
         return trait.userInterfaceStyle == .dark ? dark : light
     })
 }

@@ -3,40 +3,113 @@ import SwiftUI
 // MARK: - App Theme
 
 enum AppTheme {
-    // Primäre Markenfarbe (Purple wie im Screenshot)
-    static let purple = Color(red: 0.36, green: 0.20, blue: 0.60)   // dunkleres Purple
-    static let indigo = Color(red: 0.48, green: 0.56, blue: 0.86)   // kühles Indigo/Lavender
+    // MARK: - Primary Colors
 
-    static let darkPurple = Color(red: 0.36, green: 0.20, blue: 0.60)
-    
-    // Moos-Grün (eine erdige, natürliche Grünvariante)
-    static let mossGreen = Color(red: 0.4, green: 0.6, blue: 0.3)
+    /// PowerOrange - Hauptakzentfarbe
+    static let powerOrange = Color(
+        light: Color(red: 255/255, green: 107/255, blue: 26/255),
+        dark: Color(red: 255/255, green: 122/255, blue: 42/255)
+    )
 
-    // Hintergrundverlauf für Header-Karten
+    /// DeepBlue - Sekundärfarbe für Navigation und Flächen
+    static let deepBlue = Color(
+        light: Color(red: 30/255, green: 58/255, blue: 138/255),
+        dark: Color(red: 11/255, green: 21/255, blue: 51/255)
+    )
+
+    /// TurquoiseBoost - Akzentfarbe für Highlights
+    static let turquoiseBoost = Color(
+        light: Color(red: 6/255, green: 182/255, blue: 212/255),
+        dark: Color(red: 17/255, green: 200/255, blue: 224/255)
+    )
+
+    /// MossGreen - Erfolgs- und Bestätigungsfarbe
+    static let mossGreen = Color(
+        light: Color(red: 75/255, green: 127/255, blue: 82/255),
+        dark: Color(red: 92/255, green: 154/255, blue: 100/255)
+    )
+
+    /// BrightYellow - Warnfarbe und Highlights
+    static let brightYellow = Color(
+        light: Color(red: 255/255, green: 214/255, blue: 10/255),
+        dark: Color(red: 245/255, green: 196/255, blue: 0/255)
+    )
+
+    // MARK: - Background & Surfaces
+
+    /// NeutralGrey - Haupthintergrund
+    static let background = Color(
+        light: Color(red: 243/255, green: 244/255, blue: 246/255),
+        dark: Color(red: 15/255, green: 17/255, blue: 21/255)
+    )
+
+    /// Card/Surface Background
+    static let cardBackground = Color(
+        light: Color.white,
+        dark: Color(red: 25/255, green: 27/255, blue: 31/255)
+    )
+
+    // MARK: - Text Colors
+
+    /// Primary Text
+    static let textPrimary = Color(
+        light: Color(red: 11/255, green: 11/255, blue: 12/255),
+        dark: Color.white
+    )
+
+    /// Secondary Text
+    static let textSecondary = Color(
+        light: Color(red: 91/255, green: 98/255, blue: 106/255),
+        dark: Color(red: 151/255, green: 161/255, blue: 172/255)
+    )
+
+    // MARK: - Gradients
+
+    /// Hintergrundverlauf für Header-Karten
     static var headerGradient: LinearGradient {
         LinearGradient(
-            colors: [
-                Color(red: 0.70, green: 0.74, blue: 0.92), // helles Lavender oben links
-                indigo,                                    // kühles Indigo in der Mitte
-                darkPurple,                                // kräftiges Purple
-                Color(red: 0.26, green: 0.15, blue: 0.46)  // tiefes Purple unten rechts
-            ],
+            colors: [powerOrange, deepBlue],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
 
-    // Verlauf wie die Boxen im Screenshot (leicht glasig)
+    /// Verlauf für Karten
     static var cardGradient: LinearGradient {
         LinearGradient(
-            colors: [Color.white.opacity(0.15), Color.white.opacity(0.05)],
+            colors: [cardBackground.opacity(0.8), cardBackground],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
 
-    // Dunkler Hintergrundbereich
-    static let darkBackground = Color.black
+    // MARK: - Legacy Support
+    @available(*, deprecated, message: "Use powerOrange instead")
+    static let purple = powerOrange
+
+    @available(*, deprecated, message: "Use deepBlue instead")
+    static let indigo = deepBlue
+
+    @available(*, deprecated, message: "Use deepBlue instead")
+    static let darkPurple = deepBlue
+
+    @available(*, deprecated, message: "Use background instead")
+    static let darkBackground = background
+}
+
+// MARK: - Color Extension for Light/Dark Mode
+
+extension Color {
+    init(light: Color, dark: Color) {
+        self.init(UIColor { traitCollection in
+            switch traitCollection.userInterfaceStyle {
+            case .dark:
+                return UIColor(dark)
+            default:
+                return UIColor(light)
+            }
+        })
+    }
 }
 
 

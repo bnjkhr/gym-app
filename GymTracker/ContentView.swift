@@ -68,7 +68,7 @@ struct ContentView: View {
                 Text("Insights")
             }
         }
-        .tint(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
+        .tint(AppTheme.powerOrange)
         .environment(\.keyboardDismissalEnabled, true)
         .onAppear {
             // Set model context in WorkoutStore immediately when view appears
@@ -485,7 +485,7 @@ struct WorkoutsHomeView: View {
                             Text("Name!")
                                 .font(.system(size: 32, weight: .semibold, design: .default))
                                 .underline()
-                                .foregroundStyle(colorScheme == .dark ? Color.purple : AppTheme.darkPurple)
+                                .foregroundStyle(AppTheme.powerOrange)
                         }
                         .buttonStyle(.plain)
                     }
@@ -763,9 +763,7 @@ struct WorkoutHighlightCard: View {
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    Color(red: 0.15, green: 0.08, blue: 0.25)  // Very dark purple
-                )
+                .fill(AppTheme.deepBlue)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(Color.white.opacity(0.1), lineWidth: 1)
@@ -816,10 +814,7 @@ struct EmptyStateCard: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [
-                            Color(red: 0.2, green: 0.8, blue: 0.4),  // Vibrant green
-                            Color(red: 0.6, green: 0.2, blue: 0.8)   // Vibrant purple
-                        ],
+                        colors: [AppTheme.mossGreen, AppTheme.turquoiseBoost],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -936,10 +931,10 @@ struct ActiveWorkoutBar: View {
                             .fixedSize(horizontal: true, vertical: false)
                             .minimumScaleFactor(0.8)
                             .contentTransition(.numericText())
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(AppTheme.turquoiseBoost)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.blue.opacity(0.12), in: Capsule())
+                            .background(AppTheme.turquoiseBoost.opacity(0.12), in: Capsule())
                     }
                 }
             }
@@ -949,7 +944,7 @@ struct ActiveWorkoutBar: View {
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.borderedProminent)
-            .tint(colorScheme == .dark ? Color.green : Color.mossGreen)
+            .tint(AppTheme.mossGreen)
 
             Button(role: .destructive, action: endAction) {
                 Image(systemName: "xmark")
@@ -1034,7 +1029,7 @@ struct WeekCalendarStrip: View {
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.6))
                         Circle()
-                            .fill(hasSession(on: day) ? (colorScheme == .dark ? Color.green : Color.mossGreen) : Color.secondary.opacity(0.3))
+                            .fill(hasSession(on: day) ? AppTheme.mossGreen : Color.secondary.opacity(0.3))
                             .frame(width: 6, height: 6)
                             .opacity(hasSession(on: day) ? 1 : 0.8)
                     }
@@ -1099,7 +1094,7 @@ struct WeeklyProgressCard: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(red: 0.11, green: 0.11, blue: 0.12)) // Dark gray like in iOS
+                .fill(AppTheme.cardBackground)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1567,7 +1562,7 @@ private struct CalendarSessionsView: View {
                                 ZStack {
                                     Circle()
                                         .fill(
-                                            isSelected ? Color.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                            isSelected ? AppTheme.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
                                         )
                                         .frame(width: 36, height: 36)
                                     Text(String(cal.component(.day, from: day)))

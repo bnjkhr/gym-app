@@ -7,11 +7,7 @@ import HealthKit
 import ActivityKit
 #endif
 
-// MARK: - Color Extensions
-
-extension Color {
-    static let mossGreen = Color(red: 0.4, green: 0.6, blue: 0.3)
-}
+// MARK: - Color Extensions (deprecated - use AppTheme instead)
 
 private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -209,14 +205,14 @@ private struct ConsistencyCardView: View {
                     HStack(spacing: 2) {
                         ForEach(0..<4) { week in
                             Circle()
-                                .fill(week < min(consistencyWeeks, 4) ? Color.mossGreen : Color.gray.opacity(0.3))
+                                .fill(week < min(consistencyWeeks, 4) ? AppTheme.mossGreen : Color.gray.opacity(0.3))
                                 .frame(width: 8, height: 8)
                         }
                     }
                     HStack(spacing: 2) {
                         ForEach(0..<3) { week in
                             Circle()
-                                .fill((week + 4) < min(consistencyWeeks, 7) ? Color.mossGreen : Color.gray.opacity(0.3))
+                                .fill((week + 4) < min(consistencyWeeks, 7) ? AppTheme.mossGreen : Color.gray.opacity(0.3))
                                 .frame(width: 8, height: 8)
                         }
                         Circle()
@@ -251,7 +247,7 @@ private struct PersonalRecordCardView: View {
             HStack {
                 HStack(spacing: 8) {
                     Image(systemName: "trophy.fill")
-                        .foregroundStyle(Color.orange)
+                        .foregroundStyle(AppTheme.powerOrange)
                         .font(.title3)
                     
                     Text("Personal Records")
@@ -298,19 +294,19 @@ private struct PersonalRecordCardView: View {
                                     if record.maxWeight > 0 {
                                         Text("\(String(format: "%.0f", record.maxWeight)) kg")
                                             .font(.caption)
-                                            .foregroundStyle(.blue)
+                                            .foregroundStyle(AppTheme.turquoiseBoost)
                                     }
                                     
                                     if record.maxReps > 0 {
                                         Text("\(record.maxReps) Wdh.")
                                             .font(.caption)
-                                            .foregroundStyle(.green)
+                                            .foregroundStyle(AppTheme.mossGreen)
                                     }
                                     
                                     if record.bestEstimatedOneRepMax > 0 {
                                         Text("1RM: \(String(format: "%.0f", record.bestEstimatedOneRepMax)) kg")
                                             .font(.caption)
-                                            .foregroundStyle(.purple)
+                                            .foregroundStyle(AppTheme.deepBlue)
                                     }
                                 }
                             }
@@ -344,7 +340,7 @@ private struct PersonalRecordCardView: View {
         .padding(20)
         .background(
             LinearGradient(
-                colors: [.purple.opacity(0.1), .mossGreen.opacity(0.1)],
+                colors: [AppTheme.deepBlue.opacity(0.1), AppTheme.mossGreen.opacity(0.1)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -440,7 +436,7 @@ private struct WeeklyVolumeCardView: View {
                         HStack(spacing: 4) {
                             Image(systemName: percentageChange >= 0 ? "arrow.up" : "arrow.down")
                                 .font(.caption)
-                                .foregroundStyle(percentageChange >= 0 ? Color.mossGreen : .gray)
+                                .foregroundStyle(percentageChange >= 0 ? AppTheme.mossGreen : .gray)
                             Text("\(abs(percentageChange).formatted(.number.precision(.fractionLength(0))))% zur Vorwoche")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -454,7 +450,7 @@ private struct WeeklyVolumeCardView: View {
                 VStack(spacing: 2) {
                     ForEach(0..<7) { day in
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.mossGreen.opacity(Double.random(in: 0.3...1.0)))
+                            .fill(AppTheme.mossGreen.opacity(Double.random(in: 0.3...1.0)))
                             .frame(width: 6, height: CGFloat.random(in: 8...24))
                     }
                 }
@@ -555,20 +551,20 @@ private struct MuscleGroupBalanceCardView: View {
                 Spacer()
                 
                 Circle()
-                    .fill(muscleBalance.isBalanced ? Color.mossGreen : .gray)
+                    .fill(muscleBalance.isBalanced ? AppTheme.mossGreen : .gray)
                     .frame(width: 12, height: 12)
             }
             
             // Donut Chart (vereinfacht mit Balken)
             VStack(spacing: 8) {
-                balanceBar(title: "Push", ratio: muscleBalance.push, color: .purple)
-                balanceBar(title: "Pull", ratio: muscleBalance.pull, color: .mossGreen)
+                balanceBar(title: "Push", ratio: muscleBalance.push, color: AppTheme.deepBlue)
+                balanceBar(title: "Pull", ratio: muscleBalance.pull, color: AppTheme.mossGreen)
                 balanceBar(title: "Legs", ratio: muscleBalance.legs, color: .gray)
             }
             
             Text(muscleBalance.isBalanced ? "Ausgewogenes Training" : "Unausgewogen - mehr Varianz")
                 .font(.caption)
-                .foregroundStyle(muscleBalance.isBalanced ? Color.mossGreen : .gray)
+                .foregroundStyle(muscleBalance.isBalanced ? AppTheme.mossGreen : .gray)
         }
         .padding(20)
     }
@@ -714,7 +710,7 @@ private struct AverageWeightCardView: View {
     
     private func changeIndicator(change: Double) -> some View {
         let isPositive = change >= 0
-        let color = isPositive ? Color.mossGreen : Color.gray
+        let color = isPositive ? AppTheme.mossGreen : Color.gray
         let icon = isPositive ? "arrow.up" : "arrow.down"
         
         return HStack(spacing: 2) {
@@ -778,7 +774,7 @@ private struct SessionIntensityCardView: View {
                         .trim(from: 0, to: Double(latestSessionScore) / 100)
                         .stroke(
                             LinearGradient(
-                                colors: [.mossGreen, .purple, .gray, .gray],
+                                colors: [AppTheme.mossGreen, AppTheme.deepBlue, .gray, .gray],
                                 startPoint: .trailing,
                                 endPoint: .leading
                             ),
@@ -931,7 +927,7 @@ private struct ProgressOverviewCardView: View {
             }
 
             HStack(spacing: 12) {
-                statBox(title: "Gewicht", value: lastVolumeText, icon: "scalemass.fill", tint: .mossGreen)
+                statBox(title: "Gewicht", value: lastVolumeText, icon: "scalemass.fill", tint: AppTheme.mossGreen)
                 statBox(title: "Datum", value: lastDateText, icon: "calendar", tint: .gray)
                 statBox(title: "Übungen", value: lastExerciseCountText, icon: "list.bullet", tint: .gray)
             }
@@ -1098,7 +1094,7 @@ struct MostUsedExercisesView: View {
                     HStack {
                         Text("\(index + 1).")
                             .fontWeight(.semibold)
-                            .foregroundColor(.purple)
+                            .foregroundColor(AppTheme.deepBlue)
 
                         Text(exercise.name)
 
@@ -1222,7 +1218,7 @@ private struct DayStripView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Circle()
-                            .fill(Color.purple)
+                            .fill(AppTheme.deepBlue)
                             .frame(width: 6, height: 6)
                             .opacity(hasSession ? 1 : 0)
                     }
@@ -1331,14 +1327,14 @@ private struct CalendarSessionsView: View {
                                 ZStack {
                                     Circle()
                                         .fill(
-                                            isSelected ? Color.purple.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                            isSelected ? AppTheme.deepBlue.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
                                         )
                                         .frame(width: 36, height: 36)
                                     Text(String(cal.component(.day, from: day)))
                                         .font(.subheadline.weight(.medium))
                                 }
                                 Circle()
-                                    .fill(Color.purple)
+                                    .fill(AppTheme.deepBlue)
                                     .frame(width: 6, height: 6)
                                     .opacity(hasSession ? 1 : 0)
                             }
@@ -1565,7 +1561,7 @@ private struct LastWorkoutCardView: View {
                 HStack(spacing: 12) {
                     statBox(title: "Dauer", value: durationText, icon: "clock", tint: .gray)
                     statBox(title: "Übungen", value: exerciseCountText, icon: "list.bullet", tint: .gray)
-                    statBox(title: "Gewicht", value: totalVolumeText, icon: "scalemass.fill", tint: .mossGreen)
+                    statBox(title: "Gewicht", value: totalVolumeText, icon: "scalemass.fill", tint: AppTheme.mossGreen)
                     statBox(title: "Ø HF", value: avgHeartRateText, icon: "heart.fill", tint: .gray)
                 }
 
@@ -1597,7 +1593,7 @@ private struct LastWorkoutCardView: View {
                 // Mögliche Rekorde
                 HStack(spacing: 6) {
                     Image(systemName: potentialPRs.isEmpty ? "trophy" : "trophy.fill")
-                        .foregroundStyle(potentialPRs.isEmpty ? Color.secondary : Color.purple)
+                        .foregroundStyle(potentialPRs.isEmpty ? Color.secondary : AppTheme.deepBlue)
                     if potentialPRs.isEmpty {
                         Text("Keine neuen Rekorde erkannt")
                             .font(.caption)
@@ -1767,8 +1763,8 @@ struct HeartRateInsightsView: View {
                         // Stats
                         HStack(spacing: 12) {
                             heartRateStatBox(title: "Ø", value: Int(averageHeartRate), color: .gray)
-                            heartRateStatBox(title: "Max", value: Int(maxHeartRate), color: .purple)
-                            heartRateStatBox(title: "Min", value: Int(minHeartRate), color: .mossGreen)
+                            heartRateStatBox(title: "Max", value: Int(maxHeartRate), color: AppTheme.deepBlue)
+                            heartRateStatBox(title: "Min", value: Int(minHeartRate), color: AppTheme.mossGreen)
                         }
                         
                         // Compact Chart
@@ -1777,7 +1773,7 @@ struct HeartRateInsightsView: View {
                                 x: .value("Zeit", reading.timestamp),
                                 y: .value("Herzfrequenz", reading.heartRate)
                             )
-                            .foregroundStyle(.purple)
+                            .foregroundStyle(AppTheme.deepBlue)
                             .interpolationMethod(.cardinal)
                             
                             AreaMark(
@@ -1786,7 +1782,7 @@ struct HeartRateInsightsView: View {
                             )
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [.purple.opacity(0.3), .purple.opacity(0.1)],
+                                    colors: [AppTheme.deepBlue.opacity(0.3), AppTheme.deepBlue.opacity(0.1)],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 )
@@ -1999,12 +1995,12 @@ struct BodyMetricsInsightsView: View {
     
     enum WeightTrend {
         case increasing, decreasing, stable
-        
+
         var color: Color {
             switch self {
             case .increasing: return .gray
-            case .decreasing: return .mossGreen
-            case .stable: return .purple
+            case .decreasing: return AppTheme.mossGreen
+            case .stable: return AppTheme.deepBlue
             }
         }
         
@@ -2027,12 +2023,12 @@ struct BodyMetricsInsightsView: View {
     
     enum BodyFatTrend {
         case increasing, decreasing, stable
-        
+
         var color: Color {
             switch self {
             case .increasing: return .gray
-            case .decreasing: return .mossGreen
-            case .stable: return .purple
+            case .decreasing: return AppTheme.mossGreen
+            case .stable: return AppTheme.deepBlue
             }
         }
         
@@ -2148,7 +2144,7 @@ struct BodyMetricsInsightsView: View {
                                         x: .value("Datum", reading.date),
                                         y: .value("Gewicht", reading.weight)
                                     )
-                                    .foregroundStyle(Color.mossGreen)
+                                    .foregroundStyle(AppTheme.mossGreen)
                                     .interpolationMethod(.cardinal)
                                     
                                     AreaMark(
@@ -2157,7 +2153,7 @@ struct BodyMetricsInsightsView: View {
                                     )
                                     .foregroundStyle(
                                         LinearGradient(
-                                            colors: [.mossGreen.opacity(0.3), .mossGreen.opacity(0.1)],
+                                            colors: [AppTheme.mossGreen.opacity(0.3), AppTheme.mossGreen.opacity(0.1)],
                                             startPoint: .top,
                                             endPoint: .bottom
                                         )
@@ -2195,7 +2191,7 @@ struct BodyMetricsInsightsView: View {
                                         x: .value("Datum", reading.date),
                                         y: .value("Körperfett", reading.bodyFatPercentage * 100)
                                     )
-                                    .foregroundStyle(.purple)
+                                    .foregroundStyle(AppTheme.deepBlue)
                                     .interpolationMethod(.cardinal)
                                     
                                     AreaMark(
@@ -2204,7 +2200,7 @@ struct BodyMetricsInsightsView: View {
                                     )
                                     .foregroundStyle(
                                         LinearGradient(
-                                            colors: [.purple.opacity(0.3), .purple.opacity(0.1)],
+                                            colors: [AppTheme.deepBlue.opacity(0.3), AppTheme.deepBlue.opacity(0.1)],
                                             startPoint: .top,
                                             endPoint: .bottom
                                         )

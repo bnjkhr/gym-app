@@ -79,7 +79,7 @@ struct AddExerciseView: View {
                                 Image(systemName: "plus.circle.fill")
                                 Text("Schritt hinzufügen")
                             }
-                            .foregroundColor(.mossGreen)
+                            .foregroundColor(AppTheme.mossGreen)
                         }
                     }
                 }

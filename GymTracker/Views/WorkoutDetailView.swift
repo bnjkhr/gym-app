@@ -182,7 +182,7 @@ struct WorkoutDetailView: View {
                                         editingNotes = false
                                     }
                                     .buttonStyle(.borderedProminent)
-                                    .tint(Color.mossGreen)
+                                    .tint(AppTheme.mossGreen)
                                 }
                             }
                         } else {
@@ -205,7 +205,7 @@ struct WorkoutDetailView: View {
                                         Text(workout.notes.isEmpty ? "Notizen hinzufügen" : "Notizen bearbeiten")
                                     }
                                     .font(.caption)
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(AppTheme.turquoiseBoost)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -311,7 +311,7 @@ struct WorkoutDetailView: View {
                                 .padding(.vertical, 6)
                                 .background(
                                     Capsule()
-                                        .fill(selectedTab == tab ? Color.mossGreen : Color.clear)
+                                        .fill(selectedTab == tab ? AppTheme.mossGreen : Color.clear)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -452,7 +452,7 @@ struct WorkoutDetailView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .background(Color.orange, in: Capsule())
+                                .background(AppTheme.powerOrange, in: Capsule())
                         }
                         .buttonStyle(.plain)
                         
@@ -464,7 +464,7 @@ struct WorkoutDetailView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .background(Color.blue, in: Capsule())
+                                .background(AppTheme.turquoiseBoost, in: Capsule())
                         }
                         .buttonStyle(.plain)
                         
@@ -476,7 +476,7 @@ struct WorkoutDetailView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .background(Color.red, in: Capsule())
+                                .background(AppTheme.powerOrange, in: Capsule())
                         }
                         .buttonStyle(.plain)
                     } else {
@@ -488,7 +488,7 @@ struct WorkoutDetailView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .background(Color.green, in: Capsule())
+                                .background(AppTheme.mossGreen, in: Capsule())
                         }
                         .buttonStyle(.plain)
                         .disabled(activeRest.remainingSeconds == 0)
@@ -501,7 +501,7 @@ struct WorkoutDetailView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .background(Color.red, in: Capsule())
+                                .background(AppTheme.powerOrange, in: Capsule())
                         }
                         .buttonStyle(.plain)
                     }
@@ -573,7 +573,7 @@ struct WorkoutDetailView: View {
         }
         .accessibilityLabel("Satz hinzufügen")
         .buttonStyle(.bordered)
-        .tint(Color.mossGreen)
+        .tint(AppTheme.mossGreen)
     }
     
     @ViewBuilder
@@ -630,13 +630,13 @@ struct WorkoutDetailView: View {
                             showingCompletionConfirmation = false
                         }
                         .buttonStyle(.bordered)
-                        .tint(.red)
+                        .tint(AppTheme.powerOrange)
 
                         Button("Abschließen") {
                             finalizeCompletion()
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(Color.mossGreen)
+                        .tint(AppTheme.mossGreen)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -654,7 +654,7 @@ struct WorkoutDetailView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color.mossGreen)
+            .tint(AppTheme.mossGreen)
             .controlSize(.large)
         }
         .listRowBackground(Color.clear)
@@ -1324,15 +1324,15 @@ private struct WorkoutSetCard: View {
                 Button(action: onToggleCompletion) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(set.completed ? Color.white : Color.mossGreen)
+                        .foregroundStyle(set.completed ? Color.white : AppTheme.mossGreen)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
-                                .fill(set.completed ? Color.mossGreen : Color.mossGreen.opacity(0.15))
+                                .fill(set.completed ? AppTheme.mossGreen : AppTheme.mossGreen.opacity(0.15))
                         )
                         .overlay(
                             Circle()
-                                .stroke(Color.mossGreen, lineWidth: set.completed ? 0 : 1)
+                                .stroke(AppTheme.mossGreen, lineWidth: set.completed ? 0 : 1)
                         )
                         .accessibilityLabel(set.completed ? "Satz zurücksetzen" : "Satz abschließen")
                 }
@@ -1400,7 +1400,7 @@ private struct WorkoutSetCard: View {
                         showingRestEditor = false
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color.mossGreen)
+                    .tint(AppTheme.mossGreen)
                 }
                 .padding()
                 .toolbar {
@@ -1451,7 +1451,7 @@ private struct WorkoutCompletionSummaryView: View {
             VStack(spacing: 24) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 48))
-                    .foregroundStyle(Color.mossGreen)
+                    .foregroundStyle(AppTheme.mossGreen)
 
                 VStack(spacing: 12) {
                     Text(name)
@@ -1473,7 +1473,7 @@ private struct WorkoutCompletionSummaryView: View {
                     dismissAction()
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color.mossGreen)
+                .tint(AppTheme.mossGreen)
                 .frame(maxWidth: .infinity)
             }
             .padding(24)
@@ -1738,7 +1738,7 @@ private struct ActiveWorkoutExerciseView: View {
                         HStack(spacing: 4) {
                             ForEach(0..<totalExerciseCount, id: \.self) { index in
                                 Rectangle()
-                                    .fill(index <= currentExerciseIndex ? Color.mossGreen : Color(.systemGray4))
+                                    .fill(index <= currentExerciseIndex ? AppTheme.mossGreen : Color(.systemGray4))
                                     .frame(height: 4)
                                     .cornerRadius(2)
                                     .animation(.easeInOut(duration: 0.2), value: currentExerciseIndex)
@@ -1846,7 +1846,7 @@ private struct ActiveWorkoutExerciseView: View {
                         .foregroundStyle(.white)
                         .padding(.vertical, 16)
                         .frame(maxWidth: .infinity)
-                        .background(Color.mossGreen, in: RoundedRectangle(cornerRadius: 12))
+                        .background(AppTheme.mossGreen, in: RoundedRectangle(cornerRadius: 12))
                     }
                     .padding(20)
                 }
@@ -1879,8 +1879,8 @@ private struct ExerciseHeaderCard: View {
                                 .font(.caption)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.mossGreen.opacity(0.1), in: Capsule())
-                                .foregroundStyle(Color.mossGreen)
+                                .background(AppTheme.mossGreen.opacity(0.1), in: Capsule())
+                                .foregroundStyle(AppTheme.mossGreen)
                         }
                     }
                     .padding(.horizontal, 1)
@@ -2035,7 +2035,7 @@ private struct ActiveWorkoutSetCard: View {
                             .fontWeight(.bold)
                             .foregroundStyle(.white)
                             .frame(width: 44, height: 44)
-                            .background(Color.mossGreen, in: Circle())
+                            .background(AppTheme.mossGreen, in: Circle())
                     } else {
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
@@ -2043,13 +2043,13 @@ private struct ActiveWorkoutSetCard: View {
                             Text("Abschließen")
                                 .fontWeight(.semibold)
                         }
-                        .foregroundStyle(Color.mossGreen)
+                        .foregroundStyle(AppTheme.mossGreen)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                        .background(Color.mossGreen.opacity(0.1), in: Capsule())
+                        .background(AppTheme.mossGreen.opacity(0.1), in: Capsule())
                         .overlay(
                             Capsule()
-                                .stroke(Color.mossGreen, lineWidth: 1)
+                                .stroke(AppTheme.mossGreen, lineWidth: 1)
                         )
                     }
                 }
@@ -2127,7 +2127,7 @@ private struct ActiveWorkoutSetCard: View {
                         showingRestEditor = false
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color.mossGreen)
+                    .tint(AppTheme.mossGreen)
                 }
                 .padding()
                 .toolbar {
@@ -2192,7 +2192,7 @@ private struct ActiveWorkoutCompletionView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "flag.checkered")
                         .font(.system(size: 48))
-                        .foregroundStyle(Color.mossGreen)
+                        .foregroundStyle(AppTheme.mossGreen)
                     
                     Text("Workout abschließen")
                         .font(.title)
@@ -2240,7 +2240,7 @@ private struct ActiveWorkoutCompletionView: View {
                                 completeAction()
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(Color.mossGreen)
+                            .tint(AppTheme.mossGreen)
                             .frame(maxWidth: .infinity)
                         }
                     }
@@ -2264,8 +2264,8 @@ private struct ActiveWorkoutCompletionView: View {
                         .foregroundStyle(.white)
                         .padding(.vertical, 20)
                         .frame(maxWidth: .infinity)
-                        .background(Color.mossGreen, in: RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: Color.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .background(AppTheme.mossGreen, in: RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: AppTheme.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(.plain)
                 }
@@ -2364,7 +2364,7 @@ private struct RestTimerOverlay: View {
                                     .foregroundStyle(.white)
                             }
                             .frame(width: 36, height: 36)
-                            .background(Color.green.opacity(0.8), in: Circle())
+                            .background(AppTheme.mossGreen.opacity(0.8), in: Circle())
                             .disabled(activeRest.remainingSeconds == 0)
                         }
                         
@@ -2374,7 +2374,7 @@ private struct RestTimerOverlay: View {
                                 .foregroundStyle(.white)
                         }
                         .frame(width: 36, height: 36)
-                        .background(Color.red.opacity(0.8), in: Circle())
+                        .background(AppTheme.powerOrange.opacity(0.8), in: Circle())
                     }
                 }
                 
@@ -2393,8 +2393,8 @@ private struct RestTimerOverlay: View {
             .background(
                 LinearGradient(
                     colors: [
-                        Color.purple.opacity(0.9),
-                        Color.purple.opacity(0.8),
+                        AppTheme.deepBlue.opacity(0.9),
+                        AppTheme.deepBlue.opacity(0.8),
                         Color.indigo.opacity(0.8)
                     ],
                     startPoint: .topLeading,
@@ -2413,7 +2413,7 @@ private struct RestTimerOverlay: View {
                         lineWidth: 1
                     )
             )
-            .shadow(color: .purple.opacity(0.4), radius: 12, x: 0, y: 6)
+            .shadow(color: AppTheme.deepBlue.opacity(0.4), radius: 12, x: 0, y: 6)
             .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
@@ -2452,7 +2452,7 @@ private struct AutoAdvanceIndicator: View {
                     Image(systemName: "arrow.right")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(Color.mossGreen)
+                        .foregroundStyle(AppTheme.mossGreen)
                         .scaleEffect(1.2)
                         .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: true)
                     

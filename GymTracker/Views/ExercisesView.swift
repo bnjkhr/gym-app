@@ -309,7 +309,7 @@ struct LiquidGlassSearchBar: View {
                         // Badge for active filters
                         if hasActiveFilters {
                             Circle()
-                                .fill(Color.red)
+                                .fill(AppTheme.powerOrange)
                                 .frame(width: 8, height: 8)
                                 .offset(x: 10, y: -10)
                         }
@@ -365,7 +365,7 @@ struct FilterSheet: View {
                                 selectedGroups.removeAll()
                             }
                         }
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppTheme.powerOrange)
                     }
                 }
                 
@@ -409,7 +409,7 @@ struct FilterSheet: View {
                                 selectedEquipment.removeAll()
                             }
                         }
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppTheme.powerOrange)
                     }
                 }
             }

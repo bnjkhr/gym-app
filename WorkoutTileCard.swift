@@ -77,7 +77,7 @@ struct WorkoutTileCard: View {
                     Button(action: onToggleHome) {
                         Image(systemName: isHomeFavorite ? "house.fill" : "house")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(isHomeFavorite ? .blue : .secondary)
+                            .foregroundStyle(isHomeFavorite ? AppTheme.turquoiseBoost : .secondary)
                     }
                     .buttonStyle(.plain)
                 }

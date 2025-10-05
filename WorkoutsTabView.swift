@@ -319,15 +319,15 @@ struct WorkoutsTabView: View {
                 Spacer()
                 Image(systemName: "bolt.badge.a.fill")
                     .font(.title2)
-                    .foregroundColor(colorScheme == .dark ? Color.green : Color.mossGreen)
+                    .foregroundColor(AppTheme.mossGreen)
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.1))
+                    .fill((AppTheme.mossGreen).opacity(0.1))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke((colorScheme == .dark ? Color.green : Color.mossGreen).opacity(0.3), lineWidth: 1)
+                            .stroke((AppTheme.mossGreen).opacity(0.3), lineWidth: 1)
                     )
             )
         }

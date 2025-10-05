@@ -30,7 +30,7 @@ struct WorkoutWizardView: View {
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "person.crop.circle.badge.check")
                             .font(.title3)
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppTheme.turquoiseBoost)
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Aus Profil vorausgefüllt")
                                 .font(.subheadline).fontWeight(.semibold)
@@ -43,10 +43,10 @@ struct WorkoutWizardView: View {
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.blue.opacity(0.08))
+                            .fill(AppTheme.turquoiseBoost.opacity(0.08))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                                    .stroke(AppTheme.turquoiseBoost.opacity(0.25), lineWidth: 1)
                             )
                     )
                     .padding(.horizontal)
@@ -68,7 +68,7 @@ struct WorkoutWizardView: View {
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color.mossGreen)
+                    .tint(AppTheme.mossGreen)
                     .padding(.horizontal)
                 }
 
@@ -90,7 +90,7 @@ struct WorkoutWizardView: View {
                             }
                         }
                         .buttonStyle(.bordered)
-                        .tint(Color.mossGreen)
+                        .tint(AppTheme.mossGreen)
                     }
 
                     Spacer()
@@ -102,7 +102,7 @@ struct WorkoutWizardView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(Color.mossGreen)
+                        .tint(AppTheme.mossGreen)
                     } else {
                         Button(action: generateWorkout) {
                             if isGenerating {
@@ -114,7 +114,7 @@ struct WorkoutWizardView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(Color.mossGreen)
+                        .tint(AppTheme.mossGreen)
                         .disabled(isGenerating)
                     }
                 }

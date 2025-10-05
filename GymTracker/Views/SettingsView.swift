@@ -189,7 +189,7 @@ struct SettingsView: View {
                                     .font(.subheadline)
                                 Text(workoutStore.healthKitManager.isAuthorized ? "Aktiviert" : "Nicht aktiviert")
                                     .font(.caption)
-                                    .foregroundColor(workoutStore.healthKitManager.isAuthorized ? .green : .secondary)
+                                    .foregroundColor(workoutStore.healthKitManager.isAuthorized ? AppTheme.mossGreen : .secondary)
                             }
                             
                             Spacer()
@@ -260,7 +260,7 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.red)
+                        .background(AppTheme.powerOrange)
                         .cornerRadius(10)
                     }
                     .buttonStyle(.plain)
