@@ -60,7 +60,12 @@ struct GymTrackerApp: App {
                     // SCHRITT 1: Analysiere Sample-Workout Systeme für Migration
                     SampleWorkoutMigrationHelper.compareWorkoutSystems(context: context)
 
-                    // 🌱 Prüfe ob Übungen bereits existieren
+                    // 🔄 SCHRITT 2: Exercise-Migration (alte Übungen → CSV-Übungen)
+                    if await ExerciseDatabaseMigration.isMigrationNeeded() {
+                        await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
+                    }
+
+                    // 🌱 SCHRITT 3: Falls Datenbank leer, initiales Seeding durchführen
                     do {
                         let descriptor = FetchDescriptor<ExerciseEntity>()
                         let existingExercises = try context.fetch(descriptor)

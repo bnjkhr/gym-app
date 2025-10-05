@@ -85,6 +85,7 @@
 		ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */; };
 		ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */; };
 		ADF1AA712E93173400DBDAFA /* exercises.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AA702E93173400DBDAFA /* exercises.csv */; };
+		ADF1AA732E931A5700DBDAFA /* ExerciseDatabaseMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
@@ -195,6 +196,7 @@
 		ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMarkdownParser.swift; sourceTree = "<group>"; };
 		ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsTabView.swift; sourceTree = "<group>"; };
 		ADF1AA702E93173400DBDAFA /* exercises.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = exercises.csv; sourceTree = "<group>"; };
+		ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDatabaseMigration.swift; sourceTree = SOURCE_ROOT; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecord.swift; sourceTree = "<group>"; };
 		ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordMigration.swift; sourceTree = "<group>"; };
@@ -271,6 +273,7 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */,
 				ADF1AA702E93173400DBDAFA /* exercises.csv */,
 				ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */,
 				AD52FECE2E8B32640048DF0F /* SwiftDataEntities.swift */,
@@ -535,6 +538,7 @@
 				AD52FECF2E8B32640048DF0F /* SwiftDataEntities.swift in Sources */,
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,
 				11E748F02C9E4B0F00AB1234 /* GymTrackerApp.swift in Sources */,
+				ADF1AA732E931A5700DBDAFA /* ExerciseDatabaseMigration.swift in Sources */,
 				AD4402D12E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift in Sources */,
 				ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */,
 				AD4402CD2E906E81001FC101 /* ExerciseLastUsedMigration.swift in Sources */,

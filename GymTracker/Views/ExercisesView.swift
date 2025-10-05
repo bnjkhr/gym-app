@@ -75,28 +75,42 @@ struct ExercisesView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                // Exercise list
-                LazyVStack(spacing: 8) {
-                    ForEach(filteredExercises) { exercise in
-                        Button {
-                            editingExercise = exercise
-                        } label: {
-                            ExerciseRowView(exercise: exercise)
-                                .appEdgePadding()
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                requestDeletion(for: [exercise])
+        VStack(spacing: 0) {
+            // Übungsanzahl Header
+            HStack {
+                Text("\(sourceExercises.count) Übungen hinterlegt")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            // Bestehende ScrollView
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    // Exercise list
+                    LazyVStack(spacing: 8) {
+                        ForEach(filteredExercises) { exercise in
+                            Button {
+                                editingExercise = exercise
                             } label: {
-                                Label("Löschen", systemImage: "trash")
+                                ExerciseRowView(exercise: exercise)
+                                    .appEdgePadding()
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    requestDeletion(for: [exercise])
+                                } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
                             }
                         }
                     }
+                    .padding(.bottom, 100) // Space for search bar
                 }
-                .padding(.bottom, 100) // Space for search bar
             }
         }
         .safeAreaInset(edge: .bottom) {
