@@ -64,6 +64,7 @@
 		AD52FEDF2E8BCBD40048DF0F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD52FEDE2E8BCBD40048DF0F /* SwiftUI.framework */; };
 		AD52FEF02E8BCBD50048DF0F /* WorkoutWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AD52FEDA2E8BCBD40048DF0F /* WorkoutWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AD52FEF62E8BCC6B0048DF0F /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E7491B2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift */; };
+		AD59CF992E92E64F004A9D14 /* WorkoutTileCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */; };
 		AD90F2C42E845AFD003D4DE9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C32E845AFD003D4DE9 /* Theme.swift */; };
 		AD90F2C62E845B05003D4DE9 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD90F2C52E845B05003D4DE9 /* StartView.swift */; };
 		AD960EA02E8BF83200E91131 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD960E9F2E8BF83200E91131 /* DataManager.swift */; };
@@ -168,6 +169,7 @@
 		AD52FEDC2E8BCBD40048DF0F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		AD52FEDE2E8BCBD40048DF0F /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		AD52FEF82E8BD0DB0048DF0F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTileCard.swift; sourceTree = "<group>"; };
 		AD90F2C32E845AFD003D4DE9 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		AD90F2C52E845B05003D4DE9 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		AD960E9F2E8BF83200E91131 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
@@ -242,6 +244,7 @@
 				AD4402CE2E906EA2001FC101 /* ExerciseLastUsedViews.swift */,
 				AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */,
 				ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */,
+				AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -549,6 +552,7 @@
 				11E7492C2C9E4E1000AB1234 /* WorkoutWizardView.swift in Sources */,
 				ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */,
 				11E749322C9E4E8A00AB1234 /* WizardSelectionStepView.swift in Sources */,
+				AD59CF992E92E64F004A9D14 /* WorkoutTileCard.swift in Sources */,
 				AD52FED12E8B361F0048DF0F /* LegacyModels.swift in Sources */,
 				11E7492E2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift in Sources */,
 			);

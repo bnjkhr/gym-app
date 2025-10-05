@@ -22,6 +22,7 @@ struct WorkoutsTabView: View {
     @State private var workoutToDelete: Workout?
     @State private var quickGeneratedWorkout: Workout?
     @State private var quickWorkoutName: String = ""
+    @State private var showingHomeLimitAlert = false
     
     private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout? {
         return Workout(entity: entity, in: modelContext)
@@ -39,21 +40,6 @@ struct WorkoutsTabView: View {
                 
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 20) {
-                        // Add workout section
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Neues Workout erstellen")
-                                    .font(.headline)
-                                Spacer()
-                            }
-                            
-                            VStack(spacing: 12) {
-                                createWorkoutAssistantButton()
-                                createManualWorkoutButton()
-                                createQuickWorkoutButton()
-                            }
-                        }
-                        
                         // Workouts list section
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
@@ -85,11 +71,12 @@ struct WorkoutsTabView: View {
                                     spacing: 12
                                 ) {
                                     ForEach(displayWorkouts, id: \.id) { workout in
-                                        WorkoutTileWithMenu(
+                                        WorkoutTileCard(
                                             workout: workout,
-                                            onStart: { startWorkout(with: workout.id) },
-                                            onEdit: { editWorkout(id: workout.id) },
-                                            onDelete: { workoutToDelete = workout }
+                                            isHomeFavorite: workout.isFavorite,
+                                            onTap: { startWorkout(with: workout.id) },
+                                            onShowMenu: { editWorkout(id: workout.id) },
+                                            onToggleHome: { toggleHomeFavorite(workoutID: workout.id) }
                                         )
                                     }
                                 }
@@ -101,6 +88,17 @@ struct WorkoutsTabView: View {
             }
             .navigationTitle("Workouts")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAddWorkout = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .fontWeight(.medium)
+                    }
+                }
+            }
             .sheet(isPresented: $showingAddWorkout) {
                 createAddWorkoutSheet()
             }
@@ -180,6 +178,11 @@ struct WorkoutsTabView: View {
                 Button("Abbrechen", role: .cancel) {}
             } message: {
                 Text("Damit wir dein 1‑Klick‑Workout optimal erstellen können.")
+            }
+            .alert("Home-Favoriten voll", isPresented: $showingHomeLimitAlert) {
+                Button("Verstanden") { }
+            } message: {
+                Text("Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen.")
             }
         }
         .onAppear {
@@ -381,6 +384,17 @@ struct WorkoutsTabView: View {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
+    }
+    
+    private func toggleHomeFavorite(workoutID: UUID) {
+        let success = workoutStore.toggleHomeFavorite(workoutID: workoutID)
+        if !success {
+            showingHomeLimitAlert = true
+        } else {
+            // Force a UI refresh by saving the context
+            // SwiftData @Query should automatically update the UI
+            try? modelContext.save()
+        }
     }
 }
 
