@@ -110,6 +110,22 @@ class WorkoutStore: ObservableObject {
             return nil
         }
     }
+    
+    var homeWorkouts: [Workout] {
+        guard let context = modelContext else { return [] }
+        
+        do {
+            let descriptor = FetchDescriptor<WorkoutEntity>(
+                predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true },
+                sortBy: [SortDescriptor(\.name)]
+            )
+            let entities = try context.fetch(descriptor)
+            return entities.map { mapWorkoutEntity($0) }
+        } catch {
+            print("❌ Fehler beim Laden der Home-Favoriten: \(error)")
+            return []
+        }
+    }
 
     var userProfile: UserProfile {
         guard let context = modelContext else { 
@@ -321,8 +337,21 @@ class WorkoutStore: ObservableObject {
         let entities = (try? context.fetch(descriptor)) ?? []
         return entities.map { WorkoutSession(entity: $0) }
     }
-
-
+    
+    private func getHomeFavoritesCount() -> Int {
+        guard let context = modelContext else { return 0 }
+        
+        do {
+            let descriptor = FetchDescriptor<WorkoutEntity>(
+                predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true }
+            )
+            let entities = try context.fetch(descriptor)
+            return entities.count
+        } catch {
+            print("❌ Fehler beim Zählen der Home-Favoriten: \(error)")
+            return 0
+        }
+    }
 
     func addExercise(_ exercise: Exercise) {
         guard let context = modelContext else { return }
@@ -836,6 +865,39 @@ class WorkoutStore: ObservableObject {
         guard let entity = try? context.fetch(descriptor).first else { return }
         entity.isFavorite.toggle()
         try? context.save()
+    }
+    
+    func toggleHomeFavorite(workoutID: UUID) -> Bool {
+        guard let context = modelContext else { return false }
+        
+        let descriptor = FetchDescriptor<WorkoutEntity>(
+            predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
+        )
+        
+        guard let entity = try? context.fetch(descriptor).first else { return false }
+        
+        // Check if we're trying to add to home favorites
+        if !entity.isFavorite {
+            // Adding to favorites - check 4-workout limit
+            let currentCount = getHomeFavoritesCount()
+            if currentCount >= 4 {
+                print("⚠️ Home-Favoriten Limit erreicht: \(currentCount)/4")
+                return false
+            }
+        }
+        
+        // Toggle the favorite status
+        entity.isFavorite.toggle()
+        
+        do {
+            try context.save()
+            let action = entity.isFavorite ? "hinzugefügt" : "entfernt"
+            print("✅ Home-Favorit für Workout '\(entity.name)' \(action)")
+            return true
+        } catch {
+            print("❌ Fehler beim Speichern des Home-Favoriten: \(error)")
+            return false
+        }
     }
 
     // MARK: - Zentrale Rest-Timer Steuerung
