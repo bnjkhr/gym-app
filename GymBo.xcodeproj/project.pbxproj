@@ -74,6 +74,7 @@
 		ADAA5A312E8D32EE00549B47 /* SoundTroubleshooting.md in Resources */ = {isa = PBXBuildFile; fileRef = ADAA5A302E8D32EE00549B47 /* SoundTroubleshooting.md */; };
 		ADAA5A332E8D36AF00549B47 /* BackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAA5A322E8D36AF00549B47 /* BackupManager.swift */; };
 		ADAA5A352E8D36D900549B47 /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAA5A342E8D36D900549B47 /* BackupView.swift */; };
+		ADBC057D2E93052100A44A84 /* DebugTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADBC057C2E93052100A44A84 /* DebugTestHelper.swift */; };
 		ADD080512E8C790D003FAAFB /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080502E8C790D003FAAFB /* AudioManager.swift */; };
 		ADD080532E8C7A06003FAAFB /* NotificationSoundExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080522E8C7A06003FAAFB /* NotificationSoundExample.swift */; };
 		ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */; };
@@ -180,6 +181,7 @@
 		ADAA5A302E8D32EE00549B47 /* SoundTroubleshooting.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SoundTroubleshooting.md; sourceTree = "<group>"; };
 		ADAA5A322E8D36AF00549B47 /* BackupManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupManager.swift; sourceTree = "<group>"; };
 		ADAA5A342E8D36D900549B47 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
+		ADBC057C2E93052100A44A84 /* DebugTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugTestHelper.swift; sourceTree = "<group>"; };
 		ADCACAE72E8BDA210039256B /* GymBo-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GymBo-Info.plist"; sourceTree = "<group>"; };
 		ADD080502E8C790D003FAAFB /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
 		ADD080522E8C7A06003FAAFB /* NotificationSoundExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSoundExample.swift; sourceTree = "<group>"; };
@@ -248,6 +250,7 @@
 				ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */,
 				AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */,
 				ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */,
+				ADBC057C2E93052100A44A84 /* DebugTestHelper.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -502,6 +505,7 @@
 				AD2568DD2E904916009BE060 /* ExerciseRecordMigration.swift in Sources */,
 				3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */,
 				AD363DA52E8C713F0015A34D /* KeyboardDismissalUtilities.swift in Sources */,
+				ADBC057D2E93052100A44A84 /* DebugTestHelper.swift in Sources */,
 				ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */,
 				AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */,
 				7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */,

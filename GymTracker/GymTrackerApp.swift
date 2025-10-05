@@ -57,13 +57,14 @@ struct GymTrackerApp: App {
                 .task {
                     let context = sharedModelContainer.mainContext
                     
-                    // Debug database state at startup
-                    DataManager.shared.debugDatabaseState(context: context)
+                    print("✅ PROBLEM IDENTIFIZIERT UND BEHOBEN - Seeding wieder aktiviert")
+                    print("   Das Problem waren irreführende Log-Meldungen, nicht die Ensure-Logik")
                     
+                    // Seeding wieder aktiviert mit korrekten Meldungen
                     // 🌱 Initial seed: Übungen nur beim ersten App-Start laden
                     ExerciseSeeder.ensureExercisesExist(context: context)
                     
-                    // 💪 Initial seed: Beispiel-Workouts nur beim ersten App-Start laden
+                    // 💪 Initial seed: Beispiel-Workouts nur beim ersten App-Start laden  
                     ExerciseSeeder.ensureSampleWorkoutsExist(context: context)
                     
                     // 🏆 Migration: ExerciseRecords aus bestehenden Sessions generieren
@@ -73,9 +74,6 @@ struct GymTrackerApp: App {
                     
                     // 📊 Migration: Last-Used Daten für bessere UX
                     await ExerciseLastUsedMigration.performInitialMigration(context: context)
-                    
-                    // Debug again after ensuring exercises exist
-                    DataManager.shared.debugDatabaseState(context: context)
                     
                     // Wait a bit for app to fully initialize before testing Live Activities
                     try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds

@@ -7,14 +7,15 @@ struct ExerciseSeeder {
     /// This prevents the invalidation issues caused by repeated purging
     static func ensureExercisesExist(context: ModelContext) {
         do {
-            let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            let descriptor = FetchDescriptor<ExerciseEntity>()
+            let existingExercises = try context.fetch(descriptor)
             
             if !existingExercises.isEmpty {
                 print("📚 \(existingExercises.count) Übungen bereits vorhanden - keine neue Erstellung nötig")
                 return
             }
             
-            print("🌱 Erstelle ca. 100 realistische Beispiel-Übungen...")
+            print("🌱 Datenbank ist leer - erstelle ca. 130 realistische Beispiel-Übungen...")
             let sampleExercises = createRealisticExercises()
             
             for exercise in sampleExercises {
@@ -23,7 +24,7 @@ struct ExerciseSeeder {
             }
             
             try context.save()
-            print("✅ \(sampleExercises.count) Übungen erfolgreich erstellt")
+            print("✅ \(sampleExercises.count) Übungen erfolgreich erstellt (erstmaliger App-Start)")
             
         } catch {
             print("❌ Fehler beim Erstellen der Übungen: \(error)")
@@ -34,7 +35,8 @@ struct ExerciseSeeder {
     /// Creates 4 example workouts: 2 machine-based, 2 free weights
     static func ensureSampleWorkoutsExist(context: ModelContext) {
         do {
-            let existingWorkouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
+            let descriptor = FetchDescriptor<WorkoutEntity>()
+            let existingWorkouts = try context.fetch(descriptor)
             
             if !existingWorkouts.isEmpty {
                 print("💪 \(existingWorkouts.count) Workouts bereits vorhanden - keine neuen Beispiel-Workouts nötig")
@@ -42,13 +44,15 @@ struct ExerciseSeeder {
             }
             
             // First make sure exercises exist
-            let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            let exerciseDescriptor = FetchDescriptor<ExerciseEntity>()
+            let exercises = try context.fetch(exerciseDescriptor)
+            
             if exercises.isEmpty {
                 print("⚠️ Keine Übungen vorhanden - kann keine Beispiel-Workouts erstellen")
                 return
             }
             
-            print("🏋️ Erstelle 4 Beispiel-Workouts...")
+            print("🏋️ Erstelle 4 Beispiel-Workouts für den ersten App-Start...")
             let sampleWorkouts = createSampleWorkouts(availableExercises: exercises)
             
             for workout in sampleWorkouts {
@@ -63,7 +67,7 @@ struct ExerciseSeeder {
             }
             
             try context.save()
-            print("✅ \(sampleWorkouts.count) Beispiel-Workouts erfolgreich erstellt")
+            print("✅ \(sampleWorkouts.count) Beispiel-Workouts erfolgreich erstellt (erstmaliger App-Start)")
             
         } catch {
             print("❌ Fehler beim Erstellen der Beispiel-Workouts: \(error)")
@@ -645,6 +649,86 @@ struct ExerciseSeeder {
             Exercise(name: "Schlitten schieben", muscleGroups: [.legs, .glutes, .shoulders], equipmentType: .freeWeights, description: "Schlitten schieben", instructions: ["Hände am Schlitten", "Vorwärts schieben", "Kurze explosive Schritte"]),
             Exercise(name: "Schlitten ziehen", muscleGroups: [.back, .legs, .biceps], equipmentType: .freeWeights, description: "Schlitten ziehen", instructions: ["Seil oder Griff", "Rückwärts gehen und ziehen", "Körper aufrecht"]),
         ]
+    }
+    
+    // MARK: - Debug Methods
+    
+    /// DEBUG: Teste die Ensure-Logik ohne tatsächliche Datenerstellung
+    static func debugEnsureLogic(context: ModelContext) {
+        print("🔍 DEBUG: Teste Ensure-Logik...")
+        
+        do {
+            // Test Exercise Fetch
+            let exerciseDescriptor = FetchDescriptor<ExerciseEntity>()
+            let existingExercises = try context.fetch(exerciseDescriptor)
+            print("🔍 DEBUG: Übungen gefunden: \(existingExercises.count)")
+            
+            // Test Workout Fetch
+            let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
+            let existingWorkouts = try context.fetch(workoutDescriptor)
+            print("🔍 DEBUG: Workouts gefunden: \(existingWorkouts.count)")
+            
+            // Test if databases are considered empty
+            let exercisesEmpty = existingExercises.isEmpty
+            let workoutsEmpty = existingWorkouts.isEmpty
+            
+            print("🔍 DEBUG: Übungen leer: \(exercisesEmpty)")
+            print("🔍 DEBUG: Workouts leer: \(workoutsEmpty)")
+            
+            // Show what would happen
+            if exercisesEmpty {
+                print("⚠️ DEBUG: ensureExercisesExist() würde neue Übungen erstellen!")
+            } else {
+                print("✅ DEBUG: ensureExercisesExist() würde KEINE neuen Übungen erstellen")
+            }
+            
+            if workoutsEmpty {
+                print("⚠️ DEBUG: ensureSampleWorkoutsExist() würde neue Workouts erstellen!")
+            } else {
+                print("✅ DEBUG: ensureSampleWorkoutsExist() würde KEINE neuen Workouts erstellen")
+            }
+            
+        } catch {
+            print("❌ DEBUG: Fehler beim Testen der Ensure-Logik: \(error)")
+        }
+    }
+    
+    /// DEBUG: Zeige detaillierte Informationen über den aktuellen Datenbankzustand
+    static func debugDatabaseContent(context: ModelContext) {
+        print("🔍 DEBUG: Detaillierte Datenbank-Analyse...")
+        
+        do {
+            // Übungen analysieren
+            let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            print("📚 Übungen: \(exercises.count)")
+            if !exercises.isEmpty {
+                print("  Erste 3 Übungen:")
+                for (i, exercise) in exercises.prefix(3).enumerated() {
+                    print("    \(i+1). ID: \(exercise.id), Name: '\(exercise.name)'")
+                }
+            }
+            
+            // Workouts analysieren
+            let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
+            print("💪 Workouts: \(workouts.count)")
+            if !workouts.isEmpty {
+                print("  Alle Workouts:")
+                for (i, workout) in workouts.enumerated() {
+                    print("    \(i+1). ID: \(workout.id), Name: '\(workout.name)'")
+                }
+            }
+            
+            // Sessions analysieren
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            print("🏃 Sessions: \(sessions.count)")
+            
+            // Records analysieren
+            let records = try context.fetch(FetchDescriptor<ExerciseRecordEntity>())
+            print("🏆 Records: \(records.count)")
+            
+        } catch {
+            print("❌ DEBUG: Fehler bei Datenbank-Analyse: \(error)")
+        }
     }
 }
 
