@@ -159,6 +159,7 @@ struct WorkoutsHomeView: View {
 
     // Neu: Zustand für Löschbestätigung
     @State private var workoutToDelete: Workout?
+    @State private var showingHomeLimitAlert = false
 
     @State private var headerHidden: Bool = false
     @State private var lastScrollOffset: CGFloat = 0
@@ -240,6 +241,10 @@ struct WorkoutsHomeView: View {
     private var sortedWorkouts: [Workout] {
         displayWorkouts
     }
+    
+    private var favoritedWorkouts: [Workout] {
+        displayWorkouts.filter { $0.isFavorite }
+    }
 
     // Precomputed helpers to reduce type-checking complexity
     private var highlightSession: WorkoutSession? {
@@ -260,7 +265,7 @@ struct WorkoutsHomeView: View {
                     
                     highlightSection(highlightSession: highlightSession)
                     
-                    savedWorkoutsSection(storedRoutines: storedRoutines)
+                    favoriteWorkoutsSection(favoritedWorkouts: favoritedWorkouts)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -449,6 +454,11 @@ struct WorkoutsHomeView: View {
             } message: { name in
                 Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
             }
+            .alert("Home-Favoriten voll", isPresented: $showingHomeLimitAlert) {
+                Button("Verstanden") { }
+            } message: {
+                Text("Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen.")
+            }
     }
     
     @ViewBuilder
@@ -513,6 +523,44 @@ struct WorkoutsHomeView: View {
                 .buttonStyle(.plain)
             } else {
                 EmptyStateCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func favoriteWorkoutsSection(favoritedWorkouts: [Workout]) -> some View {
+        Group {
+            if favoritedWorkouts.isEmpty {
+                VStack(spacing: 12) {
+                    Text("Keine Favoriten")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    
+                    Text("Markiere Workouts im Workouts-Tab als Favoriten, um sie hier zu sehen")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ],
+                    spacing: 12
+                ) {
+                    ForEach(favoritedWorkouts, id: \.id) { workout in
+                        WorkoutTileCard(
+                            workout: workout,
+                            isHomeFavorite: workout.isFavorite,
+                            onTap: { startWorkout(with: workout.id) },
+                            onShowMenu: { editWorkout(id: workout.id) },
+                            onToggleHome: { toggleHomeFavorite(workoutID: workout.id) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -646,6 +694,17 @@ struct WorkoutsHomeView: View {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
+    }
+    
+    private func toggleHomeFavorite(workoutID: UUID) {
+        let success = workoutStore.toggleHomeFavorite(workoutID: workoutID)
+        if !success {
+            showingHomeLimitAlert = true
+        } else {
+            // Force a UI refresh by saving the context
+            // SwiftData @Query should automatically update the UI
+            try? modelContext.save()
+        }
     }
 }
 
