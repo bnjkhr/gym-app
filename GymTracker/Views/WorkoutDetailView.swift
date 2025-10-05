@@ -19,6 +19,23 @@ extension MuscleGroup {
         case .glutes: return "Gesäß"
         case .abs: return "Bauch"
         case .cardio: return "Cardio"
+        case .forearms: return "Unterarme"
+        case .calves: return "Waden"
+        case .trapezius: return "Trapezmuskel"
+        case .lowerBack: return "Unterer Rücken"
+        case .upperBack: return "Oberer Rücken"
+        case .fullBody: return "Ganzkörper"
+        case .hips: return "Hüfte"
+        case .core: return "Rumpf"
+        case .hamstrings: return "Beinbeuger"
+        case .lats: return "Latissimus"
+        case .grip: return "Griffkraft"
+        case .arms: return "Arme"
+        case .adductors: return "Adduktoren"
+        case .obliques: return "Schräge Bauchmuskeln"
+        case .hipFlexors: return "Hüftbeuger"
+        case .traps: return "Trapez"
+        case .coordination: return "Koordination"
         }
     }
 }

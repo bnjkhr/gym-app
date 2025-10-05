@@ -246,21 +246,6 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
                 
-                // Beispielworkouts laden
-                VStack(alignment: .leading, spacing: 12) {
-                    Button {
-                        workoutStore.resetToSampleData()
-                        showAlert(message: "Beispielworkouts geladen!")
-                    } label: {
-                        Label("Beispielworkouts laden", systemImage: "arrow.clockwise")
-                            .foregroundColor(.orange)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                
                 // App zurücksetzen (ganz unten)
                 VStack(alignment: .leading, spacing: 12) {
                     Button {

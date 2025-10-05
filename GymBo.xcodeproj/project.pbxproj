@@ -74,6 +74,7 @@
 		ADAA5A312E8D32EE00549B47 /* SoundTroubleshooting.md in Resources */ = {isa = PBXBuildFile; fileRef = ADAA5A302E8D32EE00549B47 /* SoundTroubleshooting.md */; };
 		ADAA5A332E8D36AF00549B47 /* BackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAA5A322E8D36AF00549B47 /* BackupManager.swift */; };
 		ADAA5A352E8D36D900549B47 /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAA5A342E8D36D900549B47 /* BackupView.swift */; };
+		ADB9BB242E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB9BB232E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift */; };
 		ADBC057D2E93052100A44A84 /* DebugTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADBC057C2E93052100A44A84 /* DebugTestHelper.swift */; };
 		ADD080512E8C790D003FAAFB /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080502E8C790D003FAAFB /* AudioManager.swift */; };
 		ADD080532E8C7A06003FAAFB /* NotificationSoundExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080522E8C7A06003FAAFB /* NotificationSoundExample.swift */; };
@@ -83,6 +84,7 @@
 		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
 		ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */; };
 		ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */; };
+		ADF1AA712E93173400DBDAFA /* exercises.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AA702E93173400DBDAFA /* exercises.csv */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
@@ -181,6 +183,7 @@
 		ADAA5A302E8D32EE00549B47 /* SoundTroubleshooting.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SoundTroubleshooting.md; sourceTree = "<group>"; };
 		ADAA5A322E8D36AF00549B47 /* BackupManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupManager.swift; sourceTree = "<group>"; };
 		ADAA5A342E8D36D900549B47 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
+		ADB9BB232E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleWorkoutMigrationPlan.swift; sourceTree = "<group>"; };
 		ADBC057C2E93052100A44A84 /* DebugTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugTestHelper.swift; sourceTree = "<group>"; };
 		ADCACAE72E8BDA210039256B /* GymBo-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GymBo-Info.plist"; sourceTree = "<group>"; };
 		ADD080502E8C790D003FAAFB /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
@@ -191,6 +194,7 @@
 		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
 		ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMarkdownParser.swift; sourceTree = "<group>"; };
 		ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsTabView.swift; sourceTree = "<group>"; };
+		ADF1AA702E93173400DBDAFA /* exercises.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = exercises.csv; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecord.swift; sourceTree = "<group>"; };
 		ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordMigration.swift; sourceTree = "<group>"; };
@@ -251,6 +255,7 @@
 				AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */,
 				ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */,
 				ADBC057C2E93052100A44A84 /* DebugTestHelper.swift */,
+				ADB9BB232E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -266,6 +271,7 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				ADF1AA702E93173400DBDAFA /* exercises.csv */,
 				ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */,
 				AD52FECE2E8B32640048DF0F /* SwiftDataEntities.swift */,
 				11E748EF2C9E4B0F00AB1234 /* GymTrackerApp.swift */,
@@ -473,6 +479,7 @@
 			files = (
 				AD363DA92E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md in Resources */,
 				ADAA5A312E8D32EE00549B47 /* SoundTroubleshooting.md in Resources */,
+				ADF1AA712E93173400DBDAFA /* exercises.csv in Resources */,
 				11E748F72C9E4B1100AB1234 /* Preview Assets.xcassets in Resources */,
 				11E748F42C9E4B1100AB1234 /* Assets.xcassets in Resources */,
 				ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */,
@@ -508,6 +515,7 @@
 				ADBC057D2E93052100A44A84 /* DebugTestHelper.swift in Sources */,
 				ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */,
 				AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */,
+				ADB9BB242E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift in Sources */,
 				7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */,
 				E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */,
 				11E749032C9E4B8900AB1234 /* Workout.swift in Sources */,

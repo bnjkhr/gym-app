@@ -1192,47 +1192,6 @@ class WorkoutStore: ObservableObject {
         weekStreakCache = nil
     }
     
-    // MARK: - Sample Data Management
-    func resetToSampleData() {
-        guard let context = modelContext else {
-            print("❌ WorkoutStore: ModelContext ist nil beim Reset zu Sample-Daten")
-            return
-        }
-        
-        Task { [weak self] in
-            guard let self = self else { return }
-            
-            // Alle bestehenden Workouts löschen, aber Übungen beibehalten
-            do {
-                let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
-                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
-                
-                // Lösche alle Workouts und Sessions
-                for workout in workouts {
-                    context.delete(workout)
-                }
-                for session in sessions {
-                    context.delete(session)
-                }
-                
-                try context.save()
-                print("🗑️ Bestehende Workouts und Sessions gelöscht")
-                
-                // Lade Sample-Workouts neu
-                await DataManager.shared.ensureSampleData(context: context)
-                
-                // Aktive Session zurücksetzen
-                await MainActor.run { [weak self] in
-                    self?.activeSessionID = nil
-                }
-                
-                print("✅ Neue Sample-Workouts erfolgreich geladen!")
-                
-            } catch {
-                print("❌ Fehler beim Reset zu Sample-Daten: \(error)")
-            }
-        }
-    }
 
     // MARK: - Exercise Database Update
     func updateExerciseDatabase() {

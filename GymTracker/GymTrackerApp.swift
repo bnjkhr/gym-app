@@ -57,15 +57,24 @@ struct GymTrackerApp: App {
                 .task {
                     let context = sharedModelContainer.mainContext
                     
-                    print("✅ PROBLEM IDENTIFIZIERT UND BEHOBEN - Seeding wieder aktiviert")
-                    print("   Das Problem waren irreführende Log-Meldungen, nicht die Ensure-Logik")
-                    
-                    // Seeding wieder aktiviert mit korrekten Meldungen
-                    // 🌱 Initial seed: Übungen nur beim ersten App-Start laden
-                    ExerciseSeeder.ensureExercisesExist(context: context)
-                    
-                    // 💪 Initial seed: Beispiel-Workouts nur beim ersten App-Start laden  
-                    ExerciseSeeder.ensureSampleWorkoutsExist(context: context)
+                    // SCHRITT 1: Analysiere Sample-Workout Systeme für Migration
+                    SampleWorkoutMigrationHelper.compareWorkoutSystems(context: context)
+
+                    // 🌱 Prüfe ob Übungen bereits existieren
+                    do {
+                        let descriptor = FetchDescriptor<ExerciseEntity>()
+                        let existingExercises = try context.fetch(descriptor)
+
+                        if existingExercises.isEmpty {
+                            print("🌱 Lade 161 Übungen aus CSV...")
+                            ExerciseSeeder.seedExercises(context: context)
+                            print("✅ Übungen erfolgreich geladen")
+                        } else {
+                            print("✅ \(existingExercises.count) Übungen bereits vorhanden")
+                        }
+                    } catch {
+                        print("❌ Fehler beim Prüfen der Übungen: \(error)")
+                    }
                     
                     // 🏆 Migration: ExerciseRecords aus bestehenden Sessions generieren
                     if await ExerciseRecordMigration.isMigrationNeeded(context: context) {

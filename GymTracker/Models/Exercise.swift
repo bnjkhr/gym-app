@@ -52,6 +52,27 @@ enum MuscleGroup: String, CaseIterable, Codable {
     case abs = "Bauch"
     case cardio = "Cardio"
 
+    // 🆕 NEUE MUSKELGRUPPEN aus MD-Datei
+    case forearms = "Unterarme"
+    case calves = "Waden"
+    case trapezius = "Trapezmuskel"
+    case lowerBack = "Unterer Rücken"
+    case upperBack = "Oberer Rücken"
+    case fullBody = "Ganzkörper"
+    case hips = "Hüfte"
+    case core = "Rumpf"
+
+    // 🆕 NEUE MUSKELGRUPPEN aus CSV
+    case hamstrings = "Beinbeuger"
+    case lats = "Latissimus"
+    case grip = "Griffkraft"
+    case arms = "Arme"
+    case adductors = "Adduktoren"
+    case obliques = "Schräge Bauchmuskeln"
+    case hipFlexors = "Hüftbeuger"
+    case traps = "Trapez"
+    case coordination = "Koordination"
+
     var color: Color {
         switch self {
         case .chest: return .red
@@ -63,6 +84,25 @@ enum MuscleGroup: String, CaseIterable, Codable {
         case .glutes: return .pink
         case .abs: return .mint
         case .cardio: return .cyan
+        // Neue Farben für neue Muskelgruppen
+        case .forearms: return .brown
+        case .calves: return .indigo
+        case .trapezius: return .teal
+        case .lowerBack: return .gray
+        case .upperBack: return .secondary
+        case .fullBody: return .primary
+        case .hips: return .purple.opacity(0.7)
+        case .core: return .mint.opacity(0.8)
+        // Farben für CSV-Muskelgruppen
+        case .hamstrings: return .orange.opacity(0.7)
+        case .lats: return .cyan.opacity(0.8)
+        case .grip: return .brown.opacity(0.8)
+        case .arms: return .green.opacity(0.6)
+        case .adductors: return .yellow.opacity(0.7)
+        case .obliques: return .mint.opacity(0.6)
+        case .hipFlexors: return .pink.opacity(0.6)
+        case .traps: return .teal.opacity(0.8)
+        case .coordination: return .indigo.opacity(0.6)
         }
     }
 }
