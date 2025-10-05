@@ -43,12 +43,6 @@ struct WorkoutsTabView: View {
                     LazyVStack(spacing: 20) {
                         // Workouts list section
                         VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Meine Workouts")
-                                    .font(.headline)
-                                Spacer()
-                            }
-                            
                             if displayWorkouts.isEmpty {
                                 VStack(spacing: 12) {
                                     Image(systemName: "figure.strengthtraining.functional")
@@ -112,6 +106,20 @@ struct WorkoutsTabView: View {
                 if let entity = workoutEntities.first(where: { $0.id == selection.id }) {
                     EditWorkoutView(entity: entity)
                         .environmentObject(workoutStore)
+                } else {
+                    Text("Workout konnte nicht geladen werden")
+                }
+            }
+            .sheet(item: $selectedWorkout) { selection in
+                if let entity = workoutEntities.first(where: { $0.id == selection.id }) {
+                    WorkoutDetailView(
+                        entity: entity,
+                        isActiveSession: workoutStore.activeSessionID == selection.id,
+                        onActiveSessionEnd: {
+                            endActiveSession()
+                        }
+                    )
+                    .environmentObject(workoutStore)
                 } else {
                     Text("Workout konnte nicht geladen werden")
                 }

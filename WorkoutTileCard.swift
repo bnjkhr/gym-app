@@ -6,27 +6,60 @@ struct WorkoutTileCard: View {
     let onTap: () -> Void
     let onShowMenu: () -> Void
     let onToggleHome: () -> Void
-    
-    private func workoutCategory(for workout: Workout) -> String {
+
+    private var displayLevel: String {
+        guard let level = workout.level else { return "" }
+        switch level.lowercased() {
+        case "beginner": return "Anfänger"
+        case "intermediate": return "Fortgeschritten"
+        case "advanced", "profi": return "Profi"
+        default: return level.capitalized
+        }
+    }
+
+    private var displayType: String {
+        guard let type = workout.workoutType else { return workoutCategoryFallback(for: workout) }
+        switch type.lowercased() {
+        case "fullbody": return "Ganzkörper"
+        case "upperbody": return "Oberkörper"
+        case "lowerbody": return "Unterkörper"
+        case "push": return "Push"
+        case "pull": return "Pull"
+        case "machine": return "Maschinen"
+        case "freeweights": return "Freie Gewichte"
+        case "bodyweight": return "Körpergewicht"
+        case "mixed": return "Mixed"
+        default: return type
+        }
+    }
+
+    private func workoutCategoryFallback(for workout: Workout) -> String {
         let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
-        
-        let machineKeywords = ["maschine", "machine", "lat", "press", "curl", "extension", "row"]
-        let freeWeightKeywords = ["hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift", "bench"]
-        
+
+        let machineKeywords = ["machine", "press machine", "curl machine"]
+        let freeWeightKeywords = ["dumbbell", "barbell", "squat", "deadlift", "bench"]
+        let bodyweightKeywords = ["push-up", "pull-up", "plank", "burpee"]
+
         let hasMachine = exerciseNames.contains { name in
             machineKeywords.contains { keyword in name.contains(keyword) }
         }
-        
+
         let hasFreeWeight = exerciseNames.contains { name in
             freeWeightKeywords.contains { keyword in name.contains(keyword) }
         }
-        
-        if hasMachine && hasFreeWeight {
+
+        let hasBodyweight = exerciseNames.contains { name in
+            bodyweightKeywords.contains { keyword in name.contains(keyword) }
+        }
+
+        if (hasMachine && hasFreeWeight) || (hasMachine && hasBodyweight) || (hasFreeWeight && hasBodyweight) {
             return "Mixed"
         } else if hasMachine {
             return "Maschinen"
         } else if hasFreeWeight {
             return "Freie Gewichte"
+        } else if hasBodyweight {
+            return "Körpergewicht"
         } else {
             return "Training"
         }
@@ -47,7 +80,7 @@ struct WorkoutTileCard: View {
                     .buttonStyle(.plain)
                 }
                 
-                // Content area - workout name and category
+                // Content area - workout name, level, and type
                 VStack(alignment: .leading, spacing: 4) {
                     Text(workout.name)
                         .font(.headline)
@@ -56,9 +89,16 @@ struct WorkoutTileCard: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Text(workoutCategory(for: workout))
-                        .font(.subheadline)
+
+                    if !displayLevel.isEmpty {
+                        Text(displayLevel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Text(displayType)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

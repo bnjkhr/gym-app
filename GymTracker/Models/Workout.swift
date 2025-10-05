@@ -9,6 +9,10 @@ struct Workout: Identifiable, Codable {
     var duration: TimeInterval?
     var notes: String
     var isFavorite: Bool
+    var level: String?
+    var workoutType: String?
+    var estimatedDuration: String?
+    var frequency: String?
 
     init(
         id: UUID = UUID(),
@@ -18,7 +22,11 @@ struct Workout: Identifiable, Codable {
         defaultRestTime: TimeInterval = 90,
         duration: TimeInterval? = nil,
         notes: String = "",
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        level: String? = nil,
+        workoutType: String? = nil,
+        estimatedDuration: String? = nil,
+        frequency: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -28,6 +36,10 @@ struct Workout: Identifiable, Codable {
         self.duration = duration
         self.notes = notes
         self.isFavorite = isFavorite
+        self.level = level
+        self.workoutType = workoutType
+        self.estimatedDuration = estimatedDuration
+        self.frequency = frequency
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -39,6 +51,10 @@ struct Workout: Identifiable, Codable {
         case duration
         case notes
         case isFavorite
+        case level
+        case workoutType
+        case estimatedDuration
+        case frequency
     }
 
     init(from decoder: Decoder) throws {
@@ -51,6 +67,10 @@ struct Workout: Identifiable, Codable {
         self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
         self.notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         self.isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        self.level = try container.decodeIfPresent(String.self, forKey: .level)
+        self.workoutType = try container.decodeIfPresent(String.self, forKey: .workoutType)
+        self.estimatedDuration = try container.decodeIfPresent(String.self, forKey: .estimatedDuration)
+        self.frequency = try container.decodeIfPresent(String.self, forKey: .frequency)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -63,6 +83,10 @@ struct Workout: Identifiable, Codable {
         try container.encodeIfPresent(duration, forKey: .duration)
         try container.encode(notes, forKey: .notes)
         try container.encode(isFavorite, forKey: .isFavorite)
+        try container.encodeIfPresent(level, forKey: .level)
+        try container.encodeIfPresent(workoutType, forKey: .workoutType)
+        try container.encodeIfPresent(estimatedDuration, forKey: .estimatedDuration)
+        try container.encodeIfPresent(frequency, forKey: .frequency)
     }
 }
 

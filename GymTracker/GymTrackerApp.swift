@@ -14,7 +14,14 @@ struct GymTrackerApp: App {
             UserProfileEntity.self,
             ExerciseRecordEntity.self
         ])
-        
+
+        // Erstelle Application Support Verzeichnis falls es nicht existiert
+        let fileManager = FileManager.default
+        if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            try? fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true, attributes: nil)
+            print("📁 Application Support Verzeichnis erstellt/geprüft: \(appSupportURL)")
+        }
+
         do {
             // Erstelle einen einfachen persistenten Container
             let container = try ModelContainer(for: schema)
@@ -56,37 +63,78 @@ struct GymTrackerApp: App {
                 .modelContainer(sharedModelContainer)
                 .task {
                     let context = sharedModelContainer.mainContext
-                    
-                    // SCHRITT 1: Analysiere Sample-Workout Systeme für Migration
-                    SampleWorkoutMigrationHelper.compareWorkoutSystems(context: context)
 
-                    // 🔄 SCHRITT 2: Exercise-Migration (alte Übungen → CSV-Übungen)
+                    // 🔄 SCHRITT 1: Exercise-Migration (alte Übungen → CSV-Übungen)
                     if await ExerciseDatabaseMigration.isMigrationNeeded() {
                         await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
                     }
 
-                    // 🌱 SCHRITT 3: Falls Datenbank leer, initiales Seeding durchführen
+                    // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden
                     do {
                         let descriptor = FetchDescriptor<ExerciseEntity>()
                         let existingExercises = try context.fetch(descriptor)
 
-                        if existingExercises.isEmpty {
+                        // Prüfe ob Exercises deterministische UUIDs haben (Format: 00000000-0000-0000-0000-XXXXXXXXXXXX)
+                        let hasDeterministicUUIDs = existingExercises.contains { exercise in
+                            let uuidString = exercise.id.uuidString
+                            return uuidString.hasPrefix("00000000-0000-0000-0000-")
+                        }
+
+                        if existingExercises.isEmpty || !hasDeterministicUUIDs {
+                            if !existingExercises.isEmpty {
+                                print("🔧 Lösche \(existingExercises.count) Übungen mit falschen UUIDs...")
+                                for exercise in existingExercises {
+                                    context.delete(exercise)
+                                }
+                                try context.save()
+                            }
+
                             print("🌱 Lade 161 Übungen aus CSV...")
                             ExerciseSeeder.seedExercises(context: context)
                             print("✅ Übungen erfolgreich geladen")
                         } else {
-                            print("✅ \(existingExercises.count) Übungen bereits vorhanden")
+                            print("✅ \(existingExercises.count) Übungen mit korrekten UUIDs bereits vorhanden")
                         }
                     } catch {
                         print("❌ Fehler beim Prüfen der Übungen: \(error)")
                     }
-                    
-                    // 🏆 Migration: ExerciseRecords aus bestehenden Sessions generieren
+
+                    // 🌱 SCHRITT 3: Sample-Workouts seeden, falls noch keine vorhanden oder defekt
+                    do {
+                        let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
+                        let existingWorkouts = try context.fetch(workoutDescriptor)
+
+                        // Prüfe ob Workouts defekt sind (keine gültigen Exercise-Referenzen)
+                        let validWorkouts = existingWorkouts.filter { workout in
+                            !workout.exercises.isEmpty && workout.exercises.contains { $0.exercise != nil }
+                        }
+
+                        if validWorkouts.isEmpty {
+                            // Lösche alte defekte Workouts falls vorhanden
+                            if !existingWorkouts.isEmpty {
+                                print("🔧 Lösche \(existingWorkouts.count) defekte Workouts...")
+                                for workout in existingWorkouts {
+                                    context.delete(workout)
+                                }
+                                try context.save()
+                            }
+
+                            print("🌱 Lade 6 Beispielworkouts aus CSV...")
+                            WorkoutSeeder.seedWorkouts(context: context)
+                            print("✅ Beispielworkouts erfolgreich geladen")
+                        } else {
+                            print("✅ \(validWorkouts.count) gültige Workouts bereits vorhanden")
+                        }
+                    } catch {
+                        print("❌ Fehler beim Prüfen der Workouts: \(error)")
+                    }
+
+                    // 🏆 SCHRITT 4: Migration - ExerciseRecords aus bestehenden Sessions generieren
                     if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
                         await ExerciseRecordMigration.migrateExistingData(context: context)
                     }
-                    
-                    // 📊 Migration: Last-Used Daten für bessere UX
+
+                    // 📊 SCHRITT 5: Migration - Last-Used Daten für bessere UX
                     await ExerciseLastUsedMigration.performInitialMigration(context: context)
                     
                     // Wait a bit for app to fully initialize before testing Live Activities

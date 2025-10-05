@@ -14,8 +14,8 @@ struct ExerciseSeeder {
         try? context.save()
     }
     static func createRealisticExercises() -> [Exercise] {
-        guard let csvPath = Bundle.main.path(forResource: "exercises", ofType: "csv") else {
-            print("⚠️ CSV file not found")
+        guard let csvPath = Bundle.main.path(forResource: "exercises_with_ids", ofType: "csv") else {
+            print("⚠️ exercises_with_ids.csv file not found")
             return []
         }
 
@@ -37,13 +37,14 @@ struct ExerciseSeeder {
             guard index > 0, !line.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
 
             let columns = line.components(separatedBy: ",")
-            guard columns.count >= 5 else { continue }
+            guard columns.count >= 6 else { continue }
 
-            let name = columns[0].trimmingCharacters(in: .whitespaces)
-            let muscleGroupsStr = columns[1].trimmingCharacters(in: .whitespaces)
-            let equipmentTypeStr = columns[2].trimmingCharacters(in: .whitespaces)
-            let difficultyLevelStr = columns[3].trimmingCharacters(in: .whitespaces)
-            let description = columns[4].trimmingCharacters(in: .whitespaces)
+            let idStr = columns[0].trimmingCharacters(in: .whitespaces)
+            let name = columns[1].trimmingCharacters(in: .whitespaces)
+            let muscleGroupsStr = columns[2].trimmingCharacters(in: .whitespaces)
+            let equipmentTypeStr = columns[3].trimmingCharacters(in: .whitespaces)
+            let difficultyLevelStr = columns[4].trimmingCharacters(in: .whitespaces)
+            let description = columns[5].trimmingCharacters(in: .whitespaces)
 
             // Parse muscle groups (separated by ;)
             let muscleGroups = muscleGroupsStr.components(separatedBy: ";")
@@ -55,16 +56,27 @@ struct ExerciseSeeder {
             // Parse difficulty level
             guard let difficultyLevel = parseDifficultyLevel(difficultyLevelStr) else { continue }
 
-            // Parse instructions (columns 5-8)
+            // Parse instructions (columns 6-9)
             var instructions: [String] = []
-            for i in 5..<min(columns.count, 9) {
+            for i in 6..<min(columns.count, 10) {
                 let instruction = columns[i].trimmingCharacters(in: .whitespaces)
                 if !instruction.isEmpty {
                     instructions.append(instruction)
                 }
             }
 
+            // Use the ID from CSV to create a deterministic UUID
+            let exerciseId: UUID
+            if let id = Int(idStr) {
+                // Create deterministic UUID from ID (for consistent IDs across app reinstalls)
+                let uuidString = NSString(format: "00000000-0000-0000-0000-%012d", id) as String
+                exerciseId = UUID(uuidString: uuidString) ?? UUID()
+            } else {
+                exerciseId = UUID()
+            }
+
             let exercise = Exercise(
+                id: exerciseId,
                 name: name,
                 muscleGroups: muscleGroups,
                 equipmentType: equipmentType,

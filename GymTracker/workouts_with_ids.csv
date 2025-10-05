@@ -1,0 +1,58 @@
+workout_id,workout_name,workout_number,level,type,duration_min,training_frequency,phase,exercise_id,sets,reps,rest_sec,notes
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,118,3,12-15,90,Füße schulterbreit platzieren
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,123,3,10-12,90,Kontrollierte Bewegung
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,121,3,10-12,90,Breiter Griff
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,125,3,10-12,90,Rücken an die Lehne
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,120,3,12-15,60,Langsam absenken
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,127,2,12-15,60,Ellbogen fixiert
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,128,2,12-15,60,Volle Streckung
+1,Ganzkörper-Training für Anfänger,1,beginner,fullBody,45-50,3x pro Woche,main,68,3,30-45 Sek,60,Körper gerade halten
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,31,3,10-12,90,Langsam absenken
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,37,3,10-12 pro Seite,90,Rücken gerade
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,34,3,12-15,60,Leichte Gewichte
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,121,3,10-12,90,Zur Brust ziehen
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,124,3,12-15,60,Kontrolliert zusammenführen
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,40,3,12-15,60,Neutraler Griff
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,136,3,12-15,60,Ellbogen fixiert
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,63,2,8-12,60,Knie am Boden bei Bedarf
+2,Oberkörper-Focus für Anfänger,2,beginner,upperBody,50-55,2x pro Woche,main,72,3,15-20,45,Langsame Bewegung
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,3,4,8-10,120,Aufwärmsätze einplanen
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,32,4,8-12,90,30-45° Neigung
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,4,4,8-10,120,Im Stehen oder Sitzen
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,33,3,10-12,75,Dehnung in der Brust spüren
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,34,3,12-15,60,Kontrollierte Bewegung
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,134,3,12-15,60,Von oben nach unten
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,10,3,10-12,75,Ellbogen stabil
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,136,3,12-15,60,Mit Seil für besseren Stretch
+3,Push/Pull Split für Fortgeschrittene (Push-Tag),3,intermediate,push,55-60,4-5x pro Woche,main,81,2,10-15,60,Bis zum Muskelversagen
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,2,4,6-8,150,Perfekte Technik wichtig
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,64,4,6-10,120,Assisted Machine bei Bedarf
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,5,4,8-10,90,Rücken gerade halten
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,37,3,10-12 pro Seite,75,Volle Kontraktion
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,121,3,10-12,75,Breiter Griff
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,144,3,15-20,60,Zum Gesicht ziehen
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,9,3,10-12,75,Keine Schwungbewegung
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,40,3,12-15,60,Langsam absenken
+4,Push/Pull Split für Fortgeschrittene (Pull-Tag),4,intermediate,pull,55-60,4-5x pro Woche,main,45,2,12-15,60,Für Unterarme
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,1,5,5,180,Schwere Gewichte perfekte Form
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,2,4,5,180,80-85% vom 1RM
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,3,5,5,150,Kraftaufbau-Fokus
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,13,3,6-8,120,Rumpfstabilität
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,5,4,6-8,120,Explosive Zugbewegung
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,4,4,6-8,120,Im Stehen
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,12,3,8-10,90,Beinbeuger-Fokus
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,64,3,Max,90,Mit Zusatzgewicht bei Bedarf
+5,Athletik & Kraft für Profis,5,advanced,fullBody,60,3-4x pro Woche,main,65,3,Max,90,Mit Zusatzgewicht bei Bedarf
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block1,55,3,20,0 (90 nach Runde),Kraftausdauer-Zirkel
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block1,69,3,15,0 (90 nach Runde),Kraftausdauer-Zirkel
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block1,80,3,12,0 (90 nach Runde),Kraftausdauer-Zirkel
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block1,50,3,10 pro Seite,0 (90 nach Runde),Kraftausdauer-Zirkel
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block1,70,3,30,0 (90 nach Runde),Kraftausdauer-Zirkel
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block2,38,4,12,0 (120 nach Runde),Kraft-Komplex
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block2,48,4,12,0 (120 nach Runde),Kraft-Komplex
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block2,39,4,10 pro Seite,0 (120 nach Runde),Kraft-Komplex
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block2,36,4,10,0 (120 nach Runde),Kraft-Komplex
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block3,68,2,60 Sek,0 (60 nach Runde),Core-Finisher
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block3,92,2,30 (15 pro Seite),0 (60 nach Runde),Core-Finisher
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block3,93,2,12-15,0 (60 nach Runde),Core-Finisher
+6,Funktionelles Hochintensitäts-Training für Profis,6,advanced,hiit,50-55,2-3x pro Woche,block3,91,2,15,0 (60 nach Runde),Core-Finisher

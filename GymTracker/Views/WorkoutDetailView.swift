@@ -236,10 +236,14 @@ struct WorkoutDetailView: View {
                         })
                         if let freshEx = try? modelContext.fetch(exDesc).first {
                             let groups = freshEx.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+                            let equipmentType = EquipmentType(rawValue: freshEx.equipmentTypeRaw) ?? .mixed
+                            let difficultyLevel = DifficultyLevel(rawValue: freshEx.difficultyLevelRaw) ?? .anfänger
                             let exercise = Exercise(
                                 id: freshEx.id,
                                 name: freshEx.name,
                                 muscleGroups: groups,
+                                equipmentType: equipmentType,
+                                difficultyLevel: difficultyLevel,
                                 description: freshEx.descriptionText,
                                 instructions: freshEx.instructions,
                                 createdAt: freshEx.createdAt

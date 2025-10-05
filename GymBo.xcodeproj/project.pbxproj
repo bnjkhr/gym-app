@@ -84,8 +84,10 @@
 		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
 		ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */; };
 		ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */; };
-		ADF1AA712E93173400DBDAFA /* exercises.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AA702E93173400DBDAFA /* exercises.csv */; };
 		ADF1AA732E931A5700DBDAFA /* ExerciseDatabaseMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */; };
+		ADF1AA752E9320CE00DBDAFA /* WorkoutSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1AA742E9320CE00DBDAFA /* WorkoutSeeder.swift */; };
+		ADF1AAB12E93220000DBDAFA /* exercises_with_ids.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AAB02E93220000DBDAFA /* exercises_with_ids.csv */; };
+		ADF1AAB32E93221000DBDAFA /* workouts_with_ids.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AAB22E93221000DBDAFA /* workouts_with_ids.csv */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
@@ -195,8 +197,10 @@
 		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
 		ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMarkdownParser.swift; sourceTree = "<group>"; };
 		ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsTabView.swift; sourceTree = "<group>"; };
-		ADF1AA702E93173400DBDAFA /* exercises.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = exercises.csv; sourceTree = "<group>"; };
 		ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDatabaseMigration.swift; sourceTree = SOURCE_ROOT; };
+		ADF1AA742E9320CE00DBDAFA /* WorkoutSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSeeder.swift; sourceTree = "<group>"; };
+		ADF1AAB02E93220000DBDAFA /* exercises_with_ids.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = exercises_with_ids.csv; sourceTree = "<group>"; };
+		ADF1AAB22E93221000DBDAFA /* workouts_with_ids.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = workouts_with_ids.csv; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecord.swift; sourceTree = "<group>"; };
 		ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordMigration.swift; sourceTree = "<group>"; };
@@ -273,8 +277,10 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				ADF1AAB22E93221000DBDAFA /* workouts_with_ids.csv */,
+				ADF1AAB02E93220000DBDAFA /* exercises_with_ids.csv */,
+				ADF1AA742E9320CE00DBDAFA /* WorkoutSeeder.swift */,
 				ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */,
-				ADF1AA702E93173400DBDAFA /* exercises.csv */,
 				ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */,
 				AD52FECE2E8B32640048DF0F /* SwiftDataEntities.swift */,
 				11E748EF2C9E4B0F00AB1234 /* GymTrackerApp.swift */,
@@ -480,9 +486,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ADF1AAB12E93220000DBDAFA /* exercises_with_ids.csv in Resources */,
+				ADF1AAB32E93221000DBDAFA /* workouts_with_ids.csv in Resources */,
 				AD363DA92E8C71C20015A34D /* KEYBOARD_DISMISSAL_GUIDE.md in Resources */,
 				ADAA5A312E8D32EE00549B47 /* SoundTroubleshooting.md in Resources */,
-				ADF1AA712E93173400DBDAFA /* exercises.csv in Resources */,
 				11E748F72C9E4B1100AB1234 /* Preview Assets.xcassets in Resources */,
 				11E748F42C9E4B1100AB1234 /* Assets.xcassets in Resources */,
 				ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */,
@@ -521,6 +528,7 @@
 				ADB9BB242E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift in Sources */,
 				7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */,
 				E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */,
+				ADF1AA752E9320CE00DBDAFA /* WorkoutSeeder.swift in Sources */,
 				11E749032C9E4B8900AB1234 /* Workout.swift in Sources */,
 				11E7490D2C9E4BCF00AB1234 /* AddExerciseView.swift in Sources */,
 				AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */,
