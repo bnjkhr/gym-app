@@ -9,6 +9,7 @@ final class ExerciseEntity {
     // Persist muscle groups as raw values for stability
     var muscleGroupsRaw: [String]
     var equipmentTypeRaw: String
+    var difficultyLevelRaw: String // NEU: Schwierigkeitsgrad als String gespeichert
     var descriptionText: String
     var instructions: [String]
     var createdAt: Date
@@ -27,6 +28,7 @@ final class ExerciseEntity {
         name: String,
         muscleGroupsRaw: [String] = [],
         equipmentTypeRaw: String = "mixed",
+        difficultyLevelRaw: String = "Anfänger", // Default-Schwierigkeitsgrad
         descriptionText: String = "",
         instructions: [String] = [],
         createdAt: Date = Date(),
@@ -40,6 +42,7 @@ final class ExerciseEntity {
         self.name = name
         self.muscleGroupsRaw = muscleGroupsRaw
         self.equipmentTypeRaw = equipmentTypeRaw
+        self.difficultyLevelRaw = difficultyLevelRaw
         self.descriptionText = descriptionText
         self.instructions = instructions
         self.createdAt = createdAt

@@ -80,6 +80,7 @@
 		ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */; };
 		ADD080592E8C7B0F003FAAFB /* UpdatedNotificationExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */; };
 		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
+		ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */; };
 		ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
@@ -186,6 +187,7 @@
 		ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSoundSettings.swift; sourceTree = "<group>"; };
 		ADD080582E8C7B0F003FAAFB /* UpdatedNotificationExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedNotificationExample.swift; sourceTree = "<group>"; };
 		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
+		ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMarkdownParser.swift; sourceTree = "<group>"; };
 		ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsTabView.swift; sourceTree = "<group>"; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecord.swift; sourceTree = "<group>"; };
@@ -245,6 +247,7 @@
 				AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */,
 				ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */,
 				AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */,
+				ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -499,6 +502,7 @@
 				AD2568DD2E904916009BE060 /* ExerciseRecordMigration.swift in Sources */,
 				3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */,
 				AD363DA52E8C713F0015A34D /* KeyboardDismissalUtilities.swift in Sources */,
+				ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */,
 				AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */,
 				7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */,
 				E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */,

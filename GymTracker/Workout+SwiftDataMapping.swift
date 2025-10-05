@@ -99,6 +99,7 @@ extension Exercise {
             name: entity.name,
             muscleGroups: [],
             equipmentType: EquipmentType(rawValue: entity.equipmentTypeRaw) ?? .mixed,
+            difficultyLevel: DifficultyLevel(rawValue: entity.difficultyLevelRaw) ?? .anfänger,
             description: entity.descriptionText,
             instructions: entity.instructions,
             createdAt: entity.createdAt
@@ -119,12 +120,14 @@ extension Exercise {
         // Direct access to muscleGroupsRaw - let it crash if entity is truly invalid
         let groups: [MuscleGroup] = fresh.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
         let equipmentType = EquipmentType(rawValue: fresh.equipmentTypeRaw) ?? .mixed
+        let difficultyLevel = DifficultyLevel(rawValue: fresh.difficultyLevelRaw) ?? .anfänger
         
         self.init(
             id: fresh.id,
             name: fresh.name,
             muscleGroups: groups,
             equipmentType: equipmentType,
+            difficultyLevel: difficultyLevel,
             description: fresh.descriptionText,
             instructions: fresh.instructions,
             createdAt: fresh.createdAt
@@ -215,6 +218,7 @@ extension ExerciseEntity {
             name: exercise.name,
             muscleGroupsRaw: exercise.muscleGroups.map { $0.rawValue },
             equipmentTypeRaw: exercise.equipmentType.rawValue,
+            difficultyLevelRaw: exercise.difficultyLevel.rawValue,
             descriptionText: exercise.description,
             instructions: exercise.instructions,
             createdAt: exercise.createdAt

@@ -6,15 +6,17 @@ struct Exercise: Identifiable, Codable {
     var name: String
     var muscleGroups: [MuscleGroup]
     var equipmentType: EquipmentType
+    var difficultyLevel: DifficultyLevel
     var description: String
     var instructions: [String]
     var createdAt: Date
 
-    init(id: UUID = UUID(), name: String, muscleGroups: [MuscleGroup], equipmentType: EquipmentType = .mixed, description: String = "", instructions: [String] = [], createdAt: Date = Date()) {
+    init(id: UUID = UUID(), name: String, muscleGroups: [MuscleGroup], equipmentType: EquipmentType = .mixed, difficultyLevel: DifficultyLevel = .anfänger, description: String = "", instructions: [String] = [], createdAt: Date = Date()) {
         self.id = id
         self.name = name
         self.muscleGroups = muscleGroups
         self.equipmentType = equipmentType
+        self.difficultyLevel = difficultyLevel
         self.description = description
         self.instructions = instructions
         self.createdAt = createdAt
@@ -61,6 +63,40 @@ enum MuscleGroup: String, CaseIterable, Codable {
         case .glutes: return .pink
         case .abs: return .mint
         case .cardio: return .cyan
+        }
+    }
+}
+
+enum DifficultyLevel: String, CaseIterable, Codable {
+    case anfänger = "Anfänger"
+    case fortgeschritten = "Fortgeschritten"
+    case profi = "Profi"
+    
+    var displayName: String { 
+        return rawValue 
+    }
+    
+    var sortOrder: Int {
+        switch self {
+        case .anfänger: return 1
+        case .fortgeschritten: return 2
+        case .profi: return 3
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .anfänger: return .green
+        case .fortgeschritten: return .orange
+        case .profi: return .red
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .anfänger: return "star.fill"
+        case .fortgeschritten: return "star.fill"
+        case .profi: return "star.fill"
         }
     }
 }
