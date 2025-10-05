@@ -36,7 +36,7 @@ struct WorkoutsTabView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground)
+                Color(.systemBackground)
                     .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
