@@ -12,10 +12,11 @@ struct WorkoutsTabView: View {
     private var workoutEntities: [WorkoutEntity]
     
     @State private var showingAddWorkout = false
-    @State private var showingWorkoutWizard = false
-    @State private var showingManualAdd = false
     @State private var showingProfileAlert = false
     @State private var showingProfileEditor = false
+    @State private var navigateToManualAdd = false
+    @State private var navigateToWorkoutWizard = false
+    @State private var navigateToQuickWorkout = false
     
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
@@ -106,41 +107,53 @@ struct WorkoutsTabView: View {
                 ProfileEditView()
                     .environmentObject(workoutStore)
             }
-            .sheet(isPresented: $showingWorkoutWizard) {
-                WorkoutWizardView(isManualStart: true)
-                    .environmentObject(workoutStore)
-            }
-            .sheet(isPresented: $showingManualAdd) {
-                AddWorkoutView()
-                    .environmentObject(workoutStore)
-            }
-            .sheet(item: $quickGeneratedWorkout) { workout in
-                GeneratedWorkoutPreviewView(
-                    workout: workout,
-                    workoutName: $quickWorkoutName,
-                    usedProfileInfo: true,
-                    onSave: {
-                        if var w = quickGeneratedWorkout {
-                            w.name = quickWorkoutName
-                            
-                            if workoutStore.modelContext == nil {
-                                workoutStore.modelContext = modelContext
-                            }
-                            
-                            workoutStore.addWorkout(w)
-                        }
-                        quickGeneratedWorkout = nil
-                    },
-                    onDismiss: { quickGeneratedWorkout = nil }
-                )
-                .environmentObject(workoutStore)
-            }
+
             .sheet(item: $editingWorkoutSelection) { selection in
                 if let entity = workoutEntities.first(where: { $0.id == selection.id }) {
                     EditWorkoutView(entity: entity)
                         .environmentObject(workoutStore)
                 } else {
                     Text("Workout konnte nicht geladen werden")
+                }
+            }
+            .navigationDestination(isPresented: $navigateToManualAdd) {
+                AddWorkoutView()
+                    .environmentObject(workoutStore)
+            }
+            .navigationDestination(isPresented: $navigateToWorkoutWizard) {
+                WorkoutWizardView(isManualStart: true)
+                    .environmentObject(workoutStore)
+            }
+            .navigationDestination(isPresented: $navigateToQuickWorkout) {
+                if let workout = quickGeneratedWorkout {
+                    GeneratedWorkoutPreviewView(
+                        workout: workout,
+                        workoutName: $quickWorkoutName,
+                        usedProfileInfo: true,
+                        onSave: {
+                            if var w = quickGeneratedWorkout {
+                                w.name = quickWorkoutName
+                                
+                                if workoutStore.modelContext == nil {
+                                    workoutStore.modelContext = modelContext
+                                }
+                                
+                                workoutStore.addWorkout(w)
+                            }
+                            quickGeneratedWorkout = nil
+                            navigateToQuickWorkout = false
+                        },
+                        onDismiss: { 
+                            quickGeneratedWorkout = nil
+                            navigateToQuickWorkout = false
+                        }
+                    )
+                    .environmentObject(workoutStore)
+                } else {
+                    Text("Fehler beim Laden des Workouts")
+                        .onAppear {
+                            navigateToQuickWorkout = false
+                        }
                 }
             }
             .navigationDestination(item: $selectedWorkout) { selection in
@@ -196,7 +209,10 @@ struct WorkoutsTabView: View {
     
     private func createWorkoutAssistantButton() -> some View {
         Button {
-            showingWorkoutWizard = true
+            showingAddWorkout = false // Schließe erst das Sheet
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                navigateToWorkoutWizard = true // Dann navigiere
+            }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -228,7 +244,10 @@ struct WorkoutsTabView: View {
     
     private func createManualWorkoutButton() -> some View {
         Button {
-            showingManualAdd = true
+            showingAddWorkout = false // Schließe erst das Sheet
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                navigateToManualAdd = true // Dann navigiere
+            }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -273,6 +292,12 @@ struct WorkoutsTabView: View {
             )
             quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
             quickWorkoutName = "Mein \(goal.displayName) Workout"
+            
+            // Navigation statt Sheet
+            showingAddWorkout = false // Schließe erst das Sheet
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                navigateToQuickWorkout = true // Dann navigiere
+            }
         } label: {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
