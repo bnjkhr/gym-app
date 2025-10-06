@@ -39,5 +39,7 @@
 			<string>Owner</string>
 		</dict>
 	</array>
+	<key>UISupportsDocumentBrowser</key>
+	<false/>
 </dict>
 </plist>

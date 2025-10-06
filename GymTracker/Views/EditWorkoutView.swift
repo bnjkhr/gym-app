@@ -1,6 +1,64 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Data Models
+
+struct EditableSet: Identifiable {
+    let id = UUID()
+    var reps: Int
+    var weight: Double
+    var restTime: Double
+
+    init(reps: Int = 10, weight: Double = 0, restTime: Double = 90) {
+        self.reps = reps
+        self.weight = weight
+        self.restTime = restTime
+    }
+}
+
+struct EditableExercise: Identifiable {
+    let id = UUID()
+    var exerciseId: UUID
+    var sets: [EditableSet]
+
+    init(exerciseId: UUID, sets: [EditableSet]) {
+        self.exerciseId = exerciseId
+        self.sets = sets
+    }
+}
+
+// MARK: - Exercise Card State
+
+/// Manages the UI state for each exercise card
+struct ExerciseCardState {
+    var isExpanded: Bool = false        // Show individual sets?
+    var isQuickEditing: Bool = false    // Show quick edit view?
+
+    // Bulk edit values (applied to all sets)
+    var bulkSets: Int = 3
+    var bulkReps: Int = 10
+    var bulkWeight: Double = 80.0
+
+    mutating func applyBulkToSets(_ sets: inout [EditableSet]) {
+        // Ensure we have the right number of sets
+        if sets.count < bulkSets {
+            // Add more sets
+            while sets.count < bulkSets {
+                sets.append(EditableSet(reps: bulkReps, weight: bulkWeight, restTime: 90))
+            }
+        } else if sets.count > bulkSets {
+            // Remove extra sets
+            sets = Array(sets.prefix(bulkSets))
+        }
+
+        // Apply bulk values to all sets
+        for i in 0..<sets.count {
+            sets[i].reps = bulkReps
+            sets[i].weight = bulkWeight
+        }
+    }
+}
+
 struct EditWorkoutView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
@@ -13,8 +71,11 @@ struct EditWorkoutView: View {
     @State private var restTime: Double
     @State private var editableExercises: [EditableExercise]
     @State private var showingExercisePickerIndex: Int?
-    @State private var editMode: EditMode = .inactive
     @State private var showingExercisePicker = false
+
+    // New state management
+    @State private var cardStates: [UUID: ExerciseCardState] = [:]
+    @State private var isReorderMode: Bool = false
 
     @Query(sort: [SortDescriptor(\ExerciseEntity.name, order: .forward)])
     private var exerciseEntities: [ExerciseEntity]
@@ -24,6 +85,7 @@ struct EditWorkoutView: View {
         _name = State(initialValue: entity.name)
         _notes = State(initialValue: entity.notes)
         _restTime = State(initialValue: entity.defaultRestTime)
+
         let editable = entity.exercises.compactMap { we -> EditableExercise? in
             guard let exId = we.exercise?.id else { return nil }
             let sets = we.sets.map { set in
@@ -39,6 +101,20 @@ struct EditWorkoutView: View {
             )
         }
         _editableExercises = State(initialValue: editable)
+
+        // Initialize card states with values from sets
+        var initialStates: [UUID: ExerciseCardState] = [:]
+        for exercise in editable {
+            let firstSet = exercise.sets.first ?? EditableSet()
+            initialStates[exercise.id] = ExerciseCardState(
+                isExpanded: false,
+                isQuickEditing: false,
+                bulkSets: exercise.sets.count,
+                bulkReps: firstSet.reps,
+                bulkWeight: firstSet.weight
+            )
+        }
+        _cardStates = State(initialValue: initialStates)
     }
 
     var body: some View {
@@ -53,13 +129,13 @@ struct EditWorkoutView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Details")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(.primary.opacity(0.8))
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
                             TextField("Workout-Name", text: $name)
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
                                 .background(
@@ -69,7 +145,7 @@ struct EditWorkoutView: View {
 
                             TextField("Notizen (optional)", text: $notes, axis: .vertical)
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                                 .lineLimit(2...4)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
@@ -81,7 +157,7 @@ struct EditWorkoutView: View {
                             HStack {
                                 Text("Standard-Pause")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(.primary)
                                 Spacer()
                                 HStack(spacing: 12) {
                                     Button {
@@ -89,12 +165,12 @@ struct EditWorkoutView: View {
                                     } label: {
                                         Image(systemName: "minus.circle.fill")
                                             .font(.system(size: 24))
-                                            .foregroundStyle(.white.opacity(0.8))
+                                            .foregroundStyle(.primary.opacity(0.8))
                                     }
 
                                     Text("\(Int(restTime))s")
                                         .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(.primary)
                                         .monospacedDigit()
                                         .frame(minWidth: 50)
 
@@ -103,7 +179,7 @@ struct EditWorkoutView: View {
                                     } label: {
                                         Image(systemName: "plus.circle.fill")
                                             .font(.system(size: 24))
-                                            .foregroundStyle(.white.opacity(0.8))
+                                            .foregroundStyle(.primary.opacity(0.8))
                                     }
                                 }
                             }
@@ -141,7 +217,7 @@ struct EditWorkoutView: View {
                                         Text("Hinzufügen")
                                             .font(.system(size: 15, weight: .semibold))
                                     }
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(.primary)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                                     .background(
@@ -173,22 +249,74 @@ struct EditWorkoutView: View {
                                         .fill(AppTheme.cardBackground)
                                 )
                             } else {
+                                // New redesigned exercise cards
                                 ForEach(Array($editableExercises.enumerated()), id: \.element.id) { index, $editable in
-                                    ExerciseCard(
-                                        editable: $editable,
-                                        exerciseName: exerciseName(for: editable.exerciseId),
-                                        exerciseEntities: exerciseEntities,
-                                        defaultRestTime: restTime,
-                                        onDelete: {
-                                            let indexToRemove = index
-                                            withAnimation {
-                                                _ = editableExercises.remove(at: indexToRemove)
+                                    VStack(spacing: 8) {
+                                        // Collapsed Row (always visible)
+                                        CollapsedExerciseRow(
+                                            exerciseName: exerciseName(for: editable.exerciseId),
+                                            setCount: editable.sets.count,
+                                            avgReps: calculateAvgReps(editable.sets),
+                                            avgWeight: calculateAvgWeight(editable.sets),
+                                            isReorderMode: isReorderMode,
+                                            onTap: {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    toggleQuickEdit(for: editable.id)
+                                                }
+                                            },
+                                            onToggleExpand: {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    toggleExpanded(for: editable.id)
+                                                }
+                                            },
+                                            onLongPress: {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    enterReorderMode()
+                                                }
                                             }
+                                        )
+
+                                        // Quick Edit View (conditionally shown)
+                                        if cardStates[editable.id]?.isQuickEditing == true {
+                                            QuickEditView(
+                                                sets: Binding(
+                                                    get: { cardStates[editable.id]?.bulkSets ?? 3 },
+                                                    set: { cardStates[editable.id]?.bulkSets = $0 }
+                                                ),
+                                                reps: Binding(
+                                                    get: { cardStates[editable.id]?.bulkReps ?? 10 },
+                                                    set: { cardStates[editable.id]?.bulkReps = $0 }
+                                                ),
+                                                weight: Binding(
+                                                    get: { cardStates[editable.id]?.bulkWeight ?? 80 },
+                                                    set: { cardStates[editable.id]?.bulkWeight = $0 }
+                                                ),
+                                                onApply: {
+                                                    applyBulkEdit(to: editable.id)
+                                                },
+                                                onExpand: {
+                                                    withAnimation(.spring(response: 0.3)) {
+                                                        cardStates[editable.id]?.isQuickEditing = false
+                                                        cardStates[editable.id]?.isExpanded = true
+                                                    }
+                                                }
+                                            )
                                         }
-                                    )
-                                }
-                                .onMove { sourceIndices, destination in
-                                    editableExercises.move(fromOffsets: sourceIndices, toOffset: destination)
+
+                                        // Expanded Set List (conditionally shown)
+                                        if cardStates[editable.id]?.isExpanded == true {
+                                            ExpandedSetListView(
+                                                sets: $editable.sets,
+                                                defaultRestTime: restTime,
+                                                onCollapse: {
+                                                    withAnimation(.spring(response: 0.3)) {
+                                                        cardStates[editable.id]?.isExpanded = false
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
                                 }
                             }
                         }
@@ -196,6 +324,19 @@ struct EditWorkoutView: View {
                         .padding(.bottom, 100)
                     }
                     .padding(.top, 20)
+                }
+
+                // Reorder Mode Overlay
+                if isReorderMode {
+                    ReorderModeOverlay(
+                        exercises: $editableExercises,
+                        exerciseNames: Dictionary(uniqueKeysWithValues: exerciseEntities.map { ($0.id, $0.name) }),
+                        onExit: {
+                            withAnimation(.spring(response: 0.3)) {
+                                isReorderMode = false
+                            }
+                        }
+                    )
                 }
             }
             .navigationTitle("Bearbeiten")
@@ -228,20 +369,14 @@ struct EditWorkoutView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
-                        EditButton()
-                            .tint(AppTheme.turquoiseBoost)
-
-                        Button("Speichern") {
-                            saveChanges()
-                        }
-                        .tint(AppTheme.mossGreen)
-                        .fontWeight(.semibold)
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || editableExercises.isEmpty)
+                    Button("Speichern") {
+                        saveChanges()
                     }
+                    .tint(AppTheme.mossGreen)
+                    .fontWeight(.semibold)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || editableExercises.isEmpty)
                 }
             }
-            .environment(\.editMode, $editMode)
         }
     }
 
@@ -261,6 +396,15 @@ struct EditWorkoutView: View {
             sets: defaultSets
         )
         editableExercises.append(newEditable)
+
+        // Initialize card state for new exercise
+        cardStates[newEditable.id] = ExerciseCardState(
+            isExpanded: false,
+            isQuickEditing: false,
+            bulkSets: 3,
+            bulkReps: 10,
+            bulkWeight: 0
+        )
     }
 
     private func removeExerciseById(_ exerciseId: UUID) {
@@ -308,49 +452,68 @@ struct EditWorkoutView: View {
         exerciseEntities.first(where: { $0.id == id })?.name ?? "Übung"
     }
 
-    struct EditableSet: Identifiable {
-        let id = UUID()
-        var reps: Int
-        var weight: Double
-        var restTime: Double
+    // MARK: - New UI Interaction Helpers
 
-        init(reps: Int = 10, weight: Double = 0, restTime: Double = 90) {
-            self.reps = reps
-            self.weight = weight
-            self.restTime = restTime
+    private func calculateAvgReps(_ sets: [EditableSet]) -> Int {
+        guard !sets.isEmpty else { return 0 }
+        let total = sets.reduce(0) { $0 + $1.reps }
+        return total / sets.count
+    }
+
+    private func calculateAvgWeight(_ sets: [EditableSet]) -> Double {
+        guard !sets.isEmpty else { return 0 }
+        let total = sets.reduce(0.0) { $0 + $1.weight }
+        return total / Double(sets.count)
+    }
+
+    private func toggleQuickEdit(for id: UUID) {
+        // Close all other cards
+        for key in cardStates.keys {
+            if key != id {
+                cardStates[key]?.isQuickEditing = false
+                cardStates[key]?.isExpanded = false
+            }
+        }
+        // Toggle this card
+        cardStates[id]?.isQuickEditing.toggle()
+        if cardStates[id]?.isQuickEditing == true {
+            cardStates[id]?.isExpanded = false
         }
     }
 
-    struct EditableExercise: Identifiable {
-        let id = UUID()
-        var exerciseId: UUID
-        var sets: [EditableSet]
-
-        init(exerciseId: UUID, sets: [EditableSet]) {
-            self.exerciseId = exerciseId
-            self.sets = sets
+    private func toggleExpanded(for id: UUID) {
+        cardStates[id]?.isExpanded.toggle()
+        if cardStates[id]?.isExpanded == true {
+            cardStates[id]?.isQuickEditing = false
         }
+    }
 
-        init(workoutExercise: WorkoutExercise) {
-            self.exerciseId = workoutExercise.exercise.id
-            self.sets = workoutExercise.sets.map { set in
-                EditableSet(
-                    reps: set.reps,
-                    weight: set.weight,
-                    restTime: set.restTime
-                )
-            }
-            if self.sets.isEmpty {
-                self.sets = [EditableSet()]
-            }
+    private func applyBulkEdit(to id: UUID) {
+        guard var state = cardStates[id],
+              let index = editableExercises.firstIndex(where: { $0.id == id }) else { return }
+
+        state.applyBulkToSets(&editableExercises[index].sets)
+        cardStates[id] = state
+    }
+
+    private func enterReorderMode() {
+        // Collapse all cards
+        for key in cardStates.keys {
+            cardStates[key]?.isQuickEditing = false
+            cardStates[key]?.isExpanded = false
         }
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        // Enter reorder mode
+        isReorderMode = true
     }
 }
 
 // MARK: - Exercise Card Component
 
 struct ExerciseCard: View {
-    @Binding var editable: EditWorkoutView.EditableExercise
+    @Binding var editable: EditableExercise
     let exerciseName: String
     let exerciseEntities: [ExerciseEntity]
     let defaultRestTime: Double
@@ -435,7 +598,7 @@ struct ExerciseCard: View {
                     // Add Set Button
                     Button {
                         withAnimation {
-                            let newSet = EditWorkoutView.EditableSet(
+                            let newSet = EditableSet(
                                 reps: editable.sets.last?.reps ?? 10,
                                 weight: editable.sets.last?.weight ?? 0,
                                 restTime: defaultRestTime
@@ -472,7 +635,7 @@ struct ExerciseCard: View {
 
 struct SetRow: View {
     let setNumber: Int
-    @Binding var set: EditWorkoutView.EditableSet
+    @Binding var set: EditableSet
     let onDelete: () -> Void
 
     var body: some View {
@@ -480,7 +643,7 @@ struct SetRow: View {
             // Set Number
             Text("\(setNumber)")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(width: 32, height: 32)
                 .background(
                     Circle()
@@ -564,3 +727,326 @@ struct SetRow: View {
     .modelContainer(container)
 }
 
+import SwiftUI
+
+// MARK: - Collapsed Exercise Row
+
+struct CollapsedExerciseRow: View {
+    let exerciseName: String
+    let setCount: Int
+    let avgReps: Int
+    let avgWeight: Double
+    let isReorderMode: Bool
+    let onTap: () -> Void
+    let onToggleExpand: () -> Void
+    let onLongPress: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Drag Handle (always visible for familiarity)
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 18))
+                .foregroundStyle(.secondary)
+                .frame(width: 30)
+                .onLongPressGesture(minimumDuration: 0.5) {
+                    onLongPress()
+                }
+
+            // Exercise Info - Tappable for quick edit
+            Button(action: onTap) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exerciseName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("\(setCount) Sätze • \(avgReps) WDH • \(avgWeight, specifier: "%.1f")kg")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.primary.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            // Expand/Collapse Toggle
+            if !isReorderMode {
+                Button(action: onToggleExpand) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(0)) // Will animate
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AppTheme.cardBackground)
+        )
+    }
+}
+
+// MARK: - Quick Edit View
+
+struct QuickEditView: View {
+    @Binding var sets: Int
+    @Binding var reps: Int
+    @Binding var weight: Double
+    let onApply: () -> Void
+    let onExpand: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Für alle Sätze")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.6))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 12) {
+                // Sätze
+                VStack(spacing: 6) {
+                    Text("Sätze")
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.6))
+                    TextField("3", value: $sets, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(12)
+                        .frame(width: 80)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white.opacity(0.1))
+                        )
+                        .onChange(of: sets) { _, _ in onApply() }
+                }
+
+                // WDH
+                VStack(spacing: 6) {
+                    Text("WDH")
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.6))
+                    TextField("10", value: $reps, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(12)
+                        .frame(width: 80)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white.opacity(0.1))
+                        )
+                        .onChange(of: reps) { _, _ in onApply() }
+                }
+
+                // Gewicht
+                VStack(spacing: 6) {
+                    Text("Gewicht")
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.6))
+                    HStack(spacing: 4) {
+                        TextField("80", value: $weight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .padding(12)
+                            .frame(width: 80)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white.opacity(0.1))
+                            )
+                            .onChange(of: weight) { _, _ in onApply() }
+                        Text("kg")
+                            .font(.caption)
+                            .foregroundStyle(.primary.opacity(0.6))
+                    }
+                }
+            }
+
+            // Link to individual edit
+            Button(action: onExpand) {
+                HStack(spacing: 6) {
+                    Image(systemName: "list.bullet")
+                        .font(.caption)
+                    Text("Sätze einzeln bearbeiten")
+                        .font(.caption)
+                }
+                .foregroundStyle(AppTheme.turquoiseBoost)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+}
+
+// MARK: - Expanded Set List View
+
+struct ExpandedSetListView: View {
+    @Binding var sets: [EditableSet]
+    let defaultRestTime: Double
+    let onCollapse: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Header with collapse button
+            HStack {
+                Text("Einzelne Sätze")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.6))
+
+                Spacer()
+
+                Button(action: onCollapse) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.up")
+                            .font(.caption2)
+                        Text("Einklappen")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(AppTheme.turquoiseBoost)
+                }
+            }
+
+            // Individual sets
+            ForEach(Array(sets.enumerated()), id: \.offset) { index, _ in
+                HStack(spacing: 12) {
+                    Text("Satz \(index + 1)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary.opacity(0.8))
+                        .frame(width: 60, alignment: .leading)
+
+                    // WDH
+                    HStack(spacing: 4) {
+                        Text("WDH")
+                            .font(.caption2)
+                            .foregroundStyle(.primary.opacity(0.5))
+                        TextField("10", value: $sets[index].reps, format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .padding(8)
+                            .frame(width: 60)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white.opacity(0.1))
+                            )
+                    }
+
+                    // Gewicht
+                    HStack(spacing: 4) {
+                        Text("Gewicht")
+                            .font(.caption2)
+                            .foregroundStyle(.primary.opacity(0.5))
+                        TextField("80", value: $sets[index].weight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .padding(8)
+                            .frame(width: 70)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white.opacity(0.1))
+                            )
+                        Text("kg")
+                            .font(.caption2)
+                            .foregroundStyle(.primary.opacity(0.5))
+                    }
+                }
+            }
+
+            // Add set button
+            Button(action: {
+                let lastSet = sets.last ?? EditableSet(reps: 10, weight: 80, restTime: defaultRestTime)
+                sets.append(EditableSet(reps: lastSet.reps, weight: lastSet.weight, restTime: defaultRestTime))
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Satz hinzufügen")
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppTheme.mossGreen)
+                .padding(.vertical, 8)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+}
+
+// MARK: - Reorder Mode Overlay
+
+struct ReorderModeOverlay: View {
+    @Binding var exercises: [EditableExercise]
+    let exerciseNames: [UUID: String]
+    let onExit: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Semi-transparent background
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { onExit() }
+
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("Übungen neu anordnen")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Button(action: onExit) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(AppTheme.mossGreen)
+                    }
+                }
+                .padding()
+                .background(AppTheme.cardBackground)
+
+                // Draggable List
+                List {
+                    ForEach(exercises, id: \.id) { exercise in
+                        HStack(spacing: 12) {
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundStyle(.secondary)
+
+                            Text(exerciseNames[exercise.exerciseId] ?? "Unknown")
+                                .font(.system(size: 16, weight: .medium))
+
+                            Spacer()
+
+                            Text("\(exercise.sets.count) Sätze")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                        .listRowBackground(AppTheme.cardBackground)
+                    }
+                    .onMove { from, to in
+                        exercises.move(fromOffsets: from, toOffset: to)
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .environment(\.editMode, .constant(.active))
+            }
+            .background(AppTheme.background)
+            .cornerRadius(20)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 60)
+        }
+        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+    }
+}
