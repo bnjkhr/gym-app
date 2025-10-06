@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct WorkoutTileCard: View {
     let workout: Workout
@@ -6,6 +7,11 @@ struct WorkoutTileCard: View {
     let onTap: () -> Void
     let onShowMenu: () -> Void
     let onToggleHome: () -> Void
+
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var allSessions: [WorkoutSessionEntity]
+
+    @Environment(\.modelContext) private var modelContext
 
     private var displayLevel: String {
         guard let level = workout.level else { return "" }
@@ -17,25 +23,21 @@ struct WorkoutTileCard: View {
         }
     }
 
-    private var displayEquipment: String {
-        let equipmentTypes = workout.exercises.map { $0.exercise.equipmentType }
-        let uniqueTypes = Set(equipmentTypes)
+    private var lastCompletedDate: String? {
+        // Find the most recent session for this workout template
+        let workoutSessions = allSessions.filter { $0.templateId == workout.id }
+        guard let lastSession = workoutSessions.first else { return nil }
 
-        if uniqueTypes.isEmpty {
-            return "Training"
-        } else if uniqueTypes.count > 1 {
-            return "Mixed"
-        } else if let type = uniqueTypes.first {
-            return type.rawValue
-        } else {
-            return "Training"
-        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: lastSession.date, relativeTo: Date())
     }
     
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
-                // Content area - workout name, equipment, and level
+                // Content area - workout name and last completed date
                 VStack(alignment: .leading, spacing: 4) {
                     Text(workout.name)
                         .font(.headline)
@@ -45,13 +47,17 @@ struct WorkoutTileCard: View {
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text(displayEquipment)
+                    if let lastDate = lastCompletedDate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 11))
+                            Text("Zuletzt: \(lastDate)")
+                        }
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-
-                    if !displayLevel.isEmpty {
-                        Text(displayLevel)
+                    } else {
+                        Text("Noch nicht absolviert")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
