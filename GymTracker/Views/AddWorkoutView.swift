@@ -101,6 +101,9 @@ struct AddWorkoutView: View {
                             },
                             onAdd: { exercise in
                                 addExercise(exercise)
+                            },
+                            onRemove: { exercise in
+                                removeExerciseById(exercise.id)
                             }
                         )
                     } label: {
@@ -228,6 +231,10 @@ struct AddWorkoutView: View {
 
     private func removeExercise(_ selection: ExerciseSelection) {
         selectedExercises.removeAll { $0.id == selection.id }
+    }
+
+    private func removeExerciseById(_ exerciseId: UUID) {
+        selectedExercises.removeAll { $0.exercise.id == exerciseId }
     }
 
     private func isExerciseSelected(_ exercise: Exercise) -> Bool {

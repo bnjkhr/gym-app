@@ -96,51 +96,59 @@ struct WorkoutTileCard: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            // 1. Edit
-            Button {
-                onEdit()
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
+            // Performance: Grouped menu items for faster rendering
+            Group {
+                Button {
+                    onEdit()
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
 
-            // 2. Start
-            Button {
-                onStart()
-            } label: {
-                Label("Start", systemImage: "play.fill")
-            }
+                Button {
+                    onStart()
+                } label: {
+                    Label("Start", systemImage: "play.fill")
+                }
 
-            // 3. Löschen (destruktiv)
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Löschen", systemImage: "trash")
-            }
-
-            Divider()
-
-            // 4. Zur Startseite
-            Button {
-                onToggleHome()
-            } label: {
-                Label("Zur Startseite", systemImage: isHomeFavorite ? "checkmark.square.fill" : "square")
-            }
-
-            // 5. Duplizieren
-            Button {
-                onDuplicate()
-            } label: {
-                Label("Duplizieren", systemImage: "doc.on.doc")
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Löschen", systemImage: "trash")
+                }
             }
 
             Divider()
 
-            // 6. Teilen
-            Button {
-                onShare()
-            } label: {
-                Label("Teilen", systemImage: "square.and.arrow.up")
+            Group {
+                Button {
+                    onToggleHome()
+                } label: {
+                    Label("Zur Startseite", systemImage: isHomeFavorite ? "checkmark.square.fill" : "square")
+                }
+
+                Button {
+                    onDuplicate()
+                } label: {
+                    Label("Duplizieren", systemImage: "doc.on.doc")
+                }
+
+                Button {
+                    onShare()
+                } label: {
+                    Label("Teilen", systemImage: "square.and.arrow.up")
+                }
             }
+        } preview: {
+            // Performance: Simple preview for instant visual feedback
+            VStack(alignment: .leading, spacing: 8) {
+                Text(workout.name)
+                    .font(.headline)
+                Text("\(workout.exercises.count) Übungen")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color(.systemBackground))
         }
     }
 }

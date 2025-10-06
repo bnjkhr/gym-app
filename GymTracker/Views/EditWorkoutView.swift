@@ -207,6 +207,9 @@ struct EditWorkoutView: View {
                     },
                     onAdd: { exercise in
                         addExerciseFromPicker(exercise)
+                    },
+                    onRemove: { exercise in
+                        removeExerciseById(exercise.id)
                     }
                 )
             }
@@ -258,6 +261,10 @@ struct EditWorkoutView: View {
             sets: defaultSets
         )
         editableExercises.append(newEditable)
+    }
+
+    private func removeExerciseById(_ exerciseId: UUID) {
+        editableExercises.removeAll { $0.exerciseId == exerciseId }
     }
 
     private func deleteExercises(at offsets: IndexSet) {
