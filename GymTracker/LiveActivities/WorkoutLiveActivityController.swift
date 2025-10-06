@@ -125,6 +125,12 @@ final class WorkoutLiveActivityController {
 
     func end() {
         guard let activity else { return }
+
+        // Sofort die Referenz clearen, um zu verhindern, dass neue Updates gesendet werden
+        let activityToEnd = activity
+        self.activity = nil
+        self.currentHeartRate = nil
+
         Task {
             let closingState = WorkoutActivityAttributes.ContentState(
                 remainingSeconds: 0,
@@ -135,9 +141,8 @@ final class WorkoutLiveActivityController {
                 currentHeartRate: nil
             )
 
-            await activity.end(using: closingState, dismissalPolicy: .immediate)
-            self.activity = nil
-            self.currentHeartRate = nil
+            await activityToEnd.end(using: closingState, dismissalPolicy: .immediate)
+            print("[LiveActivity] ✅ Activity beendet")
         }
     }
     
