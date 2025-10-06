@@ -4,6 +4,9 @@ import Foundation
 
 @main
 struct GymTrackerApp: App {
+    // Performance: Track migration state to show app immediately
+    @State private var isMigrationComplete = false
+
     let sharedModelContainer: ModelContainer = {
         let schema = Schema([
             ExerciseEntity.self,
@@ -59,129 +62,156 @@ struct GymTrackerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .modelContainer(sharedModelContainer)
-                .task {
-                    let context = sharedModelContainer.mainContext
+            ZStack {
+                ContentView()
+                    .modelContainer(sharedModelContainer)
+                    .opacity(isMigrationComplete ? 1 : 0)
 
-                    // 🔄 SCHRITT 1: Exercise-Migration (alte Übungen → CSV-Übungen)
-                    do {
-                        if await ExerciseDatabaseMigration.isMigrationNeeded() {
-                            await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
-                        }
-                    } catch {
-                        print("❌ Fehler bei Exercise-Migration: \(error)")
-                        // App sollte nicht abstürzen, auch wenn Migration fehlschlägt
+                // Performance: Show loading overlay during migrations
+                if !isMigrationComplete {
+                    Color(.systemBackground)
+                        .ignoresSafeArea()
+
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Daten werden geladen...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
-
-                    // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden
-                    do {
-                        let descriptor = FetchDescriptor<ExerciseEntity>()
-                        let existingExercises = try context.fetch(descriptor)
-
-                        // Prüfe ob Exercises deterministische UUIDs haben (Format: 00000000-0000-0000-0000-XXXXXXXXXXXX)
-                        let hasDeterministicUUIDs = existingExercises.contains { exercise in
-                            let uuidString = exercise.id.uuidString
-                            return uuidString.hasPrefix("00000000-0000-0000-0000-")
-                        }
-
-                        if existingExercises.isEmpty || !hasDeterministicUUIDs {
-                            if !existingExercises.isEmpty {
-                                print("🔧 Lösche \(existingExercises.count) Übungen mit falschen UUIDs...")
-                                for exercise in existingExercises {
-                                    context.delete(exercise)
-                                }
-                                try context.save()
-                            }
-
-                            print("🌱 Lade 161 Übungen aus CSV...")
-                            ExerciseSeeder.seedExercises(context: context)
-                            print("✅ Übungen erfolgreich geladen")
-                        } else {
-                            print("✅ \(existingExercises.count) Übungen mit korrekten UUIDs bereits vorhanden")
-                        }
-                    } catch {
-                        print("❌ Fehler beim Prüfen der Übungen: \(error)")
-                        // App sollte nicht abstürzen, auch wenn Seeding fehlschlägt
-                    }
-
-                    // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
-                    do {
-                        let SAMPLE_WORKOUT_VERSION = 2 // Bei neuen Samples erhöhen!
-                        let lastVersion = UserDefaults.standard.integer(forKey: "sampleWorkoutVersion")
-
-                        let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
-                        let existingWorkouts = try context.fetch(workoutDescriptor)
-
-                        // Migration: Alte Workouts ohne Flag als Benutzer-Workouts markieren
-                        for workout in existingWorkouts where workout.isSampleWorkout == nil {
-                            workout.isSampleWorkout = false // Alte Workouts = Benutzer-Workouts
-                        }
-                        try? context.save()
-
-                        // Wenn Version veraltet ist ODER keine Workouts vorhanden
-                        if lastVersion < SAMPLE_WORKOUT_VERSION || existingWorkouts.isEmpty {
-                            // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
-                            let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
-                            if !sampleWorkouts.isEmpty {
-                                print("🔄 Lösche \(sampleWorkouts.count) veraltete Sample-Workouts...")
-                                for workout in sampleWorkouts {
-                                    context.delete(workout)
-                                }
-                                try context.save()
-                            }
-
-                            // Lade neue Sample-Workouts
-                            print("🌱 Lade neue Beispielworkouts (Version \(SAMPLE_WORKOUT_VERSION))...")
-                            WorkoutSeeder.seedWorkouts(context: context)
-
-                            // Speichere neue Version
-                            UserDefaults.standard.set(SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
-                            print("✅ Sample-Workouts erfolgreich aktualisiert auf Version \(SAMPLE_WORKOUT_VERSION)")
-                        } else {
-                            let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
-                            let samples = existingWorkouts.filter { $0.isSampleWorkout == true }
-                            print("✅ Sample-Workouts sind aktuell (Version \(SAMPLE_WORKOUT_VERSION))")
-                            print("   - \(samples.count) Beispiel-Workouts")
-                            print("   - \(userWorkouts.count) Benutzer-Workouts")
-                        }
-                    } catch {
-                        print("❌ Fehler beim Sample-Workout Update: \(error)")
-                    }
-
-                    // 🏆 SCHRITT 4: Migration - ExerciseRecords aus bestehenden Sessions generieren
-                    do {
-                        if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
-                            await ExerciseRecordMigration.migrateExistingData(context: context)
-                        }
-                    } catch {
-                        print("❌ Fehler bei ExerciseRecord-Migration: \(error)")
-                        // App sollte nicht abstürzen, auch wenn Migration fehlschlägt
-                    }
-
-                    // 📊 SCHRITT 5: Migration - Last-Used Daten für bessere UX
-                    do {
-                        await ExerciseLastUsedMigration.performInitialMigration(context: context)
-                    } catch {
-                        print("❌ Fehler bei LastUsed-Migration: \(error)")
-                        // App sollte nicht abstürzen, auch wenn Migration fehlschlägt
-                    }
-                    
-                    // Wait a bit for app to fully initialize before testing Live Activities
-                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                    
-                    #if canImport(ActivityKit)
-                    if #available(iOS 16.1, *) {
-                        print("=== Live Activity Setup ===")
-                        WorkoutLiveActivityController.shared.requestPermissionIfNeeded()
-                        
-                        // Live Activity Test nur im Debug-Modus
-                        #if DEBUG
-                        // WorkoutLiveActivityController.shared.testLiveActivity()
-                        #endif
-                    }
-                    #endif
                 }
+            }
+            .task(priority: .userInitiated) {
+                // Performance: Run migrations in background with higher priority than .background
+                // but lower than main UI thread
+                await performMigrations()
+
+                // Show UI after migrations complete
+                withAnimation(.easeIn(duration: 0.3)) {
+                    isMigrationComplete = true
+                }
+            }
         }
+    }
+
+    // MARK: - Performance: Background Migration
+
+    /// Performs all database migrations in the background to avoid blocking UI
+    private func performMigrations() async {
+        let context = sharedModelContainer.mainContext
+
+        // 🔄 SCHRITT 1: Exercise-Migration (alte Übungen → CSV-Übungen)
+        do {
+            if await ExerciseDatabaseMigration.isMigrationNeeded() {
+                await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
+            }
+        } catch {
+            print("❌ Fehler bei Exercise-Migration: \(error)")
+        }
+
+        // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden
+        do {
+            let descriptor = FetchDescriptor<ExerciseEntity>()
+            let existingExercises = try context.fetch(descriptor)
+
+            // Prüfe ob Exercises deterministische UUIDs haben (Format: 00000000-0000-0000-0000-XXXXXXXXXXXX)
+            let hasDeterministicUUIDs = existingExercises.contains { exercise in
+                let uuidString = exercise.id.uuidString
+                return uuidString.hasPrefix("00000000-0000-0000-0000-")
+            }
+
+            if existingExercises.isEmpty || !hasDeterministicUUIDs {
+                if !existingExercises.isEmpty {
+                    print("🔧 Lösche \(existingExercises.count) Übungen mit falschen UUIDs...")
+                    for exercise in existingExercises {
+                        context.delete(exercise)
+                    }
+                    try context.save()
+                }
+
+                print("🌱 Lade 161 Übungen aus CSV...")
+                ExerciseSeeder.seedExercises(context: context)
+                print("✅ Übungen erfolgreich geladen")
+            } else {
+                print("✅ \(existingExercises.count) Übungen mit korrekten UUIDs bereits vorhanden")
+            }
+        } catch {
+            print("❌ Fehler beim Prüfen der Übungen: \(error)")
+        }
+
+        // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
+        do {
+            let SAMPLE_WORKOUT_VERSION = 2 // Bei neuen Samples erhöhen!
+            let lastVersion = UserDefaults.standard.integer(forKey: "sampleWorkoutVersion")
+
+            let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
+            let existingWorkouts = try context.fetch(workoutDescriptor)
+
+            // Migration: Alte Workouts ohne Flag als Benutzer-Workouts markieren
+            for workout in existingWorkouts where workout.isSampleWorkout == nil {
+                workout.isSampleWorkout = false // Alte Workouts = Benutzer-Workouts
+            }
+            try? context.save()
+
+            // Wenn Version veraltet ist ODER keine Workouts vorhanden
+            if lastVersion < SAMPLE_WORKOUT_VERSION || existingWorkouts.isEmpty {
+                // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
+                let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
+                if !sampleWorkouts.isEmpty {
+                    print("🔄 Lösche \(sampleWorkouts.count) veraltete Sample-Workouts...")
+                    for workout in sampleWorkouts {
+                        context.delete(workout)
+                    }
+                    try context.save()
+                }
+
+                // Lade neue Sample-Workouts
+                print("🌱 Lade neue Beispielworkouts (Version \(SAMPLE_WORKOUT_VERSION))...")
+                WorkoutSeeder.seedWorkouts(context: context)
+
+                // Speichere neue Version
+                UserDefaults.standard.set(SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
+                print("✅ Sample-Workouts erfolgreich aktualisiert auf Version \(SAMPLE_WORKOUT_VERSION)")
+            } else {
+                let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
+                let samples = existingWorkouts.filter { $0.isSampleWorkout == true }
+                print("✅ Sample-Workouts sind aktuell (Version \(SAMPLE_WORKOUT_VERSION))")
+                print("   - \(samples.count) Beispiel-Workouts")
+                print("   - \(userWorkouts.count) Benutzer-Workouts")
+            }
+        } catch {
+            print("❌ Fehler beim Sample-Workout Update: \(error)")
+        }
+
+        // 🏆 SCHRITT 4: Migration - ExerciseRecords aus bestehenden Sessions generieren
+        do {
+            if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
+                await ExerciseRecordMigration.migrateExistingData(context: context)
+            }
+        } catch {
+            print("❌ Fehler bei ExerciseRecord-Migration: \(error)")
+        }
+
+        // 📊 SCHRITT 5: Migration - Last-Used Daten für bessere UX
+        do {
+            await ExerciseLastUsedMigration.performInitialMigration(context: context)
+        } catch {
+            print("❌ Fehler bei LastUsed-Migration: \(error)")
+        }
+
+        // Wait a bit for app to fully initialize before testing Live Activities
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+        #if canImport(ActivityKit)
+        if #available(iOS 16.1, *) {
+            print("=== Live Activity Setup ===")
+            WorkoutLiveActivityController.shared.requestPermissionIfNeeded()
+
+            // Live Activity Test nur im Debug-Modus
+            #if DEBUG
+            // WorkoutLiveActivityController.shared.testLiveActivity()
+            #endif
+        }
+        #endif
     }
 }
