@@ -5,8 +5,12 @@ struct WorkoutTileCard: View {
     let workout: Workout
     let isHomeFavorite: Bool
     let onTap: () -> Void
-    let onShowMenu: () -> Void
+    let onEdit: () -> Void
+    let onStart: () -> Void
+    let onDelete: () -> Void
     let onToggleHome: () -> Void
+    let onDuplicate: () -> Void
+    let onShare: () -> Void
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var allSessions: [WorkoutSessionEntity]
@@ -92,17 +96,52 @@ struct WorkoutTileCard: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
+            // 1. Edit
             Button {
-                onShowMenu()
+                onEdit()
             } label: {
-                Label("Bearbeiten", systemImage: "pencil")
+                Label("Edit", systemImage: "pencil")
             }
 
+            // 2. Start
+            Button {
+                onStart()
+            } label: {
+                Label("Start", systemImage: "play.fill")
+            }
+
+            // 3. Löschen (destruktiv)
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+
+            Divider()
+
+            // 4. Zur Startseite
             Button {
                 onToggleHome()
             } label: {
-                Label(isHomeFavorite ? "Von Favoriten entfernen" : "Zu Favoriten", systemImage: isHomeFavorite ? "house.fill" : "house")
+                Label("Zur Startseite", systemImage: isHomeFavorite ? "checkmark.square.fill" : "square")
             }
+
+            // 5. Duplizieren
+            Button {
+                onDuplicate()
+            } label: {
+                Label("Duplizieren", systemImage: "doc.on.doc")
+            }
+
+            Divider()
+
+            // 6. Teilen
+            Button {
+                onShare()
+            } label: {
+                Label("Teilen", systemImage: "square.and.arrow.up")
+            }
+            .disabled(true)
         }
     }
 }
@@ -138,9 +177,13 @@ struct WorkoutTileCard: View {
     return WorkoutTileCard(
         workout: sampleWorkout,
         isHomeFavorite: true,
-        onTap: { print("Workout tapped - starting...") },
-        onShowMenu: { print("Menu tapped") },
-        onToggleHome: { print("Home toggled") }
+        onTap: { print("Workout tapped") },
+        onEdit: { print("Edit tapped") },
+        onStart: { print("Start tapped") },
+        onDelete: { print("Delete tapped") },
+        onToggleHome: { print("Home toggled") },
+        onDuplicate: { print("Duplicate tapped") },
+        onShare: { print("Share tapped") }
     )
     .padding()
 }

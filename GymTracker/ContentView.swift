@@ -567,8 +567,12 @@ struct WorkoutsHomeView: View {
                             workout: workout,
                             isHomeFavorite: workout.isFavorite,
                             onTap: { startWorkout(with: workout.id) },
-                            onShowMenu: { editWorkout(id: workout.id) },
-                            onToggleHome: { toggleHomeFavorite(workoutID: workout.id) }
+                            onEdit: { editWorkout(id: workout.id) },
+                            onStart: { startWorkout(with: workout.id) },
+                            onDelete: { workoutToDelete = workout },
+                            onToggleHome: { toggleHomeFavorite(workoutID: workout.id) },
+                            onDuplicate: { duplicateWorkout(id: workout.id) },
+                            onShare: { /* Später implementieren */ }
                         )
                     }
                 }
@@ -667,6 +671,50 @@ struct WorkoutsHomeView: View {
         if editingWorkoutSelection?.id == id {
             editingWorkoutSelection = nil
         }
+    }
+
+    private func duplicateWorkout(id: UUID) {
+        guard let originalEntity = workoutEntities.first(where: { $0.id == id }) else { return }
+
+        // Erstelle neue WorkoutEntity als Kopie
+        let duplicatedEntity = WorkoutEntity(
+            name: "\(originalEntity.name) (Kopie)",
+            date: Date(),
+            exercises: [],
+            defaultRestTime: originalEntity.defaultRestTime,
+            duration: nil,
+            notes: originalEntity.notes,
+            isFavorite: false, // Nicht als Favorit markieren
+            isSampleWorkout: false // Benutzer-Workout
+        )
+
+        // Kopiere alle Übungen mit Sets
+        for originalWorkoutExercise in originalEntity.exercises {
+            let copiedWorkoutExercise = WorkoutExerciseEntity(
+                exercise: originalWorkoutExercise.exercise
+            )
+
+            // Kopiere alle Sets
+            for originalSet in originalWorkoutExercise.sets {
+                let copiedSet = ExerciseSetEntity(
+                    reps: originalSet.reps,
+                    weight: originalSet.weight,
+                    restTime: originalSet.restTime,
+                    completed: false
+                )
+                copiedWorkoutExercise.sets.append(copiedSet)
+                modelContext.insert(copiedSet)
+            }
+
+            duplicatedEntity.exercises.append(copiedWorkoutExercise)
+            modelContext.insert(copiedWorkoutExercise)
+        }
+
+        // Speichere in SwiftData
+        modelContext.insert(duplicatedEntity)
+        try? modelContext.save()
+
+        print("✅ Workout '\(originalEntity.name)' erfolgreich dupliziert")
     }
 
     private func removeSession(id: UUID) {
