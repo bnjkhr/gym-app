@@ -1,7 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct ExercisePickerView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @Environment(\.modelContext) private var modelContext
+
+    @Query(sort: [SortDescriptor(\ExerciseEntity.name)]) private var exerciseEntities: [ExerciseEntity]
 
     // Indicates whether an exercise is already selected in the parent view
     let isSelected: (Exercise) -> Bool
@@ -10,8 +13,12 @@ struct ExercisePickerView: View {
 
     @State private var searchText: String = ""
 
+    private var allExercises: [Exercise] {
+        exerciseEntities.compactMap { Exercise(entity: $0, in: modelContext) }
+    }
+
     private var filteredExercises: [Exercise] {
-        let all = workoutStore.exercises
+        let all = allExercises
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return all }
         return all.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
@@ -41,8 +48,9 @@ struct ExercisePickerView: View {
                             Text(exercise.name)
                                 .font(.body)
 
-                            if let tooltip = lastSavedDescription(for: exercise) {
-                                Text(tooltip)
+                            // Show muscle groups as subtitle
+                            if !exercise.muscleGroups.isEmpty {
+                                Text(exercise.muscleGroups.map { $0.rawValue }.joined(separator: " • "))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -70,20 +78,17 @@ struct ExercisePickerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Suchen")
     }
-
-    private func lastSavedDescription(for exercise: Exercise) -> String? {
-        guard let metrics = workoutStore.lastMetrics(for: exercise) else { return nil }
-        let formattedWeight = metrics.weight.formatted(.number.precision(.fractionLength(1)))
-        return "Zuletzt: \(metrics.setCount) Sätze • \(formattedWeight) kg"
-    }
 }
 
 #Preview {
-    NavigationStack {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: ExerciseEntity.self, configurations: config)
+
+    return NavigationStack {
         ExercisePickerView(
             isSelected: { _ in false },
             onAdd: { _ in }
         )
-        .environmentObject(WorkoutStore())
+        .modelContainer(container)
     }
 }

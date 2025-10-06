@@ -123,13 +123,6 @@ struct WorkoutWizardView: View {
             .appEdgePadding()
             .navigationTitle("Workout-Assistent")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") {
-                        dismiss()
-                    }
-                }
-            }
             .onAppear {
                 // Ensure WorkoutStore has access to ModelContext
                 workoutStore.modelContext = modelContext

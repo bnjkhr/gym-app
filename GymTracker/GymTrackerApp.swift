@@ -65,8 +65,13 @@ struct GymTrackerApp: App {
                     let context = sharedModelContainer.mainContext
 
                     // 🔄 SCHRITT 1: Exercise-Migration (alte Übungen → CSV-Übungen)
-                    if await ExerciseDatabaseMigration.isMigrationNeeded() {
-                        await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
+                    do {
+                        if await ExerciseDatabaseMigration.isMigrationNeeded() {
+                            await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
+                        }
+                    } catch {
+                        print("❌ Fehler bei Exercise-Migration: \(error)")
+                        // App sollte nicht abstürzen, auch wenn Migration fehlschlägt
                     }
 
                     // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden
@@ -97,6 +102,7 @@ struct GymTrackerApp: App {
                         }
                     } catch {
                         print("❌ Fehler beim Prüfen der Übungen: \(error)")
+                        // App sollte nicht abstürzen, auch wenn Seeding fehlschlägt
                     }
 
                     // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
@@ -144,12 +150,22 @@ struct GymTrackerApp: App {
                     }
 
                     // 🏆 SCHRITT 4: Migration - ExerciseRecords aus bestehenden Sessions generieren
-                    if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
-                        await ExerciseRecordMigration.migrateExistingData(context: context)
+                    do {
+                        if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
+                            await ExerciseRecordMigration.migrateExistingData(context: context)
+                        }
+                    } catch {
+                        print("❌ Fehler bei ExerciseRecord-Migration: \(error)")
+                        // App sollte nicht abstürzen, auch wenn Migration fehlschlägt
                     }
 
                     // 📊 SCHRITT 5: Migration - Last-Used Daten für bessere UX
-                    await ExerciseLastUsedMigration.performInitialMigration(context: context)
+                    do {
+                        await ExerciseLastUsedMigration.performInitialMigration(context: context)
+                    } catch {
+                        print("❌ Fehler bei LastUsed-Migration: \(error)")
+                        // App sollte nicht abstürzen, auch wenn Migration fehlschlägt
+                    }
                     
                     // Wait a bit for app to fully initialize before testing Live Activities
                     try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds

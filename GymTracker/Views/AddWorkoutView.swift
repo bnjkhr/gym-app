@@ -126,17 +126,11 @@ struct AddWorkoutView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle("Neues Workout")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                // Ensure WorkoutStore has access to ModelContext
+            .task {
+                // Ensure WorkoutStore has access to ModelContext BEFORE rendering
                 workoutStore.modelContext = modelContext
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") {
-                        dismiss()
-                    }
-                }
-
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Erstellen") {
                         saveWorkout()

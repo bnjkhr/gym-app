@@ -8,26 +8,27 @@ class ExerciseRecordMigration {
     /// Check if migration is needed by looking for any ExerciseRecords
     static func isMigrationNeeded(context: ModelContext) async -> Bool {
         do {
-            // Try to fetch ExerciseRecordEntity
-            let recordDescriptor = FetchDescriptor(predicate: #Predicate<ExerciseRecordEntity> { _ in true })
+            // Try to fetch ExerciseRecordEntity - use simple descriptor without predicate
+            let recordDescriptor = FetchDescriptor<ExerciseRecordEntity>()
             let existingRecords = try context.fetch(recordDescriptor)
-            
-            // Try to fetch WorkoutSessionEntity
-            let sessionDescriptor = FetchDescriptor(predicate: #Predicate<WorkoutSessionEntity> { _ in true })
+
+            // Try to fetch WorkoutSessionEntity - use simple descriptor without predicate
+            let sessionDescriptor = FetchDescriptor<WorkoutSessionEntity>()
             let existingSessions = try context.fetch(sessionDescriptor)
-            
+
             // Migration needed if we have sessions but no records
             let migrationNeeded = existingRecords.isEmpty && !existingSessions.isEmpty
-            
+
             if migrationNeeded {
                 print("🔄 ExerciseRecord Migration benötigt: \(existingSessions.count) Sessions gefunden, aber keine Records")
             } else {
                 print("✅ ExerciseRecord Migration nicht benötigt: \(existingRecords.count) Records vorhanden")
             }
-            
+
             return migrationNeeded
         } catch {
             print("❌ Fehler beim Prüfen der Migration: \(error)")
+            // Bei einem Fehler (z.B. Schema-Problem) keine Migration durchführen
             return false
         }
     }
@@ -35,12 +36,10 @@ class ExerciseRecordMigration {
     /// Migrate existing workout sessions to generate ExerciseRecords
     static func migrateExistingData(context: ModelContext) async {
         print("🔄 Starte ExerciseRecord Migration...")
-        
+
         do {
-            let sessionDescriptor = FetchDescriptor(
-                predicate: #Predicate<WorkoutSessionEntity> { _ in true },
-                sortBy: [SortDescriptor(\WorkoutSessionEntity.date, order: .forward)]
-            )
+            var sessionDescriptor = FetchDescriptor<WorkoutSessionEntity>()
+            sessionDescriptor.sortBy = [SortDescriptor(\WorkoutSessionEntity.date, order: .forward)]
             let sessions = try context.fetch(sessionDescriptor)
             
             print("📊 Analysiere \(sessions.count) Sessions für Personal Records...")
@@ -126,12 +125,13 @@ class ExerciseRecordMigration {
                 
                 // Find existing record or create new one
                 let exerciseId = exercise.id
-                let descriptor = FetchDescriptor(
+                var descriptor = FetchDescriptor<ExerciseRecordEntity>(
                     predicate: #Predicate<ExerciseRecordEntity> { record in
                         record.exerciseId == exerciseId
                     }
                 )
-                
+                descriptor.fetchLimit = 1
+
                 let existingRecord = try context.fetch(descriptor).first
                 let record = existingRecord ?? {
                     let newRecord = ExerciseRecordEntity(

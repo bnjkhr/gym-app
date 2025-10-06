@@ -224,37 +224,53 @@ struct WorkoutDetailView: View {
         .onAppear {
             // Safely remap the entity from the current ModelContext to avoid reading invalid snapshots
             let currentId = entity.id
-            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate<WorkoutEntity> { workout in 
-                workout.id == currentId 
+            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate<WorkoutEntity> { workout in
+                workout.id == currentId
             })
             if let fresh = try? modelContext.fetch(descriptor).first {
-                var mappedExercises: [WorkoutExercise] = []
-                for we in fresh.exercises {
-                    if let exEntity = we.exercise {
-                        // Refetch exercise by id before accessing properties
-                        let exId = exEntity.id
-                        let exDesc = FetchDescriptor<ExerciseEntity>(predicate: #Predicate<ExerciseEntity> { ex in
-                            ex.id == exId
-                        })
-                        if let freshEx = try? modelContext.fetch(exDesc).first {
-                            let groups = freshEx.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
-                            let equipmentType = EquipmentType(rawValue: freshEx.equipmentTypeRaw) ?? .mixed
-                            let difficultyLevel = DifficultyLevel(rawValue: freshEx.difficultyLevelRaw) ?? .anfänger
-                            let exercise = Exercise(
-                                id: freshEx.id,
-                                name: freshEx.name,
-                                muscleGroups: groups,
-                                equipmentType: equipmentType,
-                                difficultyLevel: difficultyLevel,
-                                description: freshEx.descriptionText,
-                                instructions: freshEx.instructions,
-                                createdAt: freshEx.createdAt
-                            )
-                            let sets = we.sets.map { ExerciseSet(entity: $0) }
-                            mappedExercises.append(WorkoutExercise(id: we.id, exercise: exercise, sets: sets))
+                // Performance: Batch-fetch all exercises at once to avoid N+1 problem
+                // Collect all exercise IDs first
+                let exerciseIds = fresh.exercises.compactMap { $0.exercise?.id }
+
+                // Single batch fetch for all exercises (1 query instead of N queries)
+                var exerciseMap: [UUID: ExerciseEntity] = [:]
+                if !exerciseIds.isEmpty {
+                    let batchDescriptor = FetchDescriptor<ExerciseEntity>(
+                        predicate: #Predicate<ExerciseEntity> { ex in
+                            exerciseIds.contains(ex.id)
+                        }
+                    )
+                    if let fetchedExercises = try? modelContext.fetch(batchDescriptor) {
+                        // Create dictionary for O(1) lookup
+                        for ex in fetchedExercises {
+                            exerciseMap[ex.id] = ex
                         }
                     }
                 }
+
+                // Map exercises using the batch-fetched dictionary
+                var mappedExercises: [WorkoutExercise] = []
+                for we in fresh.exercises {
+                    if let exEntity = we.exercise,
+                       let freshEx = exerciseMap[exEntity.id] {
+                        let groups = freshEx.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+                        let equipmentType = EquipmentType(rawValue: freshEx.equipmentTypeRaw) ?? .mixed
+                        let difficultyLevel = DifficultyLevel(rawValue: freshEx.difficultyLevelRaw) ?? .anfänger
+                        let exercise = Exercise(
+                            id: freshEx.id,
+                            name: freshEx.name,
+                            muscleGroups: groups,
+                            equipmentType: equipmentType,
+                            difficultyLevel: difficultyLevel,
+                            description: freshEx.descriptionText,
+                            instructions: freshEx.instructions,
+                            createdAt: freshEx.createdAt
+                        )
+                        let sets = we.sets.map { ExerciseSet(entity: $0) }
+                        mappedExercises.append(WorkoutExercise(id: we.id, exercise: exercise, sets: sets))
+                    }
+                }
+
                 self.workout = Workout(
                     id: fresh.id,
                     name: fresh.name,

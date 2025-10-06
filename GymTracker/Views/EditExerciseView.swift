@@ -48,6 +48,20 @@ struct EditExerciseView: View {
         .navigationTitle("Übung bearbeiten")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .frame(width: 30, height: 30)
+                        .background(Color(.systemGray5))
+                        .clipShape(Circle())
+                }
+            }
+
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Speichern") {
                     let updated = Exercise(
@@ -62,12 +76,6 @@ struct EditExerciseView: View {
                     dismiss()
                 }
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Abbrechen") {
-                    dismiss()
-                }
             }
         }
         .alert("Wirklich löschen?", isPresented: $isConfirmingDelete) {

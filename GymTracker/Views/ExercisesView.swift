@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct ExercisesView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
@@ -13,6 +14,9 @@ struct ExercisesView: View {
     @State private var selectedGroups: Set<MuscleGroup> = []
     @State private var selectedEquipment: Set<EquipmentType> = []
     @State private var showingFilterSheet = false
+
+    // Performance: Combine-based debouncing for search
+    @State private var searchCancellable: AnyCancellable?
 
     @Environment(\.modelContext) private var modelContext
     @Query(sort: [SortDescriptor(\ExerciseEntity.name, order: .forward)])
@@ -44,34 +48,46 @@ struct ExercisesView: View {
         }
     }
 
+    // Performance: Single-pass filtering instead of 3 separate iterations
     var filteredExercises: [Exercise] {
         let query = debouncedSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var result = sourceExercises
-        
-        // Filter by muscle groups
-        if !selectedGroups.isEmpty {
-            result = result.filter { exercise in
-                exercise.muscleGroups.contains { selectedGroups.contains($0) }
-            }
+        let hasGroupFilter = !selectedGroups.isEmpty
+        let hasEquipmentFilter = !selectedEquipment.isEmpty
+        let hasSearchQuery = !query.isEmpty
+
+        // Early return if no filters active
+        if !hasGroupFilter && !hasEquipmentFilter && !hasSearchQuery {
+            return sourceExercises
         }
-        
-        // Filter by equipment type
-        if !selectedEquipment.isEmpty {
-            result = result.filter { exercise in
-                selectedEquipment.contains(exercise.equipmentType)
+
+        // Single pass through all exercises - O(n) instead of O(3n)
+        return sourceExercises.filter { exercise in
+            // Check muscle group filter
+            if hasGroupFilter {
+                let groupMatch = exercise.muscleGroups.contains { selectedGroups.contains($0) }
+                if !groupMatch { return false }
             }
-        }
-        
-        // Filter by search text
-        if !query.isEmpty {
-            result = result.filter { exercise in
+
+            // Check equipment filter
+            if hasEquipmentFilter {
+                if !selectedEquipment.contains(exercise.equipmentType) {
+                    return false
+                }
+            }
+
+            // Check search query
+            if hasSearchQuery {
                 let nameMatch = exercise.name.lowercased().contains(query)
                 let groupMatch = exercise.muscleGroups.contains { $0.rawValue.lowercased().contains(query) }
                 let equipmentMatch = exercise.equipmentType.rawValue.lowercased().contains(query)
-                return nameMatch || groupMatch || equipmentMatch
+                if !(nameMatch || groupMatch || equipmentMatch) {
+                    return false
+                }
             }
+
+            // All active filters passed
+            return true
         }
-        return result
     }
 
     var body: some View {
@@ -122,23 +138,31 @@ struct ExercisesView: View {
                 .appEdgePadding()
                 .padding(.bottom, 12)
         }
-        .overlay(alignment: .topTrailing) {
-            VStack(spacing: 12) {
-                FloatingPlusButton {
-                    showingAddExercise = true
-                }
-            }
-            .padding(.top, 80)
-            .padding(.trailing, 20)
-        }
         .toolbar(.automatic, for: .navigationBar)
-        .onChange(of: searchText, initial: true) { oldValue, newValue in
-            let current = newValue
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                if self.searchText == current {
-                    self.debouncedSearch = current
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddExercise = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
                 }
             }
+        }
+        .onChange(of: searchText) { _, newValue in
+            // Cancel previous search operation
+            searchCancellable?.cancel()
+
+            // Create new debounced search
+            searchCancellable = Just(newValue)
+                .delay(for: .seconds(0.2), scheduler: DispatchQueue.main)
+                .sink { debouncedValue in
+                    debouncedSearch = debouncedValue
+                }
+        }
+        .onAppear {
+            // Set initial value
+            debouncedSearch = searchText
         }
         .sheet(isPresented: $showingAddExercise) {
             AddExerciseView()

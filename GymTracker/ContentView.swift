@@ -225,6 +225,10 @@ struct WorkoutsHomeView: View {
     @State private var lastScrollOffset: CGFloat = 0
     @State private var didSetInitialOffset: Bool = false
 
+    // Performance: Cache mapped entities to avoid re-mapping on every render
+    @State private var cachedWorkouts: [Workout] = []
+    @State private var cachedSessions: [WorkoutSession] = []
+
     // Explicit initializer to avoid private memberwise init caused by private nested types
     init(isInWorkoutDetail: Binding<Bool>) {
         self._isInWorkoutDetail = isInWorkoutDetail
@@ -292,12 +296,13 @@ struct WorkoutsHomeView: View {
         return Workout(entity: entity, in: modelContext)
     }
 
+    // Performance: Use cached values instead of recomputing on every access
     private var displayWorkouts: [Workout] {
-        workoutEntities.compactMap { mapWorkoutEntity($0) }
+        cachedWorkouts
     }
-    
+
     private var displaySessions: [WorkoutSession] {
-        sessionEntities.map { WorkoutSession(entity: $0, in: modelContext) }
+        cachedSessions
     }
 
     private var sortedWorkouts: [Workout] {
@@ -550,6 +555,18 @@ struct WorkoutsHomeView: View {
                 Button("Verstanden") { }
             } message: {
                 Text("Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen.")
+            }
+            // Performance: Update cache only when entities change
+            .onChange(of: workoutEntities) { _, newEntities in
+                updateWorkoutCache(newEntities)
+            }
+            .onChange(of: sessionEntities) { _, newEntities in
+                updateSessionCache(newEntities)
+            }
+            .onAppear {
+                // Initial cache population
+                updateWorkoutCache(workoutEntities)
+                updateSessionCache(sessionEntities)
             }
     }
     
@@ -879,6 +896,20 @@ struct WorkoutsHomeView: View {
             // SwiftData @Query should automatically update the UI
             try? modelContext.save()
         }
+    }
+
+    // MARK: - Performance Optimization: Cache Management
+
+    /// Updates the workout cache by mapping entities to domain models
+    /// Only called when workoutEntities actually change, not on every render
+    private func updateWorkoutCache(_ entities: [WorkoutEntity]) {
+        cachedWorkouts = entities.compactMap { mapWorkoutEntity($0) }
+    }
+
+    /// Updates the session cache by mapping entities to domain models
+    /// Only called when sessionEntities actually change, not on every render
+    private func updateSessionCache(_ entities: [WorkoutSessionEntity]) {
+        cachedSessions = entities.map { WorkoutSession(entity: $0, in: modelContext) }
     }
 }
 

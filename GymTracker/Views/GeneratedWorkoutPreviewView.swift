@@ -121,12 +121,6 @@ struct GeneratedWorkoutPreviewView: View {
             .navigationTitle("Workout Vorschau")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Zurück") {
-                        onDismiss()
-                    }
-                }
-
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Speichern") {
                         onSave()

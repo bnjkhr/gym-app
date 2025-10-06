@@ -15,15 +15,22 @@ struct ExerciseSeeder {
     }
     static func createRealisticExercises() -> [Exercise] {
         guard let csvPath = Bundle.main.path(forResource: "exercises_with_ids", ofType: "csv") else {
-            print("⚠️ exercises_with_ids.csv file not found")
+            print("⚠️ exercises_with_ids.csv file not found in bundle")
+            print("   Bundle path: \(Bundle.main.bundlePath)")
+            print("   Available resources: \(Bundle.main.paths(forResourcesOfType: "csv", inDirectory: nil))")
             return []
         }
 
         do {
             let csvContent = try String(contentsOfFile: csvPath, encoding: .utf8)
-            return parseCSV(csvContent)
+            let exercises = parseCSV(csvContent)
+            if exercises.isEmpty {
+                print("⚠️ CSV-Datei wurde gelesen, aber keine Übungen gefunden - CSV könnte beschädigt sein")
+            }
+            return exercises
         } catch {
             print("❌ Error reading CSV: \(error)")
+            print("   CSV path: \(csvPath)")
             return []
         }
     }
