@@ -14,39 +14,26 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
-    
+
     @Query(sort: [
         SortDescriptor(\WorkoutEntity.date, order: SortOrder.reverse)
     ])
     private var workoutEntities: [WorkoutEntity]
 
+    @State private var selectedTab = 0
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             // Workouts Tab
             NavigationStack {
                 WorkoutsHomeView()
                     .environmentObject(workoutStore)
-                    .safeAreaInset(edge: .bottom) {
-                        if let activeWorkout = workoutStore.activeWorkout {
-                            ActiveWorkoutBar(
-                                workout: activeWorkout,
-                                resumeAction: { 
-                                    // Signal the WorkoutsHomeView to navigate to active workout
-                                    NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
-                                },
-                                endAction: { endActiveSession() }
-                            )
-                            .environmentObject(workoutStore)
-                            .padding(.horizontal, 16)
-                            .padding(Edge.Set.vertical, 12)
-                            .padding(.bottom, 6)
-                        }
-                    }
             }
             .tabItem {
                 Image(systemName: "house")
                 Text("Home")
             }
+            .tag(0)
 
             // Workouts Tab
             NavigationStack {
@@ -57,6 +44,7 @@ struct ContentView: View {
                 Image(systemName: "dumbbell")
                 Text("Workouts")
             }
+            .tag(1)
 
             // Insights Tab
             NavigationStack {
@@ -66,6 +54,29 @@ struct ContentView: View {
             .tabItem {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                 Text("Insights")
+            }
+            .tag(2)
+        }
+        .overlay(alignment: .bottom) {
+            if let activeWorkout = workoutStore.activeWorkout {
+                VStack(spacing: 0) {
+                    Spacer()
+
+                    ActiveWorkoutBar(
+                        workout: activeWorkout,
+                        resumeAction: {
+                            // Switch to Home tab and signal to navigate to active workout
+                            selectedTab = 0
+                            NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+                        },
+                        endAction: { endActiveSession() }
+                    )
+                    .environmentObject(workoutStore)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 90) // Platz für die Tab-Bar
+                }
+                .ignoresSafeArea(.keyboard)
             }
         }
         .tint(AppTheme.powerOrange)
@@ -914,55 +925,78 @@ struct ActiveWorkoutBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Aktives Workout")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                HStack(spacing: 10) {
                     Text(workout.name)
-                        .font(.headline)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
                         .lineLimit(1)
                     if let rest = restText {
                         Label(rest, systemImage: "timer")
-                            .font(.caption.weight(.semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .lineLimit(1)
                             .monospacedDigit()
                             .fixedSize(horizontal: true, vertical: false)
                             .minimumScaleFactor(0.8)
                             .contentTransition(.numericText())
-                            .foregroundStyle(AppTheme.turquoiseBoost)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(AppTheme.turquoiseBoost.opacity(0.12), in: Capsule())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white.opacity(0.2))
+                            )
                     }
                 }
             }
             Spacer()
             Button(action: resumeAction) {
-                Label("Fortsetzen", systemImage: "play.fill")
-                    .font(.subheadline.weight(.semibold))
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 50, height: 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(AppTheme.mossGreen)
+                    )
             }
-            .buttonStyle(.borderedProminent)
-            .tint(AppTheme.mossGreen)
+            .buttonStyle(.plain)
 
-            Button(role: .destructive, action: endAction) {
+            Button(action: endAction) {
                 Image(systemName: "xmark")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.15))
+                    )
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
         }
-        .padding(12)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .background(
-            // durchscheinender Hintergrund
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [AppTheme.deepBlue, AppTheme.darkPurple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.4 : 0.08), radius: 12, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
     }
 }
 
