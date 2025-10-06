@@ -111,41 +111,44 @@ struct WorkoutWidgetsLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    if context.state.remainingSeconds > 0 {
-                        VStack(alignment: .trailing) {
-                            Text(formatTime(context.state.remainingSeconds))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .contentTransition(.numericText())
-                            Text("Pausentimer")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            // Herzfrequenz oder "Aktiv"
-                            if let heartRate = context.state.currentHeartRate {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "heart.fill")
-                                        .foregroundStyle(.red)
-                                    Text("\(heartRate)")
-                                        .contentTransition(.numericText())
-                                }
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                Text("BPM")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                Text("Aktiv")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                Text(context.state.title)
+                    Group {
+                        if context.state.remainingSeconds > 0 {
+                            VStack(alignment: .trailing) {
+                                Text(formatTime(context.state.remainingSeconds))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .contentTransition(.numericText())
+                                Text("Pausentimer")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+                        } else {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                // Herzfrequenz oder "Aktiv"
+                                if let heartRate = context.state.currentHeartRate {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "heart.fill")
+                                            .foregroundStyle(.red)
+                                        Text("\(heartRate)")
+                                            .contentTransition(.numericText())
+                                    }
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    Text("BPM")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Aktiv")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                    Text(context.state.title)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
+                    .id(context.state.remainingSeconds)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
@@ -182,33 +185,55 @@ struct WorkoutWidgetsLiveActivity: Widget {
                     .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
             } compactTrailing: {
                 // Compact Trailing UI (rechts in der Dynamic Island)
-                if context.state.remainingSeconds > 0 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "pause.fill")
-                            .font(.system(size: 8))
-                            .foregroundStyle(.orange)
-                        Text(formatTime(context.state.remainingSeconds))
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .contentTransition(.numericText())
+                let _ = print("[Widget] compactTrailing: remainingSeconds = \(context.state.remainingSeconds)")
+                Group {
+                    if context.state.remainingSeconds > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "pause.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.orange)
+                            Text(formatTime(context.state.remainingSeconds))
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .contentTransition(.numericText())
+                        }
+                    } else if let heartRate = context.state.currentHeartRate {
+                        HStack(spacing: 2) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.red)
+                            Text("\(heartRate)")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .contentTransition(.numericText())
+                        }
+                    } else {
+                        Text("💪")
                     }
-                } else if let heartRate = context.state.currentHeartRate {
-                    HStack(spacing: 2) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 8))
-                            .foregroundStyle(.red)
-                        Text("\(heartRate)")
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .contentTransition(.numericText())
-                    }
-                } else {
-                    Text("💪")
                 }
+                .id(context.state.remainingSeconds)
             } minimal: {
-                // Minimal UI (wenn viele Apps gleichzeitig in der Dynamic Island sind)
-                Image(systemName: context.state.remainingSeconds > 0 ? "timer" : "figure.strengthtraining.traditional")
-                    .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
+                // Minimal UI (wenn viele Apps gleichzeitig in der Dynamic Island sind, z.B. mit Spotify)
+                Group {
+                    if context.state.remainingSeconds > 0 {
+                        // Timer läuft - zeige verbleibende Zeit als Text
+                        Text(formatTime(context.state.remainingSeconds))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.orange)
+                            .contentTransition(.numericText())
+                    } else if let heartRate = context.state.currentHeartRate {
+                        // Kein Timer, aber Herzfrequenz vorhanden
+                        Text("\(heartRate)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.red)
+                            .contentTransition(.numericText())
+                    } else {
+                        // Fallback: Icon
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .id(context.state.remainingSeconds)
             }
             .widgetURL(URL(string: "workout://active"))
         }

@@ -42,17 +42,20 @@ final class WorkoutLiveActivityController {
     }
 
     func updateRest(workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-
-        // Throttle updates to avoid overwhelming ActivityKit
-        let now = Date()
-        if let lastUpdate = lastUpdateTime, now.timeIntervalSince(lastUpdate) < minimumUpdateInterval {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            print("[LiveActivity] ❌ updateRest: Activities not enabled")
             return
         }
-        lastUpdateTime = now
+
+        // FIXED: Kein Throttling für Timer-Updates, nur für Herzfrequenz
+        // Timer-Updates kommen nur 1x pro Sekunde und müssen durchkommen
+        lastUpdateTime = Date()
+
+        print("[LiveActivity] 🔄 updateRest called: \(remainingSeconds)s / \(totalSeconds)s, exercise: \(exerciseName ?? "none")")
 
         Task {
             await ensureActivityExists(workoutName: workoutName)
+            print("[LiveActivity] 📤 Sending state update to ActivityKit")
             await updateState(
                 remaining: max(remainingSeconds, 0),
                 total: max(totalSeconds, 1),

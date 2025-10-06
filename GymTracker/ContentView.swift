@@ -1431,13 +1431,13 @@ struct ActiveWorkoutBar: View {
             .buttonStyle(.plain)
 
             Button(action: endAction) {
-                Image(systemName: "xmark")
+                Image(systemName: "trash.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .frame(width: 44, height: 44)
+                    .foregroundStyle(.white)
+                    .frame(width: 50, height: 50)
                     .background(
-                        Circle()
-                            .fill(Color.white.opacity(0.15))
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.red)
                     )
             }
             .buttonStyle(.plain)

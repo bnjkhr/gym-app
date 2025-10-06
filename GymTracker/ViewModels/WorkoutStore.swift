@@ -1202,22 +1202,36 @@ class WorkoutStore: ObservableObject {
     private func setupRestTimer() {
         restTimer?.invalidate()
         restTimer = nil
-        
+
         guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else { return }
-        
+
+        // FIXED: Direkter Aufruf statt Task { @MainActor } um Race Conditions zu vermeiden
         restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.tickRest()
-            }
+            self?.tickRest()
         }
-        
+
         if let timer = restTimer {
+            // Toleranz für bessere Batterie-Performance
+            timer.tolerance = 0.1
             RunLoop.main.add(timer, forMode: .common)
         }
     }
 
     private func tickRest() {
-        guard var state = activeRestState, state.isRunning else { return }
+        // FIXED: Validiere, dass Timer noch aktiv sein sollte
+        guard restTimer != nil else {
+            print("[RestTimer] ⚠️ tickRest called but timer is nil - ghost timer detected")
+            return
+        }
+
+        guard var state = activeRestState, state.isRunning else {
+            // FIXED: Timer stoppen wenn State ungültig ist
+            print("[RestTimer] ⚠️ State invalid or not running - stopping timer")
+            restTimer?.invalidate()
+            restTimer = nil
+            return
+        }
+
         if let end = state.endDate {
             let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
             let previousRemaining = state.remainingSeconds
@@ -1278,9 +1292,13 @@ class WorkoutStore: ObservableObject {
     }
 
     private func updateLiveActivityRest() {
-        guard let state = activeRestState else { return }
-        let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
+        guard let state = activeRestState else {
+            print("[RestTimer] ⚠️ updateLiveActivityRest: No active rest state")
+            return
+        }
+        let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ?
             activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+        print("[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining")
         WorkoutLiveActivityController.shared.updateRest(
             workoutName: state.workoutName,
             exerciseName: exerciseName,
