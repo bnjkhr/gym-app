@@ -4,11 +4,9 @@ import SwiftData
 // MARK: - Smart Tips Card
 
 struct SmartTipsCard: View {
+    let sessionEntities: [WorkoutSessionEntity]
     @EnvironmentObject var workoutStore: WorkoutStore
     @StateObject private var feedbackManager = TipFeedbackManager()
-
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
 
     @State private var tips: [TrainingTip] = []
     @State private var currentIndex: Int = 0
@@ -317,7 +315,7 @@ struct TipCardView: View {
 // MARK: - Preview
 
 #Preview {
-    SmartTipsCard()
+    SmartTipsCard(sessionEntities: [])
         .environmentObject(WorkoutStore())
         .padding()
         .background(Color(.systemGroupedBackground))

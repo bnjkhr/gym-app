@@ -26,36 +26,32 @@ struct StatisticsView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
 
-    private var displaySessions: [WorkoutSession] {
-        sessionEntities.map { WorkoutSession(entity: $0) }
-    }
-
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
+                LazyVStack(spacing: 24) {
                     // Floating Glassmorphism Header
                     FloatingInsightsHeader(showCalendar: { showingCalendar = true })
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
 
                     // Hero-Card: Streak/Konsistenz
-                    HeroStreakCard()
+                    HeroStreakCard(sessionEntities: sessionEntities)
                         .padding(.horizontal, 20)
 
                     // Smart Tips Card (AI-Coach)
-                    SmartTipsCard()
+                    SmartTipsCard(sessionEntities: sessionEntities)
                         .padding(.horizontal, 20)
 
                     // Quick-Stats Grid (2x2)
-                    QuickStatsGrid()
+                    QuickStatsGrid(sessionEntities: sessionEntities)
                         .padding(.horizontal, 20)
 
                     // Volumen-Chart Card (expandierbar)
-                    VolumeChartCard(isExpanded: $expandedVolumeCard)
+                    VolumeChartCard(isExpanded: $expandedVolumeCard, sessionEntities: sessionEntities)
                         .padding(.horizontal, 20)
 
                     // Personal Records Card (kompakt)
@@ -64,7 +60,7 @@ struct StatisticsView: View {
 
                     // Health Cards (optional, nur wenn Daten vorhanden)
                     if workoutStore.healthKitManager.isAuthorized {
-                        CompactHealthCard(isExpanded: $expandedHealthCard)
+                        CompactHealthCard(isExpanded: $expandedHealthCard, sessionEntities: sessionEntities)
                             .padding(.horizontal, 20)
                     }
                 }
@@ -127,10 +123,20 @@ private struct FloatingInsightsHeader: View {
 
 // MARK: - Hero Streak Card
 private struct HeroStreakCard: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntity]
+    @EnvironmentObject private var workoutStore: WorkoutStore
 
-    private var consistencyWeeks: Int {
+    @State private var cachedConsistencyWeeks: Int = 0
+    @State private var cachedWorkoutsThisWeek: Int = 0
+    @State private var cachedHeroText: (title: String, subtitle: String) = ("", "")
+
+    private var weekStart: Date {
+        let calendar = Calendar.current
+        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+    }
+
+    private func calculateStreakData() {
+        // Calculate consistency weeks
         let calendar = Calendar.current
         let today = Date()
         var consecutiveWeeks = 0
@@ -151,43 +157,30 @@ private struct HeroStreakCard: View {
             }
         }
 
-        return consecutiveWeeks
-    }
+        cachedConsistencyWeeks = consecutiveWeeks
 
-    private var weekStart: Date {
-        let calendar = Calendar.current
-        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
-    }
+        // Calculate workouts this week
+        cachedWorkoutsThisWeek = sessionEntities.filter { $0.date >= weekStart }.count
 
-    private var workoutsThisWeek: Int {
-        sessionEntities.filter { $0.date >= weekStart }.count
-    }
-
-    @EnvironmentObject private var workoutStore: WorkoutStore
-
-    private var weeklyGoal: Int {
-        workoutStore.weeklyGoal
-    }
-
-    private var heroText: (title: String, subtitle: String) {
-        if consistencyWeeks == 0 {
-            return ("Zeit für einen Neustart!", "Starte dein nächstes Training")
-        } else if consistencyWeeks == 1 {
-            return ("1 Woche Streak! 🔥", "Dranbleiben lohnt sich!")
+        // Calculate hero text
+        if cachedConsistencyWeeks == 0 {
+            cachedHeroText = ("Zeit für einen Neustart!", "Starte dein nächstes Training")
+        } else if cachedConsistencyWeeks == 1 {
+            cachedHeroText = ("1 Woche Streak! 🔥", "Dranbleiben lohnt sich!")
         } else {
-            return ("\(consistencyWeeks) Wochen Streak! 🔥", "Unglaublich konstant!")
+            cachedHeroText = ("\(cachedConsistencyWeeks) Wochen Streak! 🔥", "Unglaublich konstant!")
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(heroText.title)
+                Text(cachedHeroText.title)
                     .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
-                Text(heroText.subtitle)
+                Text(cachedHeroText.subtitle)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(.white.opacity(0.9))
             }
@@ -195,13 +188,13 @@ private struct HeroStreakCard: View {
             HStack(spacing: 12) {
                 // Wochen-Visualisierung
                 HStack(spacing: 4) {
-                    ForEach(0..<min(consistencyWeeks, 8), id: \.self) { _ in
+                    ForEach(0..<min(cachedConsistencyWeeks, 8), id: \.self) { _ in
                         Circle()
                             .fill(.white)
                             .frame(width: 8, height: 8)
                     }
-                    if consistencyWeeks < 8 {
-                        ForEach(0..<(8 - consistencyWeeks), id: \.self) { _ in
+                    if cachedConsistencyWeeks < 8 {
+                        ForEach(0..<(8 - cachedConsistencyWeeks), id: \.self) { _ in
                             Circle()
                                 .fill(.white.opacity(0.3))
                                 .frame(width: 8, height: 8)
@@ -221,14 +214,14 @@ private struct HeroStreakCard: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.8))
 
-                    Text("\(workoutsThisWeek)/\(weeklyGoal) Trainings")
+                    Text("\(cachedWorkoutsThisWeek)/\(workoutStore.weeklyGoal) Trainings")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
                 }
 
                 Spacer()
 
-                if workoutsThisWeek >= weeklyGoal {
+                if cachedWorkoutsThisWeek >= workoutStore.weeklyGoal {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 24))
                         .foregroundStyle(.white)
@@ -248,22 +241,29 @@ private struct HeroStreakCard: View {
                 )
         )
         .shadow(color: AppTheme.mossGreen.opacity(0.3), radius: 20, x: 0, y: 10)
+        .onAppear {
+            calculateStreakData()
+        }
+        .onChange(of: sessionEntities.count) { _, _ in
+            calculateStreakData()
+        }
     }
 }
 
 // MARK: - Quick Stats Grid
 private struct QuickStatsGrid: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntity]
     @EnvironmentObject private var workoutStore: WorkoutStore
+
+    @State private var cachedTrainingsThisMonth: Int = 0
+    @State private var cachedTotalVolumeThisWeek: Double = 0
+    @State private var cachedNewPRsThisWeek: Int = 0
+    @State private var cachedPreviousWeekVolume: Double = 0
+    @State private var cachedVolumeTrend: String = "→"
 
     private var monthStart: Date {
         let calendar = Calendar.current
         return calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
-    }
-
-    private var trainingsThisMonth: Int {
-        sessionEntities.filter { $0.date >= monthStart }.count
     }
 
     private var weekStart: Date {
@@ -271,8 +271,12 @@ private struct QuickStatsGrid: View {
         return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
     }
 
-    private var totalVolumeThisWeek: Double {
-        sessionEntities
+    private func calculateStats() {
+        // Trainings this month
+        cachedTrainingsThisMonth = sessionEntities.filter { $0.date >= monthStart }.count
+
+        // Volume this week
+        cachedTotalVolumeThisWeek = sessionEntities
             .filter { $0.date >= weekStart }
             .reduce(0.0) { total, session in
                 total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
@@ -281,21 +285,19 @@ private struct QuickStatsGrid: View {
                     }
                 }
             }
-    }
 
-    private var newPRsThisWeek: Int {
+        // PRs this week
         let allRecords = workoutStore.getAllExerciseRecords()
-        return allRecords.filter { record in
+        cachedNewPRsThisWeek = allRecords.filter { record in
             Calendar.current.isDate(record.updatedAt, equalTo: Date(), toGranularity: .weekOfYear)
         }.count
-    }
 
-    private var previousWeekVolume: Double {
+        // Previous week volume
         let calendar = Calendar.current
         let previousWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
         let previousWeekEnd = calendar.date(byAdding: .day, value: 6, to: previousWeekStart) ?? previousWeekStart
 
-        return sessionEntities
+        cachedPreviousWeekVolume = sessionEntities
             .filter { $0.date >= previousWeekStart && $0.date <= previousWeekEnd }
             .reduce(0.0) { total, session in
                 total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
@@ -304,17 +306,19 @@ private struct QuickStatsGrid: View {
                     }
                 }
             }
-    }
 
-    private var volumeTrend: String {
-        guard previousWeekVolume > 0 else { return "Neu" }
-        let change = ((totalVolumeThisWeek - previousWeekVolume) / previousWeekVolume) * 100
+        // Volume trend
+        guard cachedPreviousWeekVolume > 0 else {
+            cachedVolumeTrend = "Neu"
+            return
+        }
+        let change = ((cachedTotalVolumeThisWeek - cachedPreviousWeekVolume) / cachedPreviousWeekVolume) * 100
         if change > 5 {
-            return "↗ Steigend"
+            cachedVolumeTrend = "↗ Steigend"
         } else if change < -5 {
-            return "↘ Fallend"
+            cachedVolumeTrend = "↘ Fallend"
         } else {
-            return "→ Stabil"
+            cachedVolumeTrend = "→ Stabil"
         }
     }
 
@@ -327,16 +331,16 @@ private struct QuickStatsGrid: View {
             QuickStatCard(
                 icon: "scalemass.fill",
                 iconColor: AppTheme.mossGreen,
-                value: String(format: "%.1ft", totalVolumeThisWeek / 1000),
+                value: String(format: "%.1ft", cachedTotalVolumeThisWeek / 1000),
                 label: "Volumen",
-                subtitle: volumeTrend
+                subtitle: cachedVolumeTrend
             )
 
             // Neue PRs
             QuickStatCard(
                 icon: "trophy.fill",
                 iconColor: AppTheme.powerOrange,
-                value: "\(newPRsThisWeek)",
+                value: "\(cachedNewPRsThisWeek)",
                 label: "Neue PRs",
                 subtitle: "diese Woche"
             )
@@ -345,7 +349,7 @@ private struct QuickStatsGrid: View {
             QuickStatCard(
                 icon: "dumbbell.fill",
                 iconColor: AppTheme.deepBlue,
-                value: "\(trainingsThisMonth)",
+                value: "\(cachedTrainingsThisMonth)",
                 label: "Trainings",
                 subtitle: "diesen Monat"
             )
@@ -354,10 +358,16 @@ private struct QuickStatsGrid: View {
             QuickStatCard(
                 icon: "chart.line.uptrend.xyaxis",
                 iconColor: AppTheme.turquoiseBoost,
-                value: volumeTrend.components(separatedBy: " ").last ?? "→",
+                value: cachedVolumeTrend.components(separatedBy: " ").last ?? "→",
                 label: "Trend",
                 subtitle: "vs. Vorwoche"
             )
+        }
+        .onAppear {
+            calculateStats()
+        }
+        .onChange(of: sessionEntities.count) { _, _ in
+            calculateStats()
         }
     }
 }
@@ -413,11 +423,12 @@ private struct QuickStatCard: View {
 // MARK: - Volume Chart Card (Expandable)
 private struct VolumeChartCard: View {
     @Binding var isExpanded: Bool
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntity]
     @Environment(\.colorScheme) private var colorScheme
 
-    private var last4WeeksData: [(week: String, volume: Double)] {
+    @State private var cachedLast4WeeksData: [(week: String, volume: Double)] = []
+
+    private func calculateChartData() {
         let calendar = Calendar.current
         var data: [(String, Double)] = []
 
@@ -439,7 +450,7 @@ private struct VolumeChartCard: View {
             data.append(("KW\(weekNumber)", volume))
         }
 
-        return data
+        cachedLast4WeeksData = data
     }
 
     var body: some View {
@@ -468,7 +479,7 @@ private struct VolumeChartCard: View {
             .buttonStyle(.plain)
 
             if isExpanded {
-                Chart(last4WeeksData, id: \.week) { item in
+                Chart(cachedLast4WeeksData, id: \.week) { item in
                     BarMark(
                         x: .value("Woche", item.week),
                         y: .value("Volumen", item.volume / 1000)
@@ -495,7 +506,7 @@ private struct VolumeChartCard: View {
                 }
             } else {
                 // Mini-Chart Preview
-                Chart(last4WeeksData, id: \.week) { item in
+                Chart(cachedLast4WeeksData, id: \.week) { item in
                     BarMark(
                         x: .value("Woche", item.week),
                         y: .value("Volumen", item.volume / 1000)
@@ -518,6 +529,12 @@ private struct VolumeChartCard: View {
                 .stroke(Color(.systemGray5), lineWidth: 1)
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
+        .onAppear {
+            calculateChartData()
+        }
+        .onChange(of: sessionEntities.count) { _, _ in
+            calculateChartData()
+        }
     }
 }
 
@@ -643,6 +660,7 @@ private struct CompactPersonalRecordsCard: View {
 // MARK: - Compact Health Card (Expandable)
 private struct CompactHealthCard: View {
     @Binding var isExpanded: Bool
+    let sessionEntities: [WorkoutSessionEntity]
     @EnvironmentObject private var workoutStore: WorkoutStore
     @State private var heartRateReadings: [HeartRateReading] = []
     @State private var weightReadings: [BodyWeightReading] = []
