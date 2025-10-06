@@ -9,6 +9,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var title: String
         var exerciseName: String?
         var isTimerExpired: Bool
+        var currentHeartRate: Int? // Aktuelle Herzfrequenz in BPM
     }
 
     var workoutName: String

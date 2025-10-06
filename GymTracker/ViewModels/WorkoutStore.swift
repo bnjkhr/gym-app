@@ -84,6 +84,9 @@ class WorkoutStore: ObservableObject {
 
     @Published var profileUpdateTrigger: UUID = UUID() // Triggers UI updates when profile changes
 
+    // Herzfrequenz-Tracking
+    private var heartRateTracker: HealthKitWorkoutTracker?
+
     private var restTimer: Timer?
     private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
     private var weekStreakCache: (date: Date, value: Int)?
@@ -226,6 +229,9 @@ class WorkoutStore: ObservableObject {
                 try context.save()
                 activeSessionID = workoutId
                 print("✅ Session gestartet für Workout: \(workout.name)")
+
+                // Starte Herzfrequenz-Tracking
+                startHeartRateTracking(workoutName: workout.name)
             } else {
                 print("❌ Workout mit ID \(workoutId) nicht gefunden")
             }
@@ -233,12 +239,16 @@ class WorkoutStore: ObservableObject {
             print("❌ Fehler beim Starten der Session: \(error)")
         }
     }
-    
+
     func endCurrentSession() {
         if let sessionID = activeSessionID {
             print("🔚 Session beendet für Workout-ID: \(sessionID)")
             activeSessionID = nil
             stopRest()
+
+            // Stoppe Herzfrequenz-Tracking
+            stopHeartRateTracking()
+
             WorkoutLiveActivityController.shared.end()
         }
     }
@@ -2900,6 +2910,54 @@ extension WorkoutStore {
         }
 
         return notes.joined(separator: "\n")
+    }
+
+    // MARK: - Heart Rate Tracking
+
+    private func startHeartRateTracking(workoutName: String) {
+        // Prüfe ob HealthKit verfügbar und autorisiert ist
+        guard HKHealthStore.isHealthDataAvailable() else {
+            AppLogger.health.info("[WorkoutStore] HealthKit nicht verfügbar - kein Herzfrequenz-Tracking")
+            return
+        }
+
+        let healthStore = HKHealthStore()
+        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
+            return
+        }
+
+        let status = healthStore.authorizationStatus(for: heartRateType)
+        guard status == .sharingAuthorized else {
+            AppLogger.health.info("[WorkoutStore] Keine HealthKit-Berechtigung für Herzfrequenz")
+            return
+        }
+
+        // Erstelle und starte Tracker
+        let tracker = HealthKitWorkoutTracker()
+        tracker.onHeartRateUpdate = { [weak self] heartRate in
+            guard let self = self else { return }
+            Task { @MainActor in
+                // Update Live Activity mit neuer Herzfrequenz
+                WorkoutLiveActivityController.shared.updateHeartRate(
+                    workoutName: workoutName,
+                    heartRate: heartRate
+                )
+            }
+        }
+
+        self.heartRateTracker = tracker
+        tracker.startTracking()
+
+        AppLogger.health.info("[WorkoutStore] Herzfrequenz-Tracking gestartet für '\(workoutName)'")
+    }
+
+    private func stopHeartRateTracking() {
+        guard let tracker = heartRateTracker else { return }
+
+        tracker.stopTracking()
+        heartRateTracker = nil
+
+        AppLogger.health.info("[WorkoutStore] Herzfrequenz-Tracking gestoppt")
     }
 }
 

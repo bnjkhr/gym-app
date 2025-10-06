@@ -20,7 +20,6 @@ struct StatisticsView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
     @State private var showingCalendar: Bool = false
     @State private var expandedVolumeCard: Bool = false
-    @State private var expandedBalanceCard: Bool = false
     @State private var expandedHealthCard: Bool = false
     @Environment(\.colorScheme) private var colorScheme
 
@@ -61,10 +60,6 @@ struct StatisticsView: View {
 
                     // Personal Records Card (kompakt)
                     CompactPersonalRecordsCard()
-                        .padding(.horizontal, 20)
-
-                    // Balance Card (expandierbar)
-                    BalanceCard(isExpanded: $expandedBalanceCard)
                         .padding(.horizontal, 20)
 
                     // Health Cards (optional, nur wenn Daten vorhanden)
@@ -641,152 +636,6 @@ private struct CompactPersonalRecordsCard: View {
                 let weeks = days / 7
                 return "vor \(weeks)w"
             }
-        }
-    }
-}
-
-// MARK: - Balance Card (Expandable)
-private struct BalanceCard: View {
-    @Binding var isExpanded: Bool
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var muscleBalance: (push: Double, pull: Double, legs: Double, isBalanced: Bool) {
-        let recentSessions = sessionEntities.prefix(10)
-
-        var pushVolume = 0.0
-        var pullVolume = 0.0
-        var legVolume = 0.0
-
-        for session in recentSessions {
-            for exercise in session.exercises {
-                let volume = exercise.sets.reduce(0.0) { $0 + (Double($1.reps) * $1.weight) }
-
-                guard let exerciseEntity = exercise.exercise else { continue }
-                let muscleGroupsRaw = exerciseEntity.muscleGroupsRaw
-                let muscleGroups = muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
-
-                let category = categorizeExercise(muscleGroups: muscleGroups)
-                switch category {
-                case "push":
-                    pushVolume += volume
-                case "pull":
-                    pullVolume += volume
-                case "legs":
-                    legVolume += volume
-                default:
-                    pushVolume += volume
-                }
-            }
-        }
-
-        let total = pushVolume + pullVolume + legVolume
-        guard total > 0 else { return (0, 0, 0, true) }
-
-        let pushRatio = pushVolume / total
-        let pullRatio = pullVolume / total
-        let legRatio = legVolume / total
-
-        let isBalanced = pushRatio >= 0.2 && pushRatio <= 0.5 &&
-                        pullRatio >= 0.2 && pullRatio <= 0.5 &&
-                        legRatio >= 0.2 && legRatio <= 0.5
-
-        return (pushRatio, pullRatio, legRatio, isBalanced)
-    }
-
-    private func categorizeExercise(muscleGroups: [MuscleGroup]) -> String {
-        if muscleGroups.contains(.back) || muscleGroups.contains(.biceps) {
-            return "pull"
-        } else if muscleGroups.contains(.chest) || muscleGroups.contains(.triceps) ||
-                (muscleGroups.contains(.shoulders) && !muscleGroups.contains(.back)) {
-            return "push"
-        } else if (muscleGroups.contains(.legs) || muscleGroups.contains(.glutes)) &&
-                !muscleGroups.contains(.back) {
-            return "legs"
-        } else {
-            return "push"
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chart.pie.fill")
-                            .foregroundStyle(muscleBalance.isBalanced ? AppTheme.mossGreen : .orange)
-                        Text("Push/Pull/Legs Balance")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-
-            VStack(spacing: isExpanded ? 12 : 8) {
-                balanceBar(title: "Push", ratio: muscleBalance.push, color: AppTheme.deepBlue)
-                balanceBar(title: "Pull", ratio: muscleBalance.pull, color: AppTheme.mossGreen)
-                balanceBar(title: "Legs", ratio: muscleBalance.legs, color: AppTheme.powerOrange)
-            }
-
-            if isExpanded {
-                HStack {
-                    Image(systemName: muscleBalance.isBalanced ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(muscleBalance.isBalanced ? AppTheme.mossGreen : .orange)
-                    Text(muscleBalance.isBalanced ? "Ausgewogenes Training" : "Unausgewogen - mehr Varianz empfohlen")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color(.systemGray5), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
-    }
-
-    private func balanceBar(title: String, ratio: Double, color: Color) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 40, alignment: .leading)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.systemGray5))
-                        .frame(height: 8)
-
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(color)
-                        .frame(width: geo.size.width * ratio, height: 8)
-                }
-            }
-            .frame(height: 8)
-
-            Text("\(Int(ratio * 100))%")
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .trailing)
         }
     }
 }

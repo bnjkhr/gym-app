@@ -49,6 +49,7 @@
 		AD2A83CB2E942EA000A6ADBE /* SmartTipsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */; };
 		AD2A83CD2E94560200A6ADBE /* ExerciseSwapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */; };
 		AD2A83D02E945CC300A6ADBE /* AppIconManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */; };
+		AD2A83D22E94614300A6ADBE /* HealthKitWorkoutTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83D12E94614300A6ADBE /* HealthKitWorkoutTracker.swift */; };
 		AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D972E8C556A0015A34D /* HealthKitManager.swift */; };
 		AD363D9A2E8C56740015A34D /* HeartRateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D992E8C56740015A34D /* HeartRateView.swift */; };
 		AD363D9C2E8C568F0015A34D /* HealthKitSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D9B2E8C568F0015A34D /* HealthKitSetupView.swift */; };
@@ -163,6 +164,7 @@
 		AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTipsCard.swift; sourceTree = "<group>"; };
 		AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSwapView.swift; sourceTree = "<group>"; };
 		AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconManager.swift; sourceTree = "<group>"; };
+		AD2A83D12E94614300A6ADBE /* HealthKitWorkoutTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutTracker.swift; sourceTree = "<group>"; };
 		AD363D972E8C556A0015A34D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		AD363D992E8C56740015A34D /* HeartRateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateView.swift; sourceTree = "<group>"; };
 		AD363D9B2E8C568F0015A34D /* HealthKitSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitSetupView.swift; sourceTree = "<group>"; };
@@ -282,6 +284,7 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				AD2A83D12E94614300A6ADBE /* HealthKitWorkoutTracker.swift */,
 				AD2A83CF2E945CC300A6ADBE /* Managers */,
 				AD2A83C42E942E7500A6ADBE /* Services */,
 				AD2A83BB2E93F76100A6ADBE /* AppLogger.swift */,
@@ -573,6 +576,7 @@
 				11E748F22C9E4B0F00AB1234 /* ContentView.swift in Sources */,
 				AD4B5D4C2E8A6CBB0083787B /* ExercisePickerView.swift in Sources */,
 				11E7490F2C9E4BDD00AB1234 /* AddWorkoutView.swift in Sources */,
+				AD2A83D22E94614300A6ADBE /* HealthKitWorkoutTracker.swift in Sources */,
 				11E749142C9E4C4B00AB1234 /* SettingsView.swift in Sources */,
 				AD960EA42E8C0A7000E91131 /* SwiftDataSafeMapping.swift in Sources */,
 				AD52FED32E8B362F0048DF0F /* SwiftDataMigration.swift in Sources */,

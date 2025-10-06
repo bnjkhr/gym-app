@@ -19,6 +19,19 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         .font(.headline)
                         .fontWeight(.semibold)
                     Spacer()
+
+                    // Herzfrequenz-Anzeige
+                    if let heartRate = context.state.currentHeartRate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "heart.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                            Text("\(heartRate)")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                    }
+
                     Text(context.state.title)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -61,6 +74,21 @@ struct WorkoutWidgetsLiveActivity: Widget {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         Spacer()
+
+                        // Große Herzfrequenz-Anzeige wenn kein Timer läuft
+                        if let heartRate = context.state.currentHeartRate {
+                            HStack(spacing: 6) {
+                                Image(systemName: "heart.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.red)
+                                Text("\(heartRate)")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                Text("BPM")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -94,13 +122,28 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                 .foregroundStyle(.secondary)
                         }
                     } else {
-                        VStack(alignment: .trailing) {
-                            Text("Aktiv")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                            Text(context.state.title)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        VStack(alignment: .trailing, spacing: 4) {
+                            // Herzfrequenz oder "Aktiv"
+                            if let heartRate = context.state.currentHeartRate {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "heart.fill")
+                                        .foregroundStyle(.red)
+                                    Text("\(heartRate)")
+                                        .contentTransition(.numericText())
+                                }
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                Text("BPM")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Aktiv")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                Text(context.state.title)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
@@ -149,6 +192,16 @@ struct WorkoutWidgetsLiveActivity: Widget {
                             .fontWeight(.medium)
                             .contentTransition(.numericText())
                     }
+                } else if let heartRate = context.state.currentHeartRate {
+                    HStack(spacing: 2) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.red)
+                        Text("\(heartRate)")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .contentTransition(.numericText())
+                    }
                 } else {
                     Text("💪")
                 }
@@ -177,7 +230,8 @@ struct WorkoutWidgetsLiveActivity: Widget {
         totalSeconds: 60,
         title: "Pause",
         exerciseName: "Bankdrücken",
-        isTimerExpired: false
+        isTimerExpired: false,
+        currentHeartRate: 142
     )
 
     WorkoutActivityAttributes.ContentState(
@@ -185,7 +239,8 @@ struct WorkoutWidgetsLiveActivity: Widget {
         totalSeconds: 1,
         title: "Pause beendet",
         exerciseName: nil,
-        isTimerExpired: true
+        isTimerExpired: true,
+        currentHeartRate: 156
     )
 
     WorkoutActivityAttributes.ContentState(
@@ -193,6 +248,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
         totalSeconds: 1,
         title: "Workout läuft",
         exerciseName: nil,
-        isTimerExpired: false
+        isTimerExpired: false,
+        currentHeartRate: 128
     )
 }

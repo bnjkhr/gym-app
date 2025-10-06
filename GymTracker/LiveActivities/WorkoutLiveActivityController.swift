@@ -10,6 +10,7 @@ final class WorkoutLiveActivityController {
     private var activity: Activity<WorkoutActivityAttributes>?
     private var lastUpdateTime: Date?
     private let minimumUpdateInterval: TimeInterval = 0.5 // Mindestens 0.5 Sekunden zwischen Updates
+    private var currentHeartRate: Int? // Cache für aktuelle Herzfrequenz
 
     private init() {}
     
@@ -57,7 +58,8 @@ final class WorkoutLiveActivityController {
                 total: max(totalSeconds, 1),
                 title: "Pause",
                 exerciseName: exerciseName,
-                isTimerExpired: false
+                isTimerExpired: false,
+                heartRate: currentHeartRate
             )
         }
     }
@@ -65,6 +67,37 @@ final class WorkoutLiveActivityController {
     func clearRest(workoutName: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         Task { await startOrUpdateGeneralState(workoutName: workoutName) }
+    }
+
+    func updateHeartRate(workoutName: String, heartRate: Int?) {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        // Throttle updates
+        let now = Date()
+        if let lastUpdate = lastUpdateTime, now.timeIntervalSince(lastUpdate) < minimumUpdateInterval {
+            // Cache den Wert für spätere Updates
+            currentHeartRate = heartRate
+            return
+        }
+        lastUpdateTime = now
+
+        currentHeartRate = heartRate
+
+        Task {
+            await ensureActivityExists(workoutName: workoutName)
+            // Update nur die Herzfrequenz, behalte anderen State bei
+            guard let activity = self.activity else { return }
+            let currentState = await activity.content.state
+            let newState = WorkoutActivityAttributes.ContentState(
+                remainingSeconds: currentState.remainingSeconds,
+                totalSeconds: currentState.totalSeconds,
+                title: currentState.title,
+                exerciseName: currentState.exerciseName,
+                isTimerExpired: currentState.isTimerExpired,
+                currentHeartRate: heartRate
+            )
+            await updateState(state: newState)
+        }
     }
 
     func showRestEnded(workoutName: String) {
@@ -76,7 +109,8 @@ final class WorkoutLiveActivityController {
                 totalSeconds: 1,
                 title: "Pause beendet",
                 exerciseName: nil,
-                isTimerExpired: true
+                isTimerExpired: true,
+                currentHeartRate: currentHeartRate
             )
             await updateState(state: state, alertConfig: .init(
                 title: "Weiter geht's. 💪🏼",
@@ -94,11 +128,13 @@ final class WorkoutLiveActivityController {
                 totalSeconds: 1,
                 title: "Workout beendet",
                 exerciseName: nil,
-                isTimerExpired: false
+                isTimerExpired: false,
+                currentHeartRate: nil
             )
 
             await activity.end(using: closingState, dismissalPolicy: .immediate)
             self.activity = nil
+            self.currentHeartRate = nil
         }
     }
     
@@ -158,7 +194,8 @@ final class WorkoutLiveActivityController {
                 total: 60,
                 title: "Test Pause",
                 exerciseName: "Test Exercise",
-                isTimerExpired: false
+                isTimerExpired: false,
+                heartRate: 145
             )
             
             // Auto-end after 10 seconds
@@ -185,7 +222,8 @@ final class WorkoutLiveActivityController {
             totalSeconds: 1,
             title: "Workout läuft",
             exerciseName: nil,
-            isTimerExpired: false
+            isTimerExpired: false,
+            currentHeartRate: currentHeartRate
         )
 
         if let activity {
@@ -243,13 +281,14 @@ final class WorkoutLiveActivityController {
         }
     }
 
-    private func updateState(remaining: Int, total: Int, title: String, exerciseName: String?, isTimerExpired: Bool) async {
+    private func updateState(remaining: Int, total: Int, title: String, exerciseName: String?, isTimerExpired: Bool, heartRate: Int? = nil) async {
         let state = WorkoutActivityAttributes.ContentState(
             remainingSeconds: remaining,
             totalSeconds: max(total, 1),
             title: title,
             exerciseName: exerciseName,
-            isTimerExpired: isTimerExpired
+            isTimerExpired: isTimerExpired,
+            currentHeartRate: heartRate
         )
         await updateState(state: state)
     }
