@@ -74,11 +74,24 @@ class AppIconManager: ObservableObject {
             return
         }
 
-        let currentAppearance = UITraitCollection.current.userInterfaceStyle
+        // Get the current appearance from the key window's trait collection
+        let currentAppearance: UIUserInterfaceStyle
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            currentAppearance = window.traitCollection.userInterfaceStyle
+            print("📱 Current appearance from window: \(currentAppearance == .dark ? "dark" : "light")")
+        } else {
+            currentAppearance = UITraitCollection.current.userInterfaceStyle
+            print("📱 Current appearance from UITraitCollection.current: \(currentAppearance == .dark ? "dark" : "light")")
+        }
+
         let targetIconName = currentStyle.iconName(for: currentAppearance)
+        print("🎯 Target icon: \(targetIconName ?? "Primary (AppIcon)"), Current style: \(currentStyle.rawValue)")
+        print("📋 Current alternate icon: \(UIApplication.shared.alternateIconName ?? "Primary")")
 
         // Check if we need to change the icon
         if UIApplication.shared.alternateIconName != targetIconName {
+            print("🔄 Changing icon from '\(UIApplication.shared.alternateIconName ?? "Primary")' to '\(targetIconName ?? "Primary")'")
             UIApplication.shared.setAlternateIconName(targetIconName) { error in
                 if let error = error {
                     print("❌ Failed to change app icon: \(error.localizedDescription)")
@@ -86,6 +99,8 @@ class AppIconManager: ObservableObject {
                     print("✅ App icon changed to: \(targetIconName ?? "Primary")")
                 }
             }
+        } else {
+            print("ℹ️ Icon already set to correct value, no change needed")
         }
     }
 
