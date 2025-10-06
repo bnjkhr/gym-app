@@ -103,6 +103,7 @@ struct ContentView: View {
 
     @State private var selectedTab = 0
     @State private var isInWorkoutDetail = false
+    @State private var showingEndWorkoutConfirmation = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -152,7 +153,7 @@ struct ContentView: View {
                             selectedTab = 0
                             NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
                         },
-                        endAction: { endActiveSession() }
+                        endAction: { showingEndWorkoutConfirmation = true }
                     )
                     .environmentObject(workoutStore)
                     .padding(.horizontal, 16)
@@ -164,6 +165,14 @@ struct ContentView: View {
         }
         .tint(AppTheme.powerOrange)
         .environment(\.keyboardDismissalEnabled, true)
+        .alert("Workout beenden?", isPresented: $showingEndWorkoutConfirmation) {
+            Button("Beenden", role: .destructive) {
+                endActiveSession()
+            }
+            Button("Abbrechen", role: .cancel) { }
+        } message: {
+            Text("Das aktive Workout wird beendet und gelöscht.")
+        }
         .onAppear {
             // Set model context in WorkoutStore immediately when view appears
             workoutStore.modelContext = modelContext
