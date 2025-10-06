@@ -133,6 +133,9 @@ struct ContentView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkoutsTab)) { _ in
+            selectedTab = 1
+        }
     }
 
     private func resumeActiveWorkout() {
@@ -311,14 +314,19 @@ struct WorkoutsHomeView: View {
     private var mainScrollView: AnyView {
         AnyView(
             ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 24) {
+                LazyVStack(spacing: 0) {
                     headerSection
-                    
-                    WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
-                    
+                        .padding(.bottom, 24)
+
                     highlightSection(highlightSession: highlightSession)
-                    
+
+                    if highlightSession != nil {
+                        WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
+                            .padding(.top, 24)
+                    }
+
                     favoriteWorkoutsSection(favoritedWorkouts: favoritedWorkouts)
+                        .padding(.top, 24)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -596,7 +604,15 @@ struct WorkoutsHomeView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                EmptyStateCard()
+                OnboardingCard(
+                    onNavigateToWorkouts: {
+                        // Navigation zum Workouts-Tab wird über ContentView gesteuert
+                        NotificationCenter.default.post(name: .navigateToWorkoutsTab, object: nil)
+                    },
+                    onShowProfile: {
+                        showingProfileEditor = true
+                    }
+                )
             }
         }
     }
@@ -605,18 +621,7 @@ struct WorkoutsHomeView: View {
     private func favoriteWorkoutsSection(favoritedWorkouts: [Workout]) -> some View {
         Group {
             if favoritedWorkouts.isEmpty {
-                VStack(spacing: 12) {
-                    Text("Keine Favoriten")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    
-                    Text("Markiere Workouts im Workouts-Tab als Favoriten, um sie hier zu sehen")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
+                EmptyView()
             } else {
                 LazyVGrid(
                     columns: [
@@ -933,42 +938,126 @@ struct WorkoutHighlightCard: View {
     }
 }
 
-struct EmptyStateCard: View {
+struct OnboardingCard: View {
+    let onNavigateToWorkouts: () -> Void
+    let onShowProfile: () -> Void
+
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             VStack(spacing: 12) {
-                Text("Starte deine Trainingsreise")
-                    .font(.system(size: 24, weight: .bold))
+                Text("Willkommen bei GymBo!")
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
 
-                Text("Lege Trainings an, beobachte deinen Fortschritt und bleib motiviert mit smarten Insights.")
+                Text("Starte jetzt deine Trainingsreise und erreiche deine Fitnessziele.")
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
-                    .lineLimit(3)
             }
 
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.right.circle.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("Gehe zum Workouts-Tab")
-                    .font(.system(size: 15, weight: .semibold))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white.opacity(0.15))
-                    .overlay(
+            VStack(spacing: 12) {
+                // Button 1: Beispielworkouts
+                Button {
+                    onNavigateToWorkouts()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "list.bullet.clipboard.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Entdecke Beispielworkouts")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Finde vorgefertigte Trainings im Workouts-Tab")
+                                .font(.system(size: 12, weight: .medium))
+                                .opacity(0.85)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .opacity(0.7)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(16)
+                    .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            .fill(Color.white.opacity(0.15))
                     )
-            )
+                }
+                .buttonStyle(.plain)
+
+                // Button 2: Neues Workout erstellen
+                Button {
+                    onNavigateToWorkouts()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Erstelle dein erstes Workout")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Tippe auf '+' im Workouts-Tab")
+                                .font(.system(size: 12, weight: .medium))
+                                .opacity(0.85)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .opacity(0.7)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white.opacity(0.15))
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // Button 3: Profil einrichten
+                Button {
+                    onShowProfile()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Richte dein Profil ein")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Personalisiere deine Trainingserfahrung")
+                                .font(.system(size: 12, weight: .medium))
+                                .opacity(0.85)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .opacity(0.7)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white.opacity(0.15))
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding(28)
-        .frame(maxWidth: .infinity, minHeight: 140)
+        .padding(.horizontal, 24)
+        .padding(.top, 24)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
@@ -1871,5 +1960,6 @@ struct ErrorWorkoutView: View {
 
 extension Notification.Name {
     static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
+    static let navigateToWorkoutsTab = Notification.Name("navigateToWorkoutsTab")
 }
 
