@@ -100,7 +100,9 @@ struct WorkoutDetailView: View {
                     previousValues: previousValues,
                     completeWorkout: completeWorkout,
                     hasExercises: hasExercises,
-                    reorderEntityExercises: reorderEntityExercises,
+                    reorderEntityExercises: { exercises in
+                        reorderEntityExercises(to: exercises)
+                    },
                     finalizeCompletion: finalizeCompletion,
                     onActiveSessionEnd: onActiveSessionEnd
                 )
@@ -1861,6 +1863,9 @@ private struct ActiveWorkoutExerciseView: View {
             .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
 }
 

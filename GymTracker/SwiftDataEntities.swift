@@ -116,6 +116,7 @@ final class WorkoutEntity {
     var duration: TimeInterval?
     var notes: String
     var isFavorite: Bool
+    var isSampleWorkout: Bool? // Markiert Beispiel-Workouts für versioniertes Update (nil = alte Workouts)
 
     init(
         id: UUID = UUID(),
@@ -125,7 +126,8 @@ final class WorkoutEntity {
         defaultRestTime: TimeInterval = 90,
         duration: TimeInterval? = nil,
         notes: String = "",
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        isSampleWorkout: Bool? = nil
     ) {
         self.id = id
         self.name = name
@@ -135,6 +137,7 @@ final class WorkoutEntity {
         self.duration = duration
         self.notes = notes
         self.isFavorite = isFavorite
+        self.isSampleWorkout = isSampleWorkout
     }
     
     /// Clean up any workout exercises that reference invalid exercise entities

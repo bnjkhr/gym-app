@@ -31,77 +31,69 @@ struct StatisticsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            // Unified background container
-            VStack(spacing: 0) {
-                GeometryReader { geo in
-                    Color.clear
-                        .preference(
-                            key: StatisticsScrollOffsetPreferenceKey.self,
-                            value: geo.frame(in: .named("statisticsScroll")).minY
-                        )
-                }
-                .frame(height: 0)
+        ZStack {
+            AppTheme.background
+                .ignoresSafeArea()
 
-                // All statistics cards in unified container
+            ScrollView(showsIndicators: false) {
+                // Unified background container
                 VStack(spacing: 0) {
-                    // Kalenderband ganz oben in der Insights-View
-                    WeekCalendarStrip(sessions: displaySessions, showCalendar: { showingCalendar = true })
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
+                    GeometryReader { geo in
+                        Color.clear
+                            .preference(
+                                key: StatisticsScrollOffsetPreferenceKey.self,
+                                value: geo.frame(in: .named("statisticsScroll")).minY
+                            )
+                    }
+                    .frame(height: 0)
+
+                    // All statistics cards in unified container
+                    VStack(spacing: 20) {
+                        // Kalenderband ganz oben in der Insights-View
+                        WeekCalendarStrip(sessions: displaySessions, showCalendar: { showingCalendar = true })
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
                     
-                    statisticsDivider()
-                    
-                    // 1. Consistency / Wochenfortschritt
-                    ConsistencyCardView()
-                    
-                    statisticsDivider()
-                    
-                    LastWorkoutCardView()
+                        // 1. Consistency / Wochenfortschritt
+                        ConsistencyCardView()
+                            .padding(.horizontal, 20)
 
-                    statisticsDivider()
+                        LastWorkoutCardView()
+                            .padding(.horizontal, 20)
 
-                    // 2. Neue Rekorde (PR-Highlight)
-                    PersonalRecordCardView()
+                        // 2. Neue Rekorde (PR-Highlight)
+                        PersonalRecordCardView()
+                            .padding(.horizontal, 20)
 
-                    statisticsDivider()
+                        // 3. Trainingsvolumen pro Woche
+                        WeeklyVolumeCardView()
+                            .padding(.horizontal, 20)
 
-                    // 3. Trainingsvolumen pro Woche
-                    WeeklyVolumeCardView()
+                        // 4. Push/Pull/Legs-Balance
+                        MuscleGroupBalanceCardView()
+                            .padding(.horizontal, 20)
 
-                    statisticsDivider()
+                        // 5. Ø Gewicht pro Übung
+                        AverageWeightCardView()
+                            .padding(.horizontal, 20)
 
-                    // 4. Push/Pull/Legs-Balance
-                    MuscleGroupBalanceCardView()
+                        // 6. Workout-Intensität (Session Score)
+                        SessionIntensityCardView()
+                            .padding(.horizontal, 20)
 
-                    statisticsDivider()
+                        // 7. Plateau-Check
+                        PlateauCheckCardView()
+                            .padding(.horizontal, 20)
 
-                    // 5. Ø Gewicht pro Übung
-                    AverageWeightCardView()
+                        // 8. Health Data (Optional, falls verfügbar)
+                        HeartRateInsightsView()
+                            .padding(.horizontal, 20)
 
-                    statisticsDivider()
-
-                    // 6. Workout-Intensität (Session Score)
-                    SessionIntensityCardView()
-
-                    statisticsDivider()
-
-                    // 7. Plateau-Check
-                    PlateauCheckCardView()
-                    
-                    statisticsDivider()
-                    
-                    // 8. Health Data (Optional, falls verfügbar)
-                    HeartRateInsightsView()
-                    
-                    statisticsDivider()
-                    
-                    BodyMetricsInsightsView()
+                        BodyMetricsInsightsView()
+                            .padding(.horizontal, 20)
+                    }
+                    .padding(.bottom, 100)
                 }
-                .padding(.horizontal, 16)
-                
-                // Zusätzlicher Platz am Ende
-                Color.clear.frame(height: 100)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -125,13 +117,6 @@ struct StatisticsView: View {
         }
     }
     
-    // Helper for creating separator lines
-    private func statisticsDivider() -> some View {
-        Rectangle()
-            .fill(Color(.systemGray5))
-            .frame(height: 0.5)
-            .padding(.horizontal, 20)
-    }
 }
 
 // MARK: - Statistics Cards

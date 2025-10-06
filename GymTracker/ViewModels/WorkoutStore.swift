@@ -131,18 +131,25 @@ class WorkoutStore: ObservableObject {
     }
 
     var userProfile: UserProfile {
-        guard let context = modelContext else { 
+        guard let context = modelContext else {
             // Fallback: Load from UserDefaults if SwiftData isn't available
             return ProfilePersistenceHelper.loadFromUserDefaults()
         }
-        let descriptor = FetchDescriptor<UserProfileEntity>()
-        if let entity = try? context.fetch(descriptor).first {
-            let profile = UserProfile(entity: entity)
-            // Always keep UserDefaults as backup
-            ProfilePersistenceHelper.saveToUserDefaults(profile)
-            return profile
+
+        do {
+            let descriptor = FetchDescriptor<UserProfileEntity>()
+            if let entity = try context.fetch(descriptor).first {
+                let profile = UserProfile(entity: entity)
+                // Always keep UserDefaults as backup
+                ProfilePersistenceHelper.saveToUserDefaults(profile)
+                return profile
+            }
+        } catch {
+            print("⚠️ Fehler beim Laden des Profils aus SwiftData: \(error)")
+            print("   Fallback zu UserDefaults...")
+            return ProfilePersistenceHelper.loadFromUserDefaults()
         }
-        
+
         // Try to restore from UserDefaults backup
         let backupProfile = ProfilePersistenceHelper.loadFromUserDefaults()
         if !backupProfile.name.isEmpty || backupProfile.weight != nil {

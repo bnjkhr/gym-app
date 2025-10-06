@@ -99,34 +99,48 @@ struct GymTrackerApp: App {
                         print("❌ Fehler beim Prüfen der Übungen: \(error)")
                     }
 
-                    // 🌱 SCHRITT 3: Sample-Workouts seeden, falls noch keine vorhanden oder defekt
+                    // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
                     do {
+                        let SAMPLE_WORKOUT_VERSION = 2 // Bei neuen Samples erhöhen!
+                        let lastVersion = UserDefaults.standard.integer(forKey: "sampleWorkoutVersion")
+
                         let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
                         let existingWorkouts = try context.fetch(workoutDescriptor)
 
-                        // Prüfe ob Workouts defekt sind (keine gültigen Exercise-Referenzen)
-                        let validWorkouts = existingWorkouts.filter { workout in
-                            !workout.exercises.isEmpty && workout.exercises.contains { $0.exercise != nil }
+                        // Migration: Alte Workouts ohne Flag als Benutzer-Workouts markieren
+                        for workout in existingWorkouts where workout.isSampleWorkout == nil {
+                            workout.isSampleWorkout = false // Alte Workouts = Benutzer-Workouts
                         }
+                        try? context.save()
 
-                        if validWorkouts.isEmpty {
-                            // Lösche alte defekte Workouts falls vorhanden
-                            if !existingWorkouts.isEmpty {
-                                print("🔧 Lösche \(existingWorkouts.count) defekte Workouts...")
-                                for workout in existingWorkouts {
+                        // Wenn Version veraltet ist ODER keine Workouts vorhanden
+                        if lastVersion < SAMPLE_WORKOUT_VERSION || existingWorkouts.isEmpty {
+                            // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
+                            let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
+                            if !sampleWorkouts.isEmpty {
+                                print("🔄 Lösche \(sampleWorkouts.count) veraltete Sample-Workouts...")
+                                for workout in sampleWorkouts {
                                     context.delete(workout)
                                 }
                                 try context.save()
                             }
 
-                            print("🌱 Lade 6 Beispielworkouts aus CSV...")
+                            // Lade neue Sample-Workouts
+                            print("🌱 Lade neue Beispielworkouts (Version \(SAMPLE_WORKOUT_VERSION))...")
                             WorkoutSeeder.seedWorkouts(context: context)
-                            print("✅ Beispielworkouts erfolgreich geladen")
+
+                            // Speichere neue Version
+                            UserDefaults.standard.set(SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
+                            print("✅ Sample-Workouts erfolgreich aktualisiert auf Version \(SAMPLE_WORKOUT_VERSION)")
                         } else {
-                            print("✅ \(validWorkouts.count) gültige Workouts bereits vorhanden")
+                            let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
+                            let samples = existingWorkouts.filter { $0.isSampleWorkout == true }
+                            print("✅ Sample-Workouts sind aktuell (Version \(SAMPLE_WORKOUT_VERSION))")
+                            print("   - \(samples.count) Beispiel-Workouts")
+                            print("   - \(userWorkouts.count) Benutzer-Workouts")
                         }
                     } catch {
-                        print("❌ Fehler beim Prüfen der Workouts: \(error)")
+                        print("❌ Fehler beim Sample-Workout Update: \(error)")
                     }
 
                     // 🏆 SCHRITT 4: Migration - ExerciseRecords aus bestehenden Sessions generieren

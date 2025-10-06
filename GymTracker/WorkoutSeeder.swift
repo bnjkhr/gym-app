@@ -158,7 +158,8 @@ struct WorkoutSeeder {
                 .compactMap { $0 }
                 .filter { !$0.isEmpty }
                 .joined(separator: " • "),
-            isFavorite: false
+            isFavorite: false,
+            isSampleWorkout: true // Markiert als Beispiel-Workout
         )
 
         // Setze bidirektionale Beziehung

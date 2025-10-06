@@ -83,99 +83,106 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 24) {
-                // Profile Section
-                ProfileView()
-                
-                // Trainingsziele Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Trainingsziele")
-                        .font(.headline)
-                    
-                    Stepper(value: $workoutStore.weeklyGoal, in: 1...14) {
-                        Text("Wochenziel: \(workoutStore.weeklyGoal) Workouts")
-                    }
-                    
-                    Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                
-                // Übungen verwalten Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Übungen")
-                        .font(.headline)
-                    
-                    Button {
-                        showingExercisesView = true
-                    } label: {
-                        Label("Übungen verwalten", systemImage: "list.bullet.rectangle")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Text("Verwalte deine Übungsdatenbank: Übungen hinzufügen, bearbeiten oder löschen.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                
-                // Datensicherung Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Datensicherung")
-                        .font(.headline)
-                    
-                    Button {
-                        showingBackupView = true
-                    } label: {
-                        Label("Backup & Wiederherstellung", systemImage: "externaldrive")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isImporting)
-                    
-                    Text("Erstelle ein Backups deiner Trainingsdaten oder stelle sie aus einer Sicherungsdatei wieder her.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                
-                // Workouts Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Workouts")
-                        .font(.headline)
-                    
-                    Button {
-                        showingImportFormatSelection = true
-                    } label: {
-                        Label("Workouts importieren (CSV)", systemImage: "tray.and.arrow.down")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isImporting)
-                    
-                    HStack {
-                        Spacer()
-                        Button {
-                            showingImportInfo = true
-                        } label: {
-                            Image(systemName: "info.circle")
-                                .font(.body)
+        ZStack {
+            AppTheme.background
+                .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 20) {
+                    // Profile Section
+                    ProfileView()
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+
+                    // Trainingsziele Card
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Trainingsziele")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.primary)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Wochenziel")
+                                    .font(.system(size: 15, weight: .medium))
+                                Spacer()
+                                HStack(spacing: 12) {
+                                    Button {
+                                        if workoutStore.weeklyGoal > 1 {
+                                            workoutStore.weeklyGoal -= 1
+                                        }
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.system(size: 28))
+                                            .foregroundStyle(AppTheme.powerOrange)
+                                    }
+                                    .disabled(workoutStore.weeklyGoal <= 1)
+
+                                    Text("\(workoutStore.weeklyGoal)")
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundStyle(.primary)
+                                        .monospacedDigit()
+                                        .frame(minWidth: 40)
+
+                                    Button {
+                                        if workoutStore.weeklyGoal < 14 {
+                                            workoutStore.weeklyGoal += 1
+                                        }
+                                    } label: {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 28))
+                                            .foregroundStyle(AppTheme.mossGreen)
+                                    }
+                                    .disabled(workoutStore.weeklyGoal >= 14)
+                                }
+                            }
+
+                            Text("Passe dein Wochenziel an, um den Fortschritt-Tab auf deine Planung abzustimmen.")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("CSV-Import Info")
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
+                    .padding(20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(AppTheme.cardBackground)
+                    )
+                    .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.05), radius: 8, x: 0, y: 2)
+                    .padding(.horizontal, 20)
+                
+                    // Übungen Card
+                    SettingsCard(
+                        title: "Übungen",
+                        icon: "list.bullet.rectangle",
+                        iconColor: AppTheme.turquoiseBoost,
+                        description: "Verwalte deine Übungsdatenbank",
+                        action: { showingExercisesView = true }
+                    )
+                    .padding(.horizontal, 20)
+                
+                    // Datensicherung Card
+                    SettingsCard(
+                        title: "Backup & Wiederherstellung",
+                        icon: "externaldrive",
+                        iconColor: AppTheme.mossGreen,
+                        description: "Erstelle Backups deiner Trainingsdaten",
+                        action: { showingBackupView = true },
+                        disabled: isImporting
+                    )
+                    .padding(.horizontal, 20)
+
+                    // Workouts Import Card
+                    SettingsCard(
+                        title: "Workouts importieren",
+                        icon: "tray.and.arrow.down",
+                        iconColor: AppTheme.deepBlue,
+                        description: "Importiere Workouts aus CSV-Dateien",
+                        action: { showingImportFormatSelection = true },
+                        disabled: isImporting,
+                        showInfoButton: true,
+                        onInfo: { showingImportInfo = true }
+                    )
+                    .padding(.horizontal, 20)
                 
                 // HealthKit Section
                 if workoutStore.healthKitManager.isHealthDataAvailable {
@@ -272,8 +279,9 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
+                .padding(.bottom, 40)
+                }
             }
-            .appEdgePadding()
         }
         .fileImporter(
             isPresented: $showingImporter,
@@ -1223,6 +1231,72 @@ struct SettingsView: View {
                 return "HealthKit-Berechtigung erforderlich. Bitte aktiviere HealthKit in den Einstellungen, um Messdaten zu importieren."
             }
         }
+    }
+}
+
+// MARK: - Settings Card Component
+
+struct SettingsCard: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let description: String
+    let action: () -> Void
+    var disabled: Bool = false
+    var showInfoButton: Bool = false
+    var onInfo: (() -> Void)? = nil
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 50, height: 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(iconColor.opacity(0.15))
+                    )
+
+                // Text Content
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(description)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                // Info Button or Arrow
+                if showInfoButton, let onInfo = onInfo {
+                    Button(action: onInfo) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+            )
+            .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.05), radius: 8, x: 0, y: 2)
+            .opacity(disabled ? 0.6 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 }
 

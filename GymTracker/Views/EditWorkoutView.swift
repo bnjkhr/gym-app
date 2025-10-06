@@ -187,6 +187,9 @@ struct EditWorkoutView: View {
                                         }
                                     )
                                 }
+                                .onMove { sourceIndices, destination in
+                                    editableExercises.move(fromOffsets: sourceIndices, toOffset: destination)
+                                }
                             }
                         }
                         .padding(.horizontal, 20)
@@ -215,14 +218,20 @@ struct EditWorkoutView: View {
                     .tint(AppTheme.powerOrange)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Speichern") {
-                        saveChanges()
+                    HStack(spacing: 16) {
+                        EditButton()
+                            .tint(AppTheme.turquoiseBoost)
+
+                        Button("Speichern") {
+                            saveChanges()
+                        }
+                        .tint(AppTheme.mossGreen)
+                        .fontWeight(.semibold)
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || editableExercises.isEmpty)
                     }
-                    .tint(AppTheme.mossGreen)
-                    .fontWeight(.semibold)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || editableExercises.isEmpty)
                 }
             }
+            .environment(\.editMode, $editMode)
         }
     }
 
@@ -334,11 +343,19 @@ struct ExerciseCard: View {
     let onDelete: () -> Void
 
     @State private var isExpanded = true
+    @Environment(\.editMode) private var editMode
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
             HStack(spacing: 12) {
+                // Drag Handle (nur im Edit-Modus sichtbar)
+                if editMode?.wrappedValue == .active {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary)
+                }
+
                 Button {
                     withAnimation(.spring(response: 0.3)) {
                         isExpanded.toggle()

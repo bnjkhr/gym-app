@@ -4,6 +4,10 @@
 <dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Wir benötigen Zugriff auf deine Fotobibliothek, um ein Profilbild auszuwählen.</string>
 	<key>CFBundleDisplayName</key>
 	<string>GymTracker</string>
 	<key>CFBundleIdentifier</key>
