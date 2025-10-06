@@ -17,49 +17,16 @@ struct WorkoutTileCard: View {
         }
     }
 
-    private var displayType: String {
-        guard let type = workout.workoutType else { return workoutCategoryFallback(for: workout) }
-        switch type.lowercased() {
-        case "fullbody": return "Ganzkörper"
-        case "upperbody": return "Oberkörper"
-        case "lowerbody": return "Unterkörper"
-        case "push": return "Push"
-        case "pull": return "Pull"
-        case "machine": return "Maschinen"
-        case "freeweights": return "Freie Gewichte"
-        case "bodyweight": return "Körpergewicht"
-        case "mixed": return "Mixed"
-        default: return type
-        }
-    }
+    private var displayEquipment: String {
+        let equipmentTypes = workout.exercises.map { $0.exercise.equipmentType }
+        let uniqueTypes = Set(equipmentTypes)
 
-    private func workoutCategoryFallback(for workout: Workout) -> String {
-        let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
-
-        let machineKeywords = ["machine", "press machine", "curl machine"]
-        let freeWeightKeywords = ["dumbbell", "barbell", "squat", "deadlift", "bench"]
-        let bodyweightKeywords = ["push-up", "pull-up", "plank", "burpee"]
-
-        let hasMachine = exerciseNames.contains { name in
-            machineKeywords.contains { keyword in name.contains(keyword) }
-        }
-
-        let hasFreeWeight = exerciseNames.contains { name in
-            freeWeightKeywords.contains { keyword in name.contains(keyword) }
-        }
-
-        let hasBodyweight = exerciseNames.contains { name in
-            bodyweightKeywords.contains { keyword in name.contains(keyword) }
-        }
-
-        if (hasMachine && hasFreeWeight) || (hasMachine && hasBodyweight) || (hasFreeWeight && hasBodyweight) {
+        if uniqueTypes.isEmpty {
+            return "Training"
+        } else if uniqueTypes.count > 1 {
             return "Mixed"
-        } else if hasMachine {
-            return "Maschinen"
-        } else if hasFreeWeight {
-            return "Freie Gewichte"
-        } else if hasBodyweight {
-            return "Körpergewicht"
+        } else if let type = uniqueTypes.first {
+            return type.rawValue
         } else {
             return "Training"
         }
@@ -68,19 +35,7 @@ struct WorkoutTileCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
-                // Header area - three dots button
-                HStack {
-                    Spacer()
-                    Button(action: onShowMenu) {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.tertiary)
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                // Content area - workout name, level, and type
+                // Content area - workout name, equipment, and level
                 VStack(alignment: .leading, spacing: 4) {
                     Text(workout.name)
                         .font(.headline)
@@ -90,17 +45,17 @@ struct WorkoutTileCard: View {
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
+                    Text(displayEquipment)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
                     if !displayLevel.isEmpty {
                         Text(displayLevel)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-
-                    Text(displayType)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
                 
                 // Push content to top with spacer
@@ -130,6 +85,19 @@ struct WorkoutTileCard: View {
             )
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                onShowMenu()
+            } label: {
+                Label("Bearbeiten", systemImage: "pencil")
+            }
+
+            Button {
+                onToggleHome()
+            } label: {
+                Label(isHomeFavorite ? "Von Favoriten entfernen" : "Zu Favoriten", systemImage: isHomeFavorite ? "house.fill" : "house")
+            }
+        }
     }
 }
 

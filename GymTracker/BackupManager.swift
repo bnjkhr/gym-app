@@ -242,7 +242,11 @@ class BackupManager: ObservableObject {
             defaultRestTime: Int(entity.defaultRestTime),
             duration: entity.duration ?? 0,
             notes: entity.notes,
-            isFavorite: entity.isFavorite
+            isFavorite: entity.isFavorite,
+            level: nil,
+            workoutType: nil,
+            estimatedDuration: nil,
+            frequency: nil
         )
     }
     
@@ -317,6 +321,8 @@ class BackupManager: ObservableObject {
     }
     
     private func createWorkoutEntity(from backup: BackupWorkout, in context: ModelContext) throws -> WorkoutEntity {
+        // Note: level, workoutType, estimatedDuration, frequency sind in notes gespeichert
+        // da WorkoutEntity diese Felder nicht direkt hat
         let entity = WorkoutEntity(
             id: backup.id,
             name: backup.name,
@@ -470,6 +476,10 @@ struct BackupWorkout: Codable {
     let duration: TimeInterval
     let notes: String
     let isFavorite: Bool
+    let level: String?
+    let workoutType: String?
+    let estimatedDuration: String?
+    let frequency: String?
 }
 
 struct BackupExercise: Codable {
