@@ -129,13 +129,13 @@ struct EditWorkoutView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Details")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.primary.opacity(0.8))
+                                .foregroundStyle(.white.opacity(0.9))
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
                             TextField("Workout-Name", text: $name)
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
                                 .background(
@@ -145,7 +145,7 @@ struct EditWorkoutView: View {
 
                             TextField("Notizen (optional)", text: $notes, axis: .vertical)
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
                                 .lineLimit(2...4)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
@@ -157,7 +157,7 @@ struct EditWorkoutView: View {
                             HStack {
                                 Text("Standard-Pause")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(.white)
                                 Spacer()
                                 HStack(spacing: 12) {
                                     Button {
@@ -165,12 +165,12 @@ struct EditWorkoutView: View {
                                     } label: {
                                         Image(systemName: "minus.circle.fill")
                                             .font(.system(size: 24))
-                                            .foregroundStyle(.primary.opacity(0.8))
+                                            .foregroundStyle(.white.opacity(0.9))
                                     }
 
                                     Text("\(Int(restTime))s")
                                         .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(.white)
                                         .monospacedDigit()
                                         .frame(minWidth: 50)
 
@@ -179,7 +179,7 @@ struct EditWorkoutView: View {
                                     } label: {
                                         Image(systemName: "plus.circle.fill")
                                             .font(.system(size: 24))
-                                            .foregroundStyle(.primary.opacity(0.8))
+                                            .foregroundStyle(.white.opacity(0.9))
                                     }
                                 }
                             }
@@ -323,6 +323,7 @@ struct EditWorkoutView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 100)
                     }
+                    .padding(.horizontal, 20)
                     .padding(.top, 20)
                 }
 
@@ -912,53 +913,83 @@ struct ExpandedSetListView: View {
                 }
             }
 
-            // Individual sets
+            // Table Header
+            HStack(spacing: 8) {
+                Text("Satz")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.5))
+                    .frame(width: 50, alignment: .leading)
+
+                Text("WDH")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.5))
+                    .frame(width: 60, alignment: .center)
+
+                Text("kg")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.5))
+                    .frame(width: 70, alignment: .center)
+
+                Text("Pause")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.5))
+                    .frame(width: 70, alignment: .center)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color.primary.opacity(0.05))
+            .cornerRadius(6)
+
+            // Table Rows
             ForEach(Array(sets.enumerated()), id: \.offset) { index, _ in
-                HStack(spacing: 12) {
-                    Text("Satz \(index + 1)")
+                HStack(spacing: 8) {
+                    // Satz Number
+                    Text("\(index + 1)")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.primary.opacity(0.8))
-                        .frame(width: 60, alignment: .leading)
+                        .foregroundStyle(.primary.opacity(0.7))
+                        .frame(width: 50, alignment: .leading)
 
                     // WDH
-                    HStack(spacing: 4) {
-                        Text("WDH")
-                            .font(.caption2)
-                            .foregroundStyle(.primary.opacity(0.5))
-                        TextField("10", value: $sets[index].reps, format: .number)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.center)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .padding(8)
-                            .frame(width: 60)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.white.opacity(0.1))
-                            )
-                    }
+                    TextField("10", value: $sets[index].reps, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(8)
+                        .frame(width: 60)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.primary.opacity(0.08))
+                        )
 
-                    // Gewicht
-                    HStack(spacing: 4) {
-                        Text("Gewicht")
-                            .font(.caption2)
-                            .foregroundStyle(.primary.opacity(0.5))
-                        TextField("80", value: $sets[index].weight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.center)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .padding(8)
-                            .frame(width: 70)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.white.opacity(0.1))
-                            )
-                        Text("kg")
-                            .font(.caption2)
-                            .foregroundStyle(.primary.opacity(0.5))
-                    }
+                    // Gewicht (kg)
+                    TextField("80", value: $sets[index].weight, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(8)
+                        .frame(width: 70)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.primary.opacity(0.08))
+                        )
+
+                    // Pause (s)
+                    TextField("90", value: $sets[index].restTime, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(8)
+                        .frame(width: 70)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.primary.opacity(0.08))
+                        )
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             }
 
             // Add set button
