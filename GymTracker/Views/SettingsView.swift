@@ -30,7 +30,6 @@ enum ImportFormat: String, CaseIterable {
 struct SettingsView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
-    @StateObject private var iconManager = AppIconManager.shared
     @State private var showingImporter = false
     @State private var showingHealthKitSetup = false
     @State private var showingImportFormatSelection = false
@@ -94,65 +93,6 @@ struct SettingsView: View {
                     ProfileView()
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
-
-                    // App-Icon Card
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("App-Icon")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.primary)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 12) {
-                                ForEach(AppIconStyle.allCases) { style in
-                                    VStack(spacing: 8) {
-                                        Button {
-                                            iconManager.currentStyle = style
-                                        } label: {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                    .fill(AppTheme.cardBackground)
-                                                    .overlay(
-                                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                            .strokeBorder(
-                                                                iconManager.currentStyle == style ? AppTheme.powerOrange : Color.clear,
-                                                                lineWidth: 3
-                                                            )
-                                                    )
-                                                    .frame(width: 70, height: 70)
-
-                                                // Placeholder icon preview
-                                                Image(systemName: "figure.strengthtraining.traditional")
-                                                    .font(.system(size: 32))
-                                                    .foregroundStyle(
-                                                        style == .tinted ? AppTheme.turquoiseBoost :
-                                                        style == .clear ? .secondary.opacity(0.6) :
-                                                        .primary
-                                                    )
-                                            }
-                                        }
-                                        .buttonStyle(.plain)
-
-                                        Text(style.rawValue)
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundStyle(iconManager.currentStyle == style ? AppTheme.powerOrange : .secondary)
-                                    }
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-
-                            Text("Das Icon wechselt automatisch zwischen Hell- und Dunkelmodus.")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(AppTheme.cardBackground)
-                    )
-                    .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.05), radius: 8, x: 0, y: 2)
-                    .padding(.horizontal, 20)
 
                     // Trainingsziele Card
                     VStack(alignment: .leading, spacing: 16) {
