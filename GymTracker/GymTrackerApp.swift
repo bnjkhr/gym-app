@@ -5,6 +5,8 @@ import OSLog
 
 @main
 struct GymTrackerApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+
     // Performance: Track migration state to show app immediately
     @State private var isMigrationComplete = false
 
@@ -71,6 +73,20 @@ struct GymTrackerApp: App {
                 ContentView()
                     .modelContainer(sharedModelContainer)
                     .opacity(isMigrationComplete ? 1 : 0)
+                    .onAppear {
+                        // Initialize icon manager and set initial icon
+                        Task { @MainActor in
+                            AppIconManager.shared.updateAppIcon()
+                        }
+                    }
+                    .onChange(of: scenePhase) { _, newPhase in
+                        // Update icon when app becomes active (handles system theme changes)
+                        if newPhase == .active {
+                            Task { @MainActor in
+                                AppIconManager.shared.handleTraitCollectionChange()
+                            }
+                        }
+                    }
 
                 // Performance: Show loading overlay during migrations
                 if !isMigrationComplete {

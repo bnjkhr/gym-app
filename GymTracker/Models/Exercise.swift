@@ -111,11 +111,11 @@ enum DifficultyLevel: String, CaseIterable, Codable {
     case anfänger = "Anfänger"
     case fortgeschritten = "Fortgeschritten"
     case profi = "Profi"
-    
-    var displayName: String { 
-        return rawValue 
+
+    var displayName: String {
+        return rawValue
     }
-    
+
     var sortOrder: Int {
         switch self {
         case .anfänger: return 1
@@ -123,7 +123,7 @@ enum DifficultyLevel: String, CaseIterable, Codable {
         case .profi: return 3
         }
     }
-    
+
     var color: Color {
         switch self {
         case .anfänger: return .green
@@ -131,12 +131,83 @@ enum DifficultyLevel: String, CaseIterable, Codable {
         case .profi: return .red
         }
     }
-    
+
     var icon: String {
         switch self {
         case .anfänger: return "star.fill"
         case .fortgeschritten: return "star.fill"
         case .profi: return "star.fill"
+        }
+    }
+}
+
+// MARK: - Exercise Similarity Extension
+extension Exercise {
+    /// Berechnet einen Ähnlichkeitsscore (0-100) zu einer anderen Übung
+    /// Basierend auf Muskelgruppen (60%), Equipment (25%) und Schwierigkeit (15%)
+    func similarityScore(to other: Exercise) -> Int {
+        guard self.id != other.id else { return 0 }
+
+        let muscleScore = muscleGroupSimilarity(to: other)
+        let equipmentScore = equipmentSimilarity(to: other)
+        let difficultyScore = difficultySimilarity(to: other)
+
+        let totalScore = (muscleScore * 0.6) + (equipmentScore * 0.25) + (difficultyScore * 0.15)
+        return Int(totalScore * 100)
+    }
+
+    /// Prüft ob die Übung ähnliche Muskelgruppen trainiert
+    func hasSimilarMuscleGroups(to other: Exercise) -> Bool {
+        let commonMuscles = Set(self.muscleGroups).intersection(Set(other.muscleGroups))
+        return !commonMuscles.isEmpty
+    }
+
+    /// Prüft ob die Übung die primäre Muskelgruppe teilt
+    func sharesPrimaryMuscleGroup(with other: Exercise) -> Bool {
+        guard let primarySelf = muscleGroups.first,
+              let primaryOther = other.muscleGroups.first else {
+            return false
+        }
+        return primarySelf == primaryOther
+    }
+
+    // MARK: - Private Similarity Calculations
+
+    private func muscleGroupSimilarity(to other: Exercise) -> Double {
+        let selfMuscles = Set(self.muscleGroups)
+        let otherMuscles = Set(other.muscleGroups)
+
+        guard !selfMuscles.isEmpty && !otherMuscles.isEmpty else { return 0.0 }
+
+        let intersection = selfMuscles.intersection(otherMuscles)
+        let union = selfMuscles.union(otherMuscles)
+
+        // Jaccard-Index: Anzahl gemeinsamer / Anzahl aller Muskelgruppen
+        return Double(intersection.count) / Double(union.count)
+    }
+
+    private func equipmentSimilarity(to other: Exercise) -> Double {
+        if self.equipmentType == other.equipmentType {
+            return 1.0
+        }
+
+        // Mixed Equipment ist kompatibel mit allem (halber Score)
+        if self.equipmentType == .mixed || other.equipmentType == .mixed {
+            return 0.5
+        }
+
+        return 0.0
+    }
+
+    private func difficultySimilarity(to other: Exercise) -> Double {
+        let selfOrder = self.difficultyLevel.sortOrder
+        let otherOrder = other.difficultyLevel.sortOrder
+        let difference = abs(selfOrder - otherOrder)
+
+        switch difference {
+        case 0: return 1.0  // Gleiches Level
+        case 1: return 0.5  // Ein Level Unterschied
+        default: return 0.0 // Zwei Levels Unterschied
         }
     }
 }

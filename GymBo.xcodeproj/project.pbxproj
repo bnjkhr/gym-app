@@ -47,6 +47,8 @@
 		AD2A83C62E942E7500A6ADBE /* TipFeedbackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83C22E942E7500A6ADBE /* TipFeedbackManager.swift */; };
 		AD2A83C72E942E7500A6ADBE /* WorkoutAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83C32E942E7500A6ADBE /* WorkoutAnalyzer.swift */; };
 		AD2A83CB2E942EA000A6ADBE /* SmartTipsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */; };
+		AD2A83CD2E94560200A6ADBE /* ExerciseSwapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */; };
+		AD2A83D02E945CC300A6ADBE /* AppIconManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */; };
 		AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D972E8C556A0015A34D /* HealthKitManager.swift */; };
 		AD363D9A2E8C56740015A34D /* HeartRateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D992E8C56740015A34D /* HeartRateView.swift */; };
 		AD363D9C2E8C568F0015A34D /* HealthKitSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D9B2E8C568F0015A34D /* HealthKitSetupView.swift */; };
@@ -159,6 +161,8 @@
 		AD2A83C22E942E7500A6ADBE /* TipFeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipFeedbackManager.swift; sourceTree = "<group>"; };
 		AD2A83C32E942E7500A6ADBE /* WorkoutAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAnalyzer.swift; sourceTree = "<group>"; };
 		AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTipsCard.swift; sourceTree = "<group>"; };
+		AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSwapView.swift; sourceTree = "<group>"; };
+		AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconManager.swift; sourceTree = "<group>"; };
 		AD363D972E8C556A0015A34D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		AD363D992E8C56740015A34D /* HeartRateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateView.swift; sourceTree = "<group>"; };
 		AD363D9B2E8C568F0015A34D /* HealthKitSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitSetupView.swift; sourceTree = "<group>"; };
@@ -278,6 +282,7 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				AD2A83CF2E945CC300A6ADBE /* Managers */,
 				AD2A83C42E942E7500A6ADBE /* Services */,
 				AD2A83BB2E93F76100A6ADBE /* AppLogger.swift */,
 				ADF43B082E93C0BC0067A017 /* ShareableWorkout.swift */,
@@ -358,6 +363,7 @@
 		11E748FF2C9E4B6D00AB1234 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */,
 				AD2A83CA2E942EA000A6ADBE /* Components */,
 				11E749062C9E4BA500AB1234 /* WorkoutsView.swift */,
 				11E749082C9E4BB300AB1234 /* ExercisesView.swift */,
@@ -408,6 +414,14 @@
 				AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		AD2A83CF2E945CC300A6ADBE /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */,
+			);
+			path = Managers;
 			sourceTree = "<group>";
 		};
 		AD52FEDB2E8BCBD40048DF0F /* Frameworks */ = {
@@ -587,9 +601,11 @@
 				AD2A83CB2E942EA000A6ADBE /* SmartTipsCard.swift in Sources */,
 				AD03A7852E858BA40005AE79 /* ProfileView.swift in Sources */,
 				AD960EA02E8BF83200E91131 /* DataManager.swift in Sources */,
+				AD2A83CD2E94560200A6ADBE /* ExerciseSwapView.swift in Sources */,
 				AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */,
 				11E749052C9E4B9700AB1234 /* WorkoutStore.swift in Sources */,
 				ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */,
+				AD2A83D02E945CC300A6ADBE /* AppIconManager.swift in Sources */,
 				AD2568DE2E904996009BE060 /* ExerciseRecord.swift in Sources */,
 				ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */,
 				AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */,

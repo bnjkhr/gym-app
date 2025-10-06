@@ -355,6 +355,61 @@ class WorkoutStore: ObservableObject {
         return entities.map { mapExerciseEntity($0) }
     }
 
+    /// Findet ähnliche Übungen basierend auf Muskelgruppen, Equipment und Schwierigkeit
+    /// - Parameters:
+    ///   - exercise: Die Referenz-Übung
+    ///   - count: Anzahl der zurückzugebenden ähnlichen Übungen (default: 10)
+    ///   - userLevel: Optional - bevorzugt Übungen die zum User-Level passen
+    /// - Returns: Array von ähnlichen Übungen, sortiert nach Similarity-Score
+    func getSimilarExercises(to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil) -> [Exercise] {
+        let allExercises = getExercises()
+
+        // Filtere die aktuelle Übung aus und nur Übungen mit gemeinsamen Muskelgruppen
+        let candidates = allExercises.filter { candidate in
+            candidate.id != exercise.id &&
+            exercise.hasSimilarMuscleGroups(to: candidate)
+        }
+
+        // Berechne Similarity-Scores für alle Kandidaten
+        let scoredExercises = candidates.compactMap { candidate -> (exercise: Exercise, score: Int, matchesLevel: Bool, sharesPrimary: Bool)? in
+            let score = exercise.similarityScore(to: candidate)
+            guard score > 0 else { return nil }
+
+            let matchesLevel = userLevel != nil ? matchesDifficultyLevel(candidate, for: userLevel!) : true
+            let sharesPrimary = exercise.sharesPrimaryMuscleGroup(with: candidate)
+            return (candidate, score, matchesLevel, sharesPrimary)
+        }
+
+        // Sortiere nach:
+        // 1. Gleiche primäre Muskelgruppe (wichtig!)
+        // 2. Passendes Level
+        // 3. Similarity Score
+        let sorted = scoredExercises.sorted { first, second in
+            // Bevorzuge gleiche primäre Muskelgruppe
+            if first.sharesPrimary && !second.sharesPrimary {
+                return true
+            }
+            if !first.sharesPrimary && second.sharesPrimary {
+                return false
+            }
+
+            // Wenn ein userLevel angegeben ist, bevorzuge passende Level
+            if let _ = userLevel {
+                if first.matchesLevel && !second.matchesLevel {
+                    return true
+                }
+                if !first.matchesLevel && second.matchesLevel {
+                    return false
+                }
+            }
+
+            return first.score > second.score
+        }
+
+        // Nimm die Top N Übungen
+        return Array(sorted.prefix(count).map { $0.exercise })
+    }
+
     private func getSessionHistory() -> [WorkoutSession] {
         guard let context = modelContext else { return [] }
         let descriptor = FetchDescriptor<WorkoutSessionEntity>(
@@ -2590,7 +2645,10 @@ extension WorkoutStore {
 
     private func selectExercises(for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup], from exercises: [Exercise]) -> [Exercise] {
         var selectedExercises: [Exercise] = []
-        let availableExercises = filterExercisesByEquipment(preferences.equipment, from: exercises)
+
+        // Filter nach Equipment UND Difficulty-Level
+        let equipmentFiltered = filterExercisesByEquipment(preferences.equipment, from: exercises)
+        let availableExercises = filterExercisesByDifficulty(equipmentFiltered, for: preferences.experience)
 
         // Grundübungen basierend auf Erfahrung
         let compoundExercises = availableExercises.filter { exercise in
@@ -2618,19 +2676,39 @@ extension WorkoutStore {
         let compoundCount = Int(Double(targetExerciseCount) * compoundRatio)
         let isolationCount = targetExerciseCount - compoundCount
 
-        // Wähle Compound-Übungen
+        // Wähle Compound-Übungen (bevorzuge passende Difficulty)
         for muscleGroup in muscleGroups.prefix(compoundCount) {
+            // Versuche erst passende Difficulty zu finden
             if let exercise = compoundExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup) && !selectedExercises.contains(where: { $0.id == exercise.id })
+                exercise.muscleGroups.contains(muscleGroup) &&
+                !selectedExercises.contains(where: { $0.id == exercise.id }) &&
+                matchesDifficultyLevel(exercise, for: preferences.experience)
+            }) {
+                selectedExercises.append(exercise)
+            }
+            // Fallback: Ignoriere Difficulty wenn nichts passendes gefunden
+            else if let exercise = compoundExercises.first(where: { exercise in
+                exercise.muscleGroups.contains(muscleGroup) &&
+                !selectedExercises.contains(where: { $0.id == exercise.id })
             }) {
                 selectedExercises.append(exercise)
             }
         }
 
-        // Fülle mit Isolation-Übungen auf
+        // Fülle mit Isolation-Übungen auf (bevorzuge passende Difficulty)
         for muscleGroup in muscleGroups.prefix(isolationCount) {
+            // Versuche erst passende Difficulty zu finden
             if let exercise = isolationExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup) && !selectedExercises.contains(where: { $0.id == exercise.id })
+                exercise.muscleGroups.contains(muscleGroup) &&
+                !selectedExercises.contains(where: { $0.id == exercise.id }) &&
+                matchesDifficultyLevel(exercise, for: preferences.experience)
+            }) {
+                selectedExercises.append(exercise)
+            }
+            // Fallback: Ignoriere Difficulty wenn nichts passendes gefunden
+            else if let exercise = isolationExercises.first(where: { exercise in
+                exercise.muscleGroups.contains(muscleGroup) &&
+                !selectedExercises.contains(where: { $0.id == exercise.id })
             }) {
                 selectedExercises.append(exercise)
             }
@@ -2650,6 +2728,24 @@ extension WorkoutStore {
         return Array(selectedExercises.prefix(targetExerciseCount))
     }
 
+    /// Filtert Übungen basierend auf dem Erfahrungslevel
+    /// Priorisiert passende Übungen, lässt aber andere als Fallback zu
+    private func filterExercisesByDifficulty(_ exercises: [Exercise], for level: ExperienceLevel) -> [Exercise] {
+        // Sortiere so dass passende Übungen zuerst kommen
+        return exercises.sorted { first, second in
+            let firstMatches = matchesDifficultyLevel(first, for: level)
+            let secondMatches = matchesDifficultyLevel(second, for: level)
+
+            if firstMatches && !secondMatches {
+                return true
+            }
+            if !firstMatches && secondMatches {
+                return false
+            }
+            return false // Behalte ursprüngliche Reihenfolge bei
+        }
+    }
+
     private func filterExercisesByEquipment(_ equipment: EquipmentPreference, from exercises: [Exercise]) -> [Exercise] {
         switch equipment {
         case .freeWeights:
@@ -2664,6 +2760,25 @@ extension WorkoutStore {
             }
         case .mixed:
             return exercises
+        }
+    }
+
+    /// Prüft ob eine Übung zum Erfahrungslevel des Users passt
+    /// - Parameters:
+    ///   - exercise: Die zu prüfende Übung
+    ///   - level: Das Erfahrungslevel des Users
+    /// - Returns: true wenn die Übung zum Level passt oder nahe dran ist
+    private func matchesDifficultyLevel(_ exercise: Exercise, for level: ExperienceLevel) -> Bool {
+        switch level {
+        case .beginner:
+            // Anfänger: Hauptsächlich Anfänger-Übungen, einige Fortgeschritten
+            return exercise.difficultyLevel == .anfänger || exercise.difficultyLevel == .fortgeschritten
+        case .intermediate:
+            // Fortgeschritten: Alle Levels sind ok (Mix)
+            return true
+        case .advanced:
+            // Experte: Hauptsächlich Fortgeschritten und Profi-Übungen
+            return exercise.difficultyLevel == .fortgeschritten || exercise.difficultyLevel == .profi
         }
     }
 

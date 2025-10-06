@@ -1,5 +1,11 @@
 import SwiftUI
 
+struct ExerciseSwapSelection: Identifiable {
+    let id = UUID()
+    let index: Int
+    let exercise: Exercise
+}
+
 struct GeneratedWorkoutPreviewView: View {
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.dismiss) private var dismiss
@@ -9,6 +15,7 @@ struct GeneratedWorkoutPreviewView: View {
     @State private var isEditing = false
     @State private var editingWorkout: Workout
     @State private var usedProfileInfo: Bool
+    @State private var selectedExerciseForSwap: ExerciseSwapSelection?
 
     let onSave: () -> Void
     let onDismiss: () -> Void
@@ -96,8 +103,16 @@ struct GeneratedWorkoutPreviewView: View {
                                 editingWorkout.exercises.remove(atOffsets: indexSet)
                             }
                         } else {
-                            ForEach(workout.exercises) { workoutExercise in
-                                ExercisePreviewCard(workoutExercise: workoutExercise)
+                            ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, workoutExercise in
+                                ExercisePreviewCard(
+                                    workoutExercise: workoutExercise,
+                                    onSwapTapped: {
+                                        selectedExerciseForSwap = ExerciseSwapSelection(
+                                            index: index,
+                                            exercise: workoutExercise.exercise
+                                        )
+                                    }
+                                )
                             }
                         }
                     }
@@ -129,7 +144,34 @@ struct GeneratedWorkoutPreviewView: View {
                     .disabled(workoutName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            .sheet(item: $selectedExerciseForSwap) { selection in
+                ExerciseSwapView(
+                    currentExercise: selection.exercise,
+                    userLevel: workoutStore.userProfile.experience,
+                    onSwap: { newExercise in
+                        swapExercise(at: selection.index, with: newExercise)
+                        selectedExerciseForSwap = nil
+                    }
+                )
+                .environmentObject(workoutStore)
+            }
         }
+    }
+
+    private func swapExercise(at index: Int, with newExercise: Exercise) {
+        guard index < workout.exercises.count else { return }
+
+        // Behalte die Sets-Konfiguration der alten Übung
+        let oldSets = workout.exercises[index].sets
+
+        // Erstelle neue WorkoutExercise mit neuer Exercise aber alten Sets
+        let newWorkoutExercise = WorkoutExercise(
+            exercise: newExercise,
+            sets: oldSets
+        )
+
+        workout.exercises[index] = newWorkoutExercise
+        editingWorkout = workout
     }
 }
 
@@ -195,28 +237,51 @@ struct StatItem: View {
 
 struct ExercisePreviewCard: View {
     let workoutExercise: WorkoutExercise
+    var onSwapTapped: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(workoutExercise.exercise.name)
                         .font(.headline)
-                    if !workoutExercise.exercise.muscleGroups.isEmpty {
-                        Text(workoutExercise.exercise.muscleGroups.map { $0.rawValue }.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+
+                    HStack(spacing: 8) {
+                        // Muscle Groups
+                        if !workoutExercise.exercise.muscleGroups.isEmpty {
+                            Text(workoutExercise.exercise.muscleGroups.map { $0.rawValue }.joined(separator: ", "))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        // Difficulty Badge
+                        DifficultyBadge(level: workoutExercise.exercise.difficultyLevel, compact: true)
                     }
                 }
+
                 Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(workoutExercise.sets.count) Sätze")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    if let firstSet = workoutExercise.sets.first {
-                        Text("\(firstSet.reps) Wdh.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+
+                VStack(alignment: .trailing, spacing: 8) {
+                    HStack(spacing: 4) {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(workoutExercise.sets.count) Sätze")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            if let firstSet = workoutExercise.sets.first {
+                                Text("\(firstSet.reps) Wdh.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        // Swap Button
+                        if let onSwapTapped = onSwapTapped {
+                            Button(action: onSwapTapped) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.title3)
+                                    .foregroundColor(.blue)
+                            }
+                        }
                     }
                 }
             }
