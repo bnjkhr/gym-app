@@ -59,6 +59,7 @@ struct WorkoutsTabView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 40)
                             } else {
+                                // Performance: Explicit ID for better grid recycling
                                 LazyVGrid(
                                     columns: [
                                         GridItem(.flexible(), spacing: 8),
@@ -78,6 +79,7 @@ struct WorkoutsTabView: View {
                                             onDuplicate: { duplicateWorkout(id: workout.id) },
                                             onShare: { shareWorkout(id: workout.id) }
                                         )
+                                        .id(workout.id) // Performance: Explicit ID for optimal recycling
                                     }
                                 }
                             }

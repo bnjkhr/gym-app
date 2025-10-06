@@ -107,6 +107,7 @@ struct ExercisesView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     // Exercise list
+                    // Performance: Explicit ID for better row recycling
                     LazyVStack(spacing: 8) {
                         ForEach(filteredExercises) { exercise in
                             Button {
@@ -116,6 +117,7 @@ struct ExercisesView: View {
                                     .appEdgePadding()
                             }
                             .buttonStyle(.plain)
+                            .id(exercise.id) // Performance: Explicit ID for optimal recycling
                             .contextMenu {
                                 Button(role: .destructive) {
                                     requestDeletion(for: [exercise])

@@ -56,7 +56,8 @@ class WorkoutStore: ObservableObject {
     @Published var activeSessionID: UUID?
 
     // Zentrale Rest-Timer-State
-    struct ActiveRestState {
+    // Performance: Equatable to prevent unnecessary UI updates
+    struct ActiveRestState: Equatable {
         let workoutId: UUID
         let workoutName: String
         let exerciseIndex: Int
@@ -65,9 +66,22 @@ class WorkoutStore: ObservableObject {
         var totalSeconds: Int
         var isRunning: Bool
         var endDate: Date?
+
+        // Performance: Only trigger updates when meaningful changes occur
+        static func == (lhs: ActiveRestState, rhs: ActiveRestState) -> Bool {
+            lhs.workoutId == rhs.workoutId &&
+            lhs.exerciseIndex == rhs.exerciseIndex &&
+            lhs.setIndex == rhs.setIndex &&
+            lhs.remainingSeconds == rhs.remainingSeconds &&
+            lhs.isRunning == rhs.isRunning
+            // Note: Deliberately ignore endDate and compare remainingSeconds instead
+        }
     }
 
-    @Published var activeRestState: ActiveRestState?
+    // Performance: Custom publisher to avoid unnecessary updates
+    // Only publishes when actual state changes, not every second
+    @Published private(set) var activeRestState: ActiveRestState?
+
     @Published var profileUpdateTrigger: UUID = UUID() // Triggers UI updates when profile changes
 
     private var restTimer: Timer?
@@ -1051,9 +1065,15 @@ class WorkoutStore: ObservableObject {
         guard var state = activeRestState, state.isRunning else { return }
         if let end = state.endDate {
             let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
+            let previousRemaining = state.remainingSeconds
             state.remainingSeconds = remaining
-            activeRestState = state
-            updateLiveActivityRest()
+
+            // Performance: Only update if remainingSeconds actually changed
+            if previousRemaining != remaining {
+                activeRestState = state
+                updateLiveActivityRest()
+            }
+
             if remaining <= 0 {
                 SoundPlayer.playBoxBell()
                 #if canImport(UIKit)
@@ -1067,7 +1087,7 @@ class WorkoutStore: ObservableObject {
             // Fallback: decrement by one
             if state.remainingSeconds > 0 {
                 state.remainingSeconds -= 1
-                activeRestState = state
+                activeRestState = state // Always update since we decrement
                 updateLiveActivityRest()
                 if state.remainingSeconds <= 0 {
                     SoundPlayer.playBoxBell()

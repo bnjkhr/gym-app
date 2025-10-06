@@ -724,6 +724,7 @@ struct WorkoutsHomeView: View {
             if favoritedWorkouts.isEmpty {
                 EmptyView()
             } else {
+                // Performance: Explicit ID for better grid item recycling
                 LazyVGrid(
                     columns: [
                         GridItem(.flexible(), spacing: 12),
@@ -743,6 +744,7 @@ struct WorkoutsHomeView: View {
                             onDuplicate: { duplicateWorkout(id: workout.id) },
                             onShare: { shareWorkout(id: workout.id) }
                         )
+                        .id(workout.id) // Performance: Explicit ID for optimal recycling
                     }
                 }
             }

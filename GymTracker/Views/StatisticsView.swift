@@ -18,10 +18,11 @@ private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
 
 struct StatisticsView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
-    @State private var headerHidden: Bool = false
-    @State private var lastScrollOffset: CGFloat = 0
-    @State private var didSetInitialOffset: Bool = false
     @State private var showingCalendar: Bool = false
+    @State private var expandedVolumeCard: Bool = false
+    @State private var expandedBalanceCard: Bool = false
+    @State private var expandedHealthCard: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
@@ -32,94 +33,911 @@ struct StatisticsView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background
+            Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                // Unified background container
-                VStack(spacing: 0) {
-                    GeometryReader { geo in
-                        Color.clear
-                            .preference(
-                                key: StatisticsScrollOffsetPreferenceKey.self,
-                                value: geo.frame(in: .named("statisticsScroll")).minY
-                            )
-                    }
-                    .frame(height: 0)
+                VStack(spacing: 24) {
+                    // Floating Glassmorphism Header
+                    FloatingInsightsHeader(showCalendar: { showingCalendar = true })
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
 
-                    // All statistics cards in unified container
-                    VStack(spacing: 20) {
-                        // Kalenderband ganz oben in der Insights-View
-                        WeekCalendarStrip(sessions: displaySessions, showCalendar: { showingCalendar = true })
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                    
-                        // 1. Consistency / Wochenfortschritt
-                        ConsistencyCardView()
-                            .padding(.horizontal, 20)
+                    // Hero-Card: Streak/Konsistenz
+                    HeroStreakCard()
+                        .padding(.horizontal, 20)
 
-                        LastWorkoutCardView()
-                            .padding(.horizontal, 20)
+                    // Quick-Stats Grid (2x2)
+                    QuickStatsGrid()
+                        .padding(.horizontal, 20)
 
-                        // 2. Neue Rekorde (PR-Highlight)
-                        PersonalRecordCardView()
-                            .padding(.horizontal, 20)
+                    // Volumen-Chart Card (expandierbar)
+                    VolumeChartCard(isExpanded: $expandedVolumeCard)
+                        .padding(.horizontal, 20)
 
-                        // 3. Trainingsvolumen pro Woche
-                        WeeklyVolumeCardView()
-                            .padding(.horizontal, 20)
+                    // Personal Records Card (kompakt)
+                    CompactPersonalRecordsCard()
+                        .padding(.horizontal, 20)
 
-                        // 4. Push/Pull/Legs-Balance
-                        MuscleGroupBalanceCardView()
-                            .padding(.horizontal, 20)
+                    // Balance Card (expandierbar)
+                    BalanceCard(isExpanded: $expandedBalanceCard)
+                        .padding(.horizontal, 20)
 
-                        // 5. Ø Gewicht pro Übung
-                        AverageWeightCardView()
-                            .padding(.horizontal, 20)
-
-                        // 6. Workout-Intensität (Session Score)
-                        SessionIntensityCardView()
-                            .padding(.horizontal, 20)
-
-                        // 7. Plateau-Check
-                        PlateauCheckCardView()
-                            .padding(.horizontal, 20)
-
-                        // 8. Health Data (Optional, falls verfügbar)
-                        HeartRateInsightsView()
-                            .padding(.horizontal, 20)
-
-                        BodyMetricsInsightsView()
+                    // Health Cards (optional, nur wenn Daten vorhanden)
+                    if workoutStore.healthKitManager.isAuthorized {
+                        CompactHealthCard(isExpanded: $expandedHealthCard)
                             .padding(.horizontal, 20)
                     }
-                    .padding(.bottom, 100)
                 }
+                .padding(.bottom, 100)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .onPreferenceChange(StatisticsScrollOffsetPreferenceKey.self) { newValue in
-            if !didSetInitialOffset {
-                lastScrollOffset = newValue
-                didSetInitialOffset = true
-                return
-            }
-            let delta = newValue - lastScrollOffset
-            if delta < -5 {
-                if !headerHidden { headerHidden = true }
-            } else if delta > 5 {
-                if headerHidden { headerHidden = false }
-            }
-            lastScrollOffset = newValue
-        }
-        .coordinateSpace(name: "statisticsScroll")
         .sheet(isPresented: $showingCalendar) {
             CalendarSessionsView()
         }
     }
-    
 }
 
-// MARK: - Statistics Cards
+// MARK: - New Modern Statistics Cards
+
+// MARK: - Floating Glassmorphism Header
+private struct FloatingInsightsHeader: View {
+    let showCalendar: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(AppTheme.deepBlue)
+
+            Text("Insights")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Button {
+                showCalendar()
+            } label: {
+                Image(systemName: "calendar")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle()
+                            .fill(Color(.systemGray5))
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 8)
+    }
+}
+
+// MARK: - Hero Streak Card
+private struct HeroStreakCard: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+
+    private var consistencyWeeks: Int {
+        let calendar = Calendar.current
+        let today = Date()
+        var consecutiveWeeks = 0
+        var currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+
+        for i in 0..<12 {
+            let weekStart = calendar.date(byAdding: .weekOfYear, value: -i, to: currentWeekStart) ?? currentWeekStart
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
+
+            let hasSessionInWeek = sessionEntities.contains { session in
+                session.date >= weekStart && session.date <= weekEnd
+            }
+
+            if hasSessionInWeek {
+                consecutiveWeeks += 1
+            } else {
+                break
+            }
+        }
+
+        return consecutiveWeeks
+    }
+
+    private var weekStart: Date {
+        let calendar = Calendar.current
+        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+    }
+
+    private var workoutsThisWeek: Int {
+        sessionEntities.filter { $0.date >= weekStart }.count
+    }
+
+    @EnvironmentObject private var workoutStore: WorkoutStore
+
+    private var weeklyGoal: Int {
+        workoutStore.weeklyGoal
+    }
+
+    private var heroText: (title: String, subtitle: String) {
+        if consistencyWeeks == 0 {
+            return ("Zeit für einen Neustart!", "Starte dein nächstes Training")
+        } else if consistencyWeeks == 1 {
+            return ("1 Woche Streak! 🔥", "Dranbleiben lohnt sich!")
+        } else {
+            return ("\(consistencyWeeks) Wochen Streak! 🔥", "Unglaublich konstant!")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(heroText.title)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+
+                Text(heroText.subtitle)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+
+            HStack(spacing: 12) {
+                // Wochen-Visualisierung
+                HStack(spacing: 4) {
+                    ForEach(0..<min(consistencyWeeks, 8), id: \.self) { _ in
+                        Circle()
+                            .fill(.white)
+                            .frame(width: 8, height: 8)
+                    }
+                    if consistencyWeeks < 8 {
+                        ForEach(0..<(8 - consistencyWeeks), id: \.self) { _ in
+                            Circle()
+                                .fill(.white.opacity(0.3))
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                }
+
+                Spacer()
+            }
+
+            Divider()
+                .background(.white.opacity(0.3))
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Diese Woche")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.8))
+
+                    Text("\(workoutsThisWeek)/\(weeklyGoal) Trainings")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+
+                Spacer()
+
+                if workoutsThisWeek >= weeklyGoal {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [AppTheme.mossGreen, AppTheme.turquoiseBoost],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .shadow(color: AppTheme.mossGreen.opacity(0.3), radius: 20, x: 0, y: 10)
+    }
+}
+
+// MARK: - Quick Stats Grid
+private struct QuickStatsGrid: View {
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    @EnvironmentObject private var workoutStore: WorkoutStore
+
+    private var monthStart: Date {
+        let calendar = Calendar.current
+        return calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+    }
+
+    private var trainingsThisMonth: Int {
+        sessionEntities.filter { $0.date >= monthStart }.count
+    }
+
+    private var weekStart: Date {
+        let calendar = Calendar.current
+        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+    }
+
+    private var totalVolumeThisWeek: Double {
+        sessionEntities
+            .filter { $0.date >= weekStart }
+            .reduce(0.0) { total, session in
+                total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
+                    exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
+                        setTotal + (Double(set.reps) * set.weight)
+                    }
+                }
+            }
+    }
+
+    private var newPRsThisWeek: Int {
+        let allRecords = workoutStore.getAllExerciseRecords()
+        return allRecords.filter { record in
+            Calendar.current.isDate(record.updatedAt, equalTo: Date(), toGranularity: .weekOfYear)
+        }.count
+    }
+
+    private var previousWeekVolume: Double {
+        let calendar = Calendar.current
+        let previousWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
+        let previousWeekEnd = calendar.date(byAdding: .day, value: 6, to: previousWeekStart) ?? previousWeekStart
+
+        return sessionEntities
+            .filter { $0.date >= previousWeekStart && $0.date <= previousWeekEnd }
+            .reduce(0.0) { total, session in
+                total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
+                    exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
+                        setTotal + (Double(set.reps) * set.weight)
+                    }
+                }
+            }
+    }
+
+    private var volumeTrend: String {
+        guard previousWeekVolume > 0 else { return "Neu" }
+        let change = ((totalVolumeThisWeek - previousWeekVolume) / previousWeekVolume) * 100
+        if change > 5 {
+            return "↗ Steigend"
+        } else if change < -5 {
+            return "↘ Fallend"
+        } else {
+            return "→ Stabil"
+        }
+    }
+
+    var body: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ], spacing: 12) {
+            // Volumen
+            QuickStatCard(
+                icon: "scalemass.fill",
+                iconColor: AppTheme.mossGreen,
+                value: String(format: "%.1ft", totalVolumeThisWeek / 1000),
+                label: "Volumen",
+                subtitle: volumeTrend
+            )
+
+            // Neue PRs
+            QuickStatCard(
+                icon: "trophy.fill",
+                iconColor: AppTheme.powerOrange,
+                value: "\(newPRsThisWeek)",
+                label: "Neue PRs",
+                subtitle: "diese Woche"
+            )
+
+            // Trainings
+            QuickStatCard(
+                icon: "dumbbell.fill",
+                iconColor: AppTheme.deepBlue,
+                value: "\(trainingsThisMonth)",
+                label: "Trainings",
+                subtitle: "diesen Monat"
+            )
+
+            // Trend
+            QuickStatCard(
+                icon: "chart.line.uptrend.xyaxis",
+                iconColor: AppTheme.turquoiseBoost,
+                value: volumeTrend.components(separatedBy: " ").last ?? "→",
+                label: "Trend",
+                subtitle: "vs. Vorwoche"
+            )
+        }
+    }
+}
+
+private struct QuickStatCard: View {
+    let icon: String
+    let iconColor: Color
+    let value: String
+    let label: String
+    let subtitle: String
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .frame(height: 120)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
+    }
+}
+
+// MARK: - Volume Chart Card (Expandable)
+private struct VolumeChartCard: View {
+    @Binding var isExpanded: Bool
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var last4WeeksData: [(week: String, volume: Double)] {
+        let calendar = Calendar.current
+        var data: [(String, Double)] = []
+
+        for weekOffset in (0..<4).reversed() {
+            let weekStart = calendar.date(byAdding: .weekOfYear, value: -weekOffset, to: Date()) ?? Date()
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
+
+            let volume = sessionEntities
+                .filter { $0.date >= weekStart && $0.date <= weekEnd }
+                .reduce(0.0) { total, session in
+                    total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
+                        exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
+                            setTotal + (Double(set.reps) * set.weight)
+                        }
+                    }
+                }
+
+            let weekNumber = calendar.component(.weekOfYear, from: weekStart)
+            data.append(("KW\(weekNumber)", volume))
+        }
+
+        return data
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundStyle(AppTheme.deepBlue)
+                        Text("Volumen-Verlauf")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Chart(last4WeeksData, id: \.week) { item in
+                    BarMark(
+                        x: .value("Woche", item.week),
+                        y: .value("Volumen", item.volume / 1000)
+                    )
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AppTheme.deepBlue, AppTheme.mossGreen],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .cornerRadius(6)
+                }
+                .frame(height: 180)
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisValueLabel {
+                            if let vol = value.as(Double.self) {
+                                Text("\(vol, specifier: "%.1f")t")
+                            }
+                        }
+                        AxisGridLine()
+                    }
+                }
+            } else {
+                // Mini-Chart Preview
+                Chart(last4WeeksData, id: \.week) { item in
+                    BarMark(
+                        x: .value("Woche", item.week),
+                        y: .value("Volumen", item.volume / 1000)
+                    )
+                    .foregroundStyle(AppTheme.deepBlue.opacity(0.6))
+                    .cornerRadius(4)
+                }
+                .frame(height: 60)
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.systemGray5), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
+    }
+}
+
+// MARK: - Compact Personal Records Card
+private struct CompactPersonalRecordsCard: View {
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var showingAllRecords = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var recentRecords: [ExerciseRecord] {
+        let allRecords = workoutStore.getAllExerciseRecords()
+        return Array(allRecords
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(3))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "trophy.fill")
+                        .foregroundStyle(AppTheme.powerOrange)
+                    Text("Personal Records")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer()
+
+                Button("Alle →") {
+                    showingAllRecords = true
+                }
+                .font(.caption)
+                .foregroundStyle(AppTheme.deepBlue)
+            }
+
+            if recentRecords.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "trophy")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+
+                    Text("Noch keine Records")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(recentRecords, id: \.id) { record in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(record.exerciseName)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+
+                                HStack(spacing: 8) {
+                                    if record.maxWeight > 0 {
+                                        Text("\(String(format: "%.0f", record.maxWeight)) kg")
+                                            .font(.caption)
+                                            .foregroundStyle(AppTheme.turquoiseBoost)
+                                    }
+
+                                    if record.maxReps > 0 {
+                                        Text("\(record.maxReps) Wdh.")
+                                            .font(.caption)
+                                            .foregroundStyle(AppTheme.mossGreen)
+                                    }
+                                }
+                            }
+
+                            Spacer()
+
+                            Text(timeAgo(record.updatedAt))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if record.id != recentRecords.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.systemGray5), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
+        .sheet(isPresented: $showingAllRecords) {
+            ExerciseRecordsView()
+                .environmentObject(workoutStore)
+        }
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let now = Date()
+        let calendar = Calendar.current
+
+        if calendar.isDateInToday(date) {
+            return "Heute"
+        } else if calendar.isDateInYesterday(date) {
+            return "Gestern"
+        } else {
+            let days = calendar.dateComponents([.day], from: date, to: now).day ?? 0
+            if days < 7 {
+                return "vor \(days)d"
+            } else {
+                let weeks = days / 7
+                return "vor \(weeks)w"
+            }
+        }
+    }
+}
+
+// MARK: - Balance Card (Expandable)
+private struct BalanceCard: View {
+    @Binding var isExpanded: Bool
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var muscleBalance: (push: Double, pull: Double, legs: Double, isBalanced: Bool) {
+        let recentSessions = sessionEntities.prefix(10)
+
+        var pushVolume = 0.0
+        var pullVolume = 0.0
+        var legVolume = 0.0
+
+        for session in recentSessions {
+            for exercise in session.exercises {
+                let volume = exercise.sets.reduce(0.0) { $0 + (Double($1.reps) * $1.weight) }
+
+                guard let exerciseEntity = exercise.exercise else { continue }
+                let muscleGroupsRaw = exerciseEntity.muscleGroupsRaw
+                let muscleGroups = muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+
+                let category = categorizeExercise(muscleGroups: muscleGroups)
+                switch category {
+                case "push":
+                    pushVolume += volume
+                case "pull":
+                    pullVolume += volume
+                case "legs":
+                    legVolume += volume
+                default:
+                    pushVolume += volume
+                }
+            }
+        }
+
+        let total = pushVolume + pullVolume + legVolume
+        guard total > 0 else { return (0, 0, 0, true) }
+
+        let pushRatio = pushVolume / total
+        let pullRatio = pullVolume / total
+        let legRatio = legVolume / total
+
+        let isBalanced = pushRatio >= 0.2 && pushRatio <= 0.5 &&
+                        pullRatio >= 0.2 && pullRatio <= 0.5 &&
+                        legRatio >= 0.2 && legRatio <= 0.5
+
+        return (pushRatio, pullRatio, legRatio, isBalanced)
+    }
+
+    private func categorizeExercise(muscleGroups: [MuscleGroup]) -> String {
+        if muscleGroups.contains(.back) || muscleGroups.contains(.biceps) {
+            return "pull"
+        } else if muscleGroups.contains(.chest) || muscleGroups.contains(.triceps) ||
+                (muscleGroups.contains(.shoulders) && !muscleGroups.contains(.back)) {
+            return "push"
+        } else if (muscleGroups.contains(.legs) || muscleGroups.contains(.glutes)) &&
+                !muscleGroups.contains(.back) {
+            return "legs"
+        } else {
+            return "push"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chart.pie.fill")
+                            .foregroundStyle(muscleBalance.isBalanced ? AppTheme.mossGreen : .orange)
+                        Text("Push/Pull/Legs Balance")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            VStack(spacing: isExpanded ? 12 : 8) {
+                balanceBar(title: "Push", ratio: muscleBalance.push, color: AppTheme.deepBlue)
+                balanceBar(title: "Pull", ratio: muscleBalance.pull, color: AppTheme.mossGreen)
+                balanceBar(title: "Legs", ratio: muscleBalance.legs, color: AppTheme.powerOrange)
+            }
+
+            if isExpanded {
+                HStack {
+                    Image(systemName: muscleBalance.isBalanced ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(muscleBalance.isBalanced ? AppTheme.mossGreen : .orange)
+                    Text(muscleBalance.isBalanced ? "Ausgewogenes Training" : "Unausgewogen - mehr Varianz empfohlen")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.systemGray5), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
+    }
+
+    private func balanceBar(title: String, ratio: Double, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .leading)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 8)
+
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color)
+                        .frame(width: geo.size.width * ratio, height: 8)
+                }
+            }
+            .frame(height: 8)
+
+            Text("\(Int(ratio * 100))%")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 36, alignment: .trailing)
+        }
+    }
+}
+
+// MARK: - Compact Health Card (Expandable)
+private struct CompactHealthCard: View {
+    @Binding var isExpanded: Bool
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var heartRateReadings: [HeartRateReading] = []
+    @State private var weightReadings: [BodyWeightReading] = []
+    @State private var isLoading = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var averageHeartRate: Double {
+        guard !heartRateReadings.isEmpty else { return 0 }
+        return heartRateReadings.reduce(0) { $0 + $1.heartRate } / Double(heartRateReadings.count)
+    }
+
+    private var currentWeight: Double? {
+        weightReadings.last?.weight
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "heart.fill")
+                            .foregroundStyle(.red)
+                        Text("Gesundheitsdaten")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if !isExpanded {
+                // Compact View
+                HStack(spacing: 16) {
+                    if averageHeartRate > 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "heart.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                            Text("\(Int(averageHeartRate)) bpm")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if let weight = currentWeight {
+                        HStack(spacing: 4) {
+                            Image(systemName: "figure.stand")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.deepBlue)
+                            Text("\(weight, specifier: "%.1f") kg")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer()
+                }
+            } else {
+                // Expanded View
+                VStack(alignment: .leading, spacing: 12) {
+                    if averageHeartRate > 0 {
+                        HStack {
+                            Text("Ø Herzfrequenz (7d)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(Int(averageHeartRate)) bpm")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+
+                    if let weight = currentWeight {
+                        HStack {
+                            Text("Gewicht")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(weight, specifier: "%.1f") kg")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+
+                    if heartRateReadings.isEmpty && weightReadings.isEmpty && !isLoading {
+                        Text("Keine Daten verfügbar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.systemGray5), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
+        .onAppear {
+            loadHealthData()
+        }
+    }
+
+    private func loadHealthData() {
+        guard workoutStore.healthKitManager.isAuthorized else { return }
+
+        isLoading = true
+        let endDate = Date()
+        let startDate = endDate.addingTimeInterval(-7 * 24 * 3600) // 7 days
+
+        Task {
+            do {
+                async let heartData = workoutStore.readHeartRateData(from: startDate, to: endDate)
+                async let weightData = workoutStore.readWeightData(from: startDate, to: endDate)
+
+                let (hr, wt) = try await (heartData, weightData)
+
+                await MainActor.run {
+                    self.heartRateReadings = hr
+                    self.weightReadings = wt
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Old Statistics Cards (kept for reference, will be removed later)
 
 // 1. Consistency / Wochenfortschritt
 private struct ConsistencyCardView: View {
