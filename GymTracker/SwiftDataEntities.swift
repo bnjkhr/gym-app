@@ -263,6 +263,7 @@ final class UserProfileEntity {
     var preferredDurationRaw: Int
 
     var profileImageData: Data?
+    var lockerNumber: String? // Spintnummer
     var createdAt: Date
     var updatedAt: Date
 
@@ -279,6 +280,7 @@ final class UserProfileEntity {
         equipmentRaw: String = "mixed",
         preferredDurationRaw: Int = 45,
         profileImageData: Data? = nil,
+        lockerNumber: String? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -294,6 +296,7 @@ final class UserProfileEntity {
         self.equipmentRaw = equipmentRaw
         self.preferredDurationRaw = preferredDurationRaw
         self.profileImageData = profileImageData
+        self.lockerNumber = lockerNumber
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

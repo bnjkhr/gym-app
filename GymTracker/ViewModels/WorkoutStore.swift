@@ -763,7 +763,41 @@ class WorkoutStore: ObservableObject {
         profileUpdateTrigger = UUID()
         print("✅ Profilbild gespeichert")
     }
-    
+
+    func updateLockerNumber(_ lockerNumber: String) {
+        // Save to SwiftData if available
+        if let context = modelContext {
+            let descriptor = FetchDescriptor<UserProfileEntity>()
+
+            let entity: UserProfileEntity
+            if let existing = try? context.fetch(descriptor).first {
+                entity = existing
+            } else {
+                entity = UserProfileEntity()
+                context.insert(entity)
+            }
+
+            entity.lockerNumber = lockerNumber.isEmpty ? nil : lockerNumber
+            entity.updatedAt = Date()
+
+            try? context.save()
+
+            // Save updated profile to UserDefaults as backup
+            let updatedProfile = UserProfile(entity: entity)
+            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
+        } else {
+            // Fallback: Update UserDefaults directly
+            var updatedProfile = userProfile
+            updatedProfile.lockerNumber = lockerNumber.isEmpty ? nil : lockerNumber
+            updatedProfile.updatedAt = Date()
+            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
+        }
+
+        // Trigger UI update
+        profileUpdateTrigger = UUID()
+        print("✅ Spintnummer gespeichert: \(lockerNumber)")
+    }
+
     // MARK: - HealthKit Integration
     
     func requestHealthKitAuthorization() async throws {

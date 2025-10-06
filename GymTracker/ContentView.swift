@@ -283,6 +283,7 @@ struct WorkoutsHomeView: View {
     @State private var showingSettings = false
     @State private var showingProfileEditor = false
     @State private var showingCalendar = false
+    @State private var showingLockerNumberInput = false
 
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
@@ -495,6 +496,10 @@ struct WorkoutsHomeView: View {
                 SettingsView()
                     .environmentObject(workoutStore)
             }
+            .fullScreenCover(isPresented: $showingLockerNumberInput) {
+                LockerNumberInputView()
+                    .environmentObject(workoutStore)
+            }
             .sheet(item: $viewingSession) { session in
                 SessionDetailView(session: session)
             }
@@ -674,6 +679,29 @@ struct WorkoutsHomeView: View {
                     }
                 }
                 Spacer()
+
+                // Locker Number Badge
+                Button {
+                    showingLockerNumberInput = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        if let lockerNumber = workoutStore.userProfile.lockerNumber, !lockerNumber.isEmpty {
+                            Text(lockerNumber)
+                                .font(.system(size: 14, weight: .bold))
+                                .monospacedDigit()
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(AppTheme.deepBlue)
+                    )
+                }
+                .buttonStyle(.plain)
 
                 Button {
                     showingSettings = true
@@ -2055,5 +2083,118 @@ struct ErrorWorkoutView: View {
 extension Notification.Name {
     static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
     static let navigateToWorkoutsTab = Notification.Name("navigateToWorkoutsTab")
+}
+
+// MARK: - Locker Number Input View
+struct LockerNumberInputView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var lockerNumber: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.background
+                    .ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    Spacer()
+
+                    // Icon
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 60, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [AppTheme.deepBlue, AppTheme.turquoiseBoost],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .padding(.bottom, 8)
+
+                    // Title
+                    Text("Deine Spintnummer")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.primary)
+
+                    Text("Damit du sie nicht vergisst 😉")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 16)
+
+                    // Input Field
+                    TextField("z.B. 42", text: $lockerNumber)
+                        .font(.system(size: 48, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .keyboardType(.numberPad)
+                        .focused($isTextFieldFocused)
+                        .defaultFocus($isTextFieldFocused, true)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray6))
+                        )
+                        .frame(maxWidth: 200)
+                        .onChange(of: isTextFieldFocused) { _, isFocused in
+                            if isFocused && !lockerNumber.isEmpty {
+                                // Auto-select all text when focused
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+                                }
+                            }
+                        }
+
+                    Spacer()
+
+                    // Save Button
+                    Button {
+                        saveLockerNumber()
+                    } label: {
+                        Text("Speichern")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [AppTheme.mossGreen, AppTheme.turquoiseBoost],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 32)
+                }
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                lockerNumber = workoutStore.userProfile.lockerNumber ?? ""
+                // Aggressive focus - mehrfach versuchen
+                isTextFieldFocused = true
+                DispatchQueue.main.async {
+                    isTextFieldFocused = true
+                }
+            }
+        }
+    }
+
+    private func saveLockerNumber() {
+        workoutStore.updateLockerNumber(lockerNumber.trimmingCharacters(in: .whitespacesAndNewlines))
+        dismiss()
+    }
 }
 

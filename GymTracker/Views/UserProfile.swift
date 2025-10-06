@@ -15,14 +15,15 @@ struct UserProfile: Codable {
     var preferredDuration: WorkoutDuration = .medium
     var profileImageData: Data?
     var healthKitSyncEnabled: Bool = false
+    var lockerNumber: String? // Spintnummer
     var createdAt: Date
     var updatedAt: Date
     
     private enum CodingKeys: String, CodingKey {
-        case id, name, birthDate, weight, height, biologicalSex, goal, profileImageData, createdAt, updatedAt, experience, equipment, preferredDuration, healthKitSyncEnabled
+        case id, name, birthDate, weight, height, biologicalSex, goal, profileImageData, createdAt, updatedAt, experience, equipment, preferredDuration, healthKitSyncEnabled, lockerNumber
     }
     
-    init(id: UUID = UUID(), name: String = "", birthDate: Date? = nil, weight: Double? = nil, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal = .general, profileImageData: Data? = nil, experience: ExperienceLevel = .intermediate, equipment: EquipmentPreference = .mixed, preferredDuration: WorkoutDuration = .medium, healthKitSyncEnabled: Bool = false) {
+    init(id: UUID = UUID(), name: String = "", birthDate: Date? = nil, weight: Double? = nil, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal = .general, profileImageData: Data? = nil, experience: ExperienceLevel = .intermediate, equipment: EquipmentPreference = .mixed, preferredDuration: WorkoutDuration = .medium, healthKitSyncEnabled: Bool = false, lockerNumber: String? = nil) {
         self.id = id
         self.name = name
         self.birthDate = birthDate
@@ -37,6 +38,7 @@ struct UserProfile: Codable {
         self.equipment = equipment
         self.preferredDuration = preferredDuration
         self.healthKitSyncEnabled = healthKitSyncEnabled
+        self.lockerNumber = lockerNumber
     }
     
     init(entity: UserProfileEntity) {
@@ -52,6 +54,7 @@ struct UserProfile: Codable {
         self.preferredDuration = WorkoutDuration(rawValue: entity.preferredDurationRaw) ?? .medium
         self.profileImageData = entity.profileImageData
         self.healthKitSyncEnabled = entity.healthKitSyncEnabled
+        self.lockerNumber = entity.lockerNumber
         self.createdAt = entity.createdAt
         self.updatedAt = entity.updatedAt
     }
@@ -76,6 +79,7 @@ struct UserProfile: Codable {
         self.equipment = try container.decodeIfPresent(EquipmentPreference.self, forKey: .equipment) ?? .mixed
         self.preferredDuration = try container.decodeIfPresent(WorkoutDuration.self, forKey: .preferredDuration) ?? .medium
         self.healthKitSyncEnabled = try container.decodeIfPresent(Bool.self, forKey: .healthKitSyncEnabled) ?? false
+        self.lockerNumber = try container.decodeIfPresent(String.self, forKey: .lockerNumber)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -94,6 +98,7 @@ struct UserProfile: Codable {
         try container.encode(equipment, forKey: .equipment)
         try container.encode(preferredDuration, forKey: .preferredDuration)
         try container.encode(healthKitSyncEnabled, forKey: .healthKitSyncEnabled)
+        try container.encodeIfPresent(lockerNumber, forKey: .lockerNumber)
     }
     
     var age: Int? {
