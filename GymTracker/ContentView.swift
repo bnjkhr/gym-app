@@ -214,6 +214,10 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkoutsTab)) { _ in
             selectedTab = 1
+            // Mark "explored workouts" as completed when user navigates to Workouts tab
+            if !workoutStore.userProfile.hasExploredWorkouts {
+                workoutStore.markOnboardingStep(hasExploredWorkouts: true)
+            }
         }
     }
 
@@ -1087,6 +1091,14 @@ struct WorkoutHighlightCard: View {
 struct OnboardingCard: View {
     let onNavigateToWorkouts: () -> Void
     let onShowProfile: () -> Void
+    @EnvironmentObject var workoutStore: WorkoutStore
+
+    @State private var showCheckmark1 = false
+    @State private var showCheckmark2 = false
+    @State private var showCheckmark3 = false
+    @State private var hasExploredWorkouts = false
+    @State private var hasCreatedFirstWorkout = false
+    @State private var hasSetupProfile = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -1105,6 +1117,10 @@ struct OnboardingCard: View {
             VStack(spacing: 12) {
                 // Button 1: Beispielworkouts
                 Button {
+                    if !hasExploredWorkouts {
+                        workoutStore.markOnboardingStep(hasExploredWorkouts: true)
+                        hasExploredWorkouts = true
+                    }
                     onNavigateToWorkouts()
                 } label: {
                     HStack(spacing: 12) {
@@ -1122,9 +1138,13 @@ struct OnboardingCard: View {
 
                         Spacer()
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .opacity(0.7)
+                        if hasExploredWorkouts {
+                            AnimatedCheckmark(show: $showCheckmark1)
+                        } else {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .opacity(0.7)
+                        }
                     }
                     .foregroundStyle(.white)
                     .padding(16)
@@ -1154,9 +1174,13 @@ struct OnboardingCard: View {
 
                         Spacer()
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .opacity(0.7)
+                        if hasCreatedFirstWorkout {
+                            AnimatedCheckmark(show: $showCheckmark2)
+                        } else {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .opacity(0.7)
+                        }
                     }
                     .foregroundStyle(.white)
                     .padding(16)
@@ -1186,9 +1210,13 @@ struct OnboardingCard: View {
 
                         Spacer()
 
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .opacity(0.7)
+                        if hasSetupProfile {
+                            AnimatedCheckmark(show: $showCheckmark3)
+                        } else {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .opacity(0.7)
+                        }
                     }
                     .foregroundStyle(.white)
                     .padding(16)
@@ -1219,6 +1247,62 @@ struct OnboardingCard: View {
                 )
         )
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
+        .onAppear {
+            let profile = workoutStore.userProfile
+            hasExploredWorkouts = profile.hasExploredWorkouts
+            hasCreatedFirstWorkout = profile.hasCreatedFirstWorkout
+            hasSetupProfile = profile.hasSetupProfile
+
+            if hasExploredWorkouts { showCheckmark1 = true }
+            if hasCreatedFirstWorkout { showCheckmark2 = true }
+            if hasSetupProfile { showCheckmark3 = true }
+        }
+        .onChange(of: workoutStore.profileUpdateTrigger) { _, _ in
+            let profile = workoutStore.userProfile
+            if profile.hasExploredWorkouts && !hasExploredWorkouts {
+                hasExploredWorkouts = true
+                showCheckmark1 = true
+            }
+            if profile.hasCreatedFirstWorkout && !hasCreatedFirstWorkout {
+                hasCreatedFirstWorkout = true
+                showCheckmark2 = true
+            }
+            if profile.hasSetupProfile && !hasSetupProfile {
+                hasSetupProfile = true
+                showCheckmark3 = true
+            }
+        }
+    }
+}
+
+// MARK: - Animated Checkmark Component
+struct AnimatedCheckmark: View {
+    @Binding var show: Bool
+    @State private var scale: CGFloat = 0.5
+    @State private var opacity: Double = 0
+
+    var body: some View {
+        Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 20, weight: .bold))
+            .foregroundStyle(Color.green)
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                if show {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0)) {
+                        scale = 1.0
+                        opacity = 1.0
+                    }
+                }
+            }
+            .onChange(of: show) { _, newValue in
+                if newValue {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0)) {
+                        scale = 1.0
+                        opacity = 1.0
+                    }
+                }
+            }
     }
 }
 

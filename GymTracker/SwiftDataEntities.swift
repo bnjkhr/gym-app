@@ -264,6 +264,9 @@ final class UserProfileEntity {
 
     var profileImageData: Data?
     var lockerNumber: String? // Spintnummer
+    var hasExploredWorkouts: Bool // Onboarding: Beispielworkouts entdeckt
+    var hasCreatedFirstWorkout: Bool // Onboarding: Erstes Workout erstellt
+    var hasSetupProfile: Bool // Onboarding: Profil eingerichtet
     var createdAt: Date
     var updatedAt: Date
 
@@ -281,6 +284,9 @@ final class UserProfileEntity {
         preferredDurationRaw: Int = 45,
         profileImageData: Data? = nil,
         lockerNumber: String? = nil,
+        hasExploredWorkouts: Bool = false,
+        hasCreatedFirstWorkout: Bool = false,
+        hasSetupProfile: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -297,6 +303,9 @@ final class UserProfileEntity {
         self.preferredDurationRaw = preferredDurationRaw
         self.profileImageData = profileImageData
         self.lockerNumber = lockerNumber
+        self.hasExploredWorkouts = hasExploredWorkouts
+        self.hasCreatedFirstWorkout = hasCreatedFirstWorkout
+        self.hasSetupProfile = hasSetupProfile
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

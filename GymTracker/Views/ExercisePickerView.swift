@@ -15,6 +15,7 @@ struct ExercisePickerView: View {
 
     @State private var searchText: String = ""
     @State private var selectedMuscleGroup: MuscleGroup?
+    @State private var showingAddExercise = false
 
     private var allExercises: [Exercise] {
         exerciseEntities.compactMap { Exercise(entity: $0, in: modelContext) }
@@ -131,6 +132,20 @@ struct ExercisePickerView: View {
         .navigationTitle("Übungen")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Suchen")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddExercise = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                }
+            }
+        }
+        .sheet(isPresented: $showingAddExercise) {
+            AddExerciseView()
+                .environment(\.modelContext, modelContext)
+        }
     }
 }
 

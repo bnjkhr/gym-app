@@ -194,14 +194,19 @@ struct AddWorkoutView: View {
             isFavorite: false
         )
         modelContext.insert(workoutEntity)
-        
+
         do {
             try modelContext.save()
             print("✅ Neues Workout erfolgreich gespeichert: \(workoutName)")
+
+            // Mark onboarding step as completed: first workout created
+            if !workoutStore.userProfile.hasCreatedFirstWorkout {
+                workoutStore.markOnboardingStep(hasCreatedFirstWorkout: true)
+            }
         } catch {
             print("❌ Fehler beim Speichern des neuen Workouts: \(error)")
         }
-        
+
         dismiss()
     }
 

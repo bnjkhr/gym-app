@@ -155,13 +155,11 @@ class WorkoutStore: ObservableObject {
             let descriptor = FetchDescriptor<UserProfileEntity>()
             if let entity = try context.fetch(descriptor).first {
                 let profile = UserProfile(entity: entity)
-                // Always keep UserDefaults as backup
                 ProfilePersistenceHelper.saveToUserDefaults(profile)
                 return profile
             }
         } catch {
             print("⚠️ Fehler beim Laden des Profils aus SwiftData: \(error)")
-            print("   Fallback zu UserDefaults...")
             return ProfilePersistenceHelper.loadFromUserDefaults()
         }
 
@@ -798,6 +796,60 @@ class WorkoutStore: ObservableObject {
         // Trigger UI update
         profileUpdateTrigger = UUID()
         print("✅ Spintnummer gespeichert: \(lockerNumber)")
+    }
+
+    // MARK: - Onboarding Progress
+
+    func markOnboardingStep(hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil, hasSetupProfile: Bool? = nil) {
+        // Save to SwiftData if available
+        if let context = modelContext {
+            let descriptor = FetchDescriptor<UserProfileEntity>()
+
+            let entity: UserProfileEntity
+            if let existing = try? context.fetch(descriptor).first {
+                entity = existing
+            } else {
+                entity = UserProfileEntity()
+                context.insert(entity)
+            }
+
+            // Update entity
+            if let hasExploredWorkouts = hasExploredWorkouts {
+                entity.hasExploredWorkouts = hasExploredWorkouts
+            }
+            if let hasCreatedFirstWorkout = hasCreatedFirstWorkout {
+                entity.hasCreatedFirstWorkout = hasCreatedFirstWorkout
+            }
+            if let hasSetupProfile = hasSetupProfile {
+                entity.hasSetupProfile = hasSetupProfile
+            }
+            entity.updatedAt = Date()
+
+            try? context.save()
+
+            // Also save to UserDefaults as backup
+            let updatedProfile = UserProfile(entity: entity)
+            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
+        } else {
+            // Fallback: Update UserDefaults directly
+            var updatedProfile = userProfile
+
+            if let hasExploredWorkouts = hasExploredWorkouts {
+                updatedProfile.hasExploredWorkouts = hasExploredWorkouts
+            }
+            if let hasCreatedFirstWorkout = hasCreatedFirstWorkout {
+                updatedProfile.hasCreatedFirstWorkout = hasCreatedFirstWorkout
+            }
+            if let hasSetupProfile = hasSetupProfile {
+                updatedProfile.hasSetupProfile = hasSetupProfile
+            }
+            updatedProfile.updatedAt = Date()
+
+            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
+        }
+
+        // Trigger UI update
+        profileUpdateTrigger = UUID()
     }
 
     // MARK: - HealthKit Integration

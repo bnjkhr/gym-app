@@ -435,7 +435,7 @@ struct ProfileEditView: View {
     private func saveProfile() {
         let weightValue = Double(weight.replacingOccurrences(of: ",", with: "."))
         let heightValue = Double(height.replacingOccurrences(of: ",", with: "."))
-        
+
         workoutStore.updateProfile(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             birthDate: birthDate,
@@ -448,11 +448,16 @@ struct ProfileEditView: View {
             preferredDuration: preferredDuration,
             healthKitSyncEnabled: healthKitSyncEnabled
         )
-        
+
         if selectedImage != profileImage {
             workoutStore.updateProfileImage(selectedImage)
         }
-        
+
+        // Mark onboarding step as completed: profile setup
+        if !workoutStore.userProfile.hasSetupProfile {
+            workoutStore.markOnboardingStep(hasSetupProfile: true)
+        }
+
         // Request HealthKit authorization if sync is enabled but not yet authorized
         if healthKitSyncEnabled && !workoutStore.healthKitManager.isAuthorized {
             Task {

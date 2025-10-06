@@ -1,43 +1,55 @@
 # GymTracker Smart-Konzept
 
 ## Ist-Zustand
-- Der Assistent erzeugt Workouts aus Präferenzen wie Level, Ziel, Dauer, Frequenz und Equipment und bildet damit einen reduzierten Setup-Prozess ab (`GymTracker/Models/WorkoutPreferences.swift:1`, `GymTracker/ViewModels/WorkoutStore.swift:2553`).
-- Rest-Timer, Live Activities und eine aktive Session-Bar halten Nutzer während der Einheit im Flow, ohne Kontextwechsel zu erzwingen (`GymTracker/ViewModels/WorkoutStore.swift:60`, `GymTracker/ContentView.swift:41`, `GymTracker/LiveActivities/WorkoutLiveActivityController.swift:7`).
-- HealthKit-Anbindung liefert Profil- und Workoutdaten als Fundament für automatische Aktualisierung (`GymTracker/HealthKitManager.swift:1`).
-- Spracheingabe und Audio-Feedback ermöglichen schnelles Logging ohne Tippen (`GymTracker/SpeechRecognizer.swift:7`, `GymTracker/AudioManager.swift:1`).
-- SwiftData-Migrationen, Backups und Sharing sorgen für verlässlichen Datenzugriff (`GymTrackerApp.swift:10`, `GymTracker/BackupManager.swift:1`).
+Die App besitzt eine exzellente technische Grundlage:
+- **Personalisierter Einstieg:** Der Workout-Assistent (`WorkoutWizardView.swift`) erstellt bereits individuelle Trainingspläne basierend auf Nutzerpräferenzen (Level, Ziel, Dauer, Frequenz, Equipment).
+- **Fokussiertes Training:** Features wie der Rest-Timer, Live Activities und die prominente "Aktive Session"-Anzeige halten den Nutzer während des Workouts im Flow und reduzieren Ablenkungen.
+- **Starke Datenbasis:** Die HealthKit-Anbindung (`HealthKitManager.swift`) und die Möglichkeit, Verlaufsdaten aus anderen Apps (z.B. Strong, Hevy) zu importieren (`SettingsView.swift`), schaffen ein reichhaltiges Datenfundament.
+- **Robuste Architektur:** Ein durchdachter SwiftData-Startprozess mit Migrations- und Fallback-Logik (`GymTrackerApp.swift`) sowie ein Backup-System (`BackupView.swift`) sichern die Nutzerdaten zuverlässig.
 
 ## Potenziale
-- Wiederholungs- und Satzvorschläge basieren auf Zufall; persönliche Fortschritte bleiben unberücksichtigt (`GymTracker/ViewModels/WorkoutStore.swift:2641`).
-- HealthKit-Daten werden nach dem Import kaum sichtbar genutzt; es fehlt unmittelbares Feedback (`GymTracker/HealthKitManager.swift:83`).
-- Funktionsfülle (Live Activity, Sprachsteuerung, Backups) steht noch keinem kuratierten „smarten“ UI gegenüber.
-- Keine explizite Erholungs- oder Belastungssteuerung; Pausen- und Frequenzempfehlungen bleiben statisch (`GymTracker/ViewModels/WorkoutStore.swift:2654`).
-- Insights fokussieren nicht auf wenige, entscheidungsrelevante Kennzahlen (`GymTracker/ContentView.swift:66`).
+Trotz der technischen Stärke liegen Potenziale in der intelligenten *Nutzung* der vorhandenen Daten, um die App einfacher und proaktiver zu machen:
+- **Statische Progression:** Die Workout-Generierung berücksichtigt noch nicht die tatsächliche Leistung aus vergangenen Trainingseinheiten. Vorschläge für Gewichte und Wiederholungen sind nicht adaptiv.
+- **Passive Daten:** Importierte Verlaufsdaten und HealthKit-Werte werden gesammelt, aber noch nicht aktiv genutzt, um dem Nutzer proaktive Empfehlungen für sein nächstes Training zu geben.
+- **Fehlende Belastungssteuerung:** Die App gibt keine Rückmeldung, ob das aktuelle Trainingspensum zur Erholung (z.B. aus HealthKit-Schlafdaten) passt. Die Frequenz ist eine statische Vorgabe.
+- **Überinformation vs. Entscheidungshilfe:** Die App zeigt viele Daten, könnte aber noch besser darin werden, diese zu einer klaren, handlungsrelevanten Empfehlung zu verdichten (z.B. "Nächstes Mal 2.5 kg mehr bei Kniebeugen").
 
 ## Konzept
+Das Ziel ist, die App von einem reaktiven Tracker zu einem proaktiven, smarten Partner zu entwickeln, der den Nutzer durch Reduktion und intelligente Vorschläge unterstützt.
+
 ### Onboarding & Setup
 - Präferenz-Wizard beibehalten, zusätzlich ein leicht verständliches Zielgefühl („stärker fühlen“, „fit bleiben“) abfragen.
 - HealthKit-Import sofort nutzen, um Startwerte zu bestätigen und Vertrauen zu schaffen.
 
 ### Smarte Session-Erfahrung
-- Zentrale Smart Card mit drei Elementen: aktueller Satz, empfohlene nächste Last basierend auf Verlauf, Rest-Zeit.
-- Sprachlogging als optionaler Shortcut integrieren, der automatisch den Satz bestätigt.
+**Die "Nächster Satz"-Karte:** Im Workout-Screen wird die Ansicht auf eine zentrale Karte reduziert, die nur die absolut notwendigen Informationen für den *aktuellen* Satz anzeigt:
+1.  **Übungsname:** Klar und deutlich.
+2.  **Satz-Vorschlag:** Z.B. "8-12 Wdh. mit 60 kg".
+3.  **Letztes Ergebnis:** Direkt darunter, z.B. "Letztes Mal: 10 Wdh. mit 57.5 kg".
+4.  **Eingabefelder:** Minimalistische Stepper für Gewicht und Wiederholungen.
+
+Nach Abschluss eines Satzes verwandelt sich die Karte in den Rest-Timer und zeigt bereits den Vorschlag für den nächsten Satz an.
 
 ### Adaptive Progression
-- Einfache Regel-Engine, die nach jeder Übung entscheidet: Gewicht steigern, halten oder Fokus auf Technik setzen (Gleitfenster über letzte drei Sessions).
-- Hinweis-Badges auf der Smart Card zeigen rationale Empfehlung („+2,5 kg basierend auf letzter Einheit“).
+**Progressive Overload Automatik:** Eine einfache Logik, die nach jeder Übung die Vorschläge für das nächste Mal anpasst.
+- **Regel:** "Wenn du im letzten Satz die obere Grenze des Wiederholungsziels erreicht hast, erhöhe das Gewicht für das nächste Training um die kleinstmögliche Einheit (z.B. 2.5 kg)."
+- **UI-Feedback:** Ein kleines Badge auf der "Nächster Satz"-Karte zeigt die Empfehlung an: „+2,5 kg Vorschlag“. Dies nimmt dem Nutzer die Denkarbeit ab, wie er sich steigern soll.
 
 ### Recovery & Tagesfokus
-- Wochenplan zeigt nur „Heute“, „Morgen“, „Erholung“; restliche Tage werden ausgeblendet.
-- HealthKit-Signale (Ruhepuls, Schlaf) liefern kontextbezogene Empfehlung („Heute leichtes Tempo“).
+**Kontextbezogene Tagesempfehlung:** Nutze HealthKit-Daten, um den Home-Screen oder eine Benachrichtigung anzupassen.
+- **Signal:** Hat der Nutzer deutlich weniger geschlafen als üblich oder ist der Ruhepuls erhöht?
+- **Empfehlung:** Statt des geplanten schweren Workouts könnte die App vorschlagen: "Du scheinst heute eine Pause zu brauchen. Wie wäre es mit einem leichten Cardio-Training oder einem Ruhetag?" oder "Heute vielleicht etwas leichter trainieren?".
 
 ### Insights & Motivation
-- Wöchentliches Smart Summary mit drei Aussagen: erfüllte Workouts, bestes Highlight, Erholungsempfehlung.
-- Optionaler Detail-Screen für tiefergehende Trends, standardmäßig versteckt.
-- Erinnerungen als sanfte Check-ins: Karte im Home-Tab schlägt Short Sessions vor, wenn ein Workout ausgelassen wurde.
+**Das "Smart Summary":** Reduziere die Statistik-Ansicht auf eine wöchentliche Zusammenfassung, die motiviert statt zu überfordern.
+- **Highlight der Woche:** "Stark! Du hast dein Gewicht beim Bankdrücken um 2.5 kg gesteigert."
+- **Konsistenz-Check:** "3 von 3 geplanten Workouts diese Woche geschafft. Super!"
+- **Ausblick:** "Nächste Woche liegt der Fokus auf Bein-Kraft."
+
+Detaillierte Graphen bleiben für Power-User auf einer zweiten Ebene verfügbar.
 
 ## Nächste Schritte
-1. Lo-Fi-Prototyp der Smart Card und des Smart Summary erstellen, Nutzerflow testen.
-2. Progressionslogik mit vorhandenen Workout-Daten simulieren und Feintuning vornehmen.
-3. HealthKit-Signale priorisieren und prüfen, welche Daten zuverlässig verfügbar sind.
-4. Sprach- und UI-Tonality für positive, minimalistische Nudges definieren und einpflegen.
+1.  **Adaptive Vorschläge implementieren:** Entwickle die Logik für die automatische Anpassung von Gewicht/Wiederholungen basierend auf den `WorkoutSessionEntity`-Daten. Integriere die Empfehlung in die `WorkoutDetailView`.
+2.  **"Nächster Satz"-Karte entwerfen:** Gestalte die `WorkoutDetailView` neu, um den Fokus auf die zentrale Karte für den aktuellen Satz zu legen.
+3.  **HealthKit-Signale nutzen:** Implementiere eine einfache Logik, die z.B. Schlafdaten oder den Ruhepuls aus dem `HealthKitManager` abruft und eine simple Tagesempfehlung ableitet.
+4.  **Smart Summary entwickeln:** Erstelle eine neue View, die wöchentliche Highlights aus den `WorkoutSessionEntity`-Daten generiert und prägnant darstellt.
