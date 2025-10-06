@@ -1,5 +1,8 @@
 import Foundation
 import UserNotifications
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
@@ -23,15 +26,26 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func scheduleRestEndNotification(remainingSeconds: Int, workoutName: String, exerciseName: String?, workoutId: UUID? = nil) {
         guard remainingSeconds > 0 else { return }
 
+        // Nur Push-Benachrichtigung wenn LiveActivity nicht verfügbar ist
+        #if canImport(ActivityKit)
+        if #available(iOS 16.1, *) {
+            let authInfo = ActivityKit.ActivityAuthorizationInfo()
+            if authInfo.areActivitiesEnabled {
+                print("[NotificationManager] LiveActivity aktiv - überspringe Push-Benachrichtigung")
+                return
+            }
+        }
+        #endif
+
         DispatchQueue.global(qos: .background).async {
             self.cancelRestEndNotification()
 
             let content = UNMutableNotificationContent()
             content.title = "Pause beendet"
             if let exerciseName = exerciseName, !exerciseName.isEmpty {
-                content.body = "Weiter geht’s mit: \(exerciseName)"
+                content.body = "Weiter geht's mit: \(exerciseName)"
             } else {
-                content.body = "Weiter geht’s!"
+                content.body = "Weiter geht's!"
             }
             // Use custom sound from AudioManager
             let soundName = UserDefaults.standard.string(forKey: "defaultNotificationSound") ?? "591279__awchacon__go"

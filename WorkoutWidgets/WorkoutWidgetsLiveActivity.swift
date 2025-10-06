@@ -23,14 +23,24 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                
-                if context.state.remainingSeconds > 0 {
+
+                if context.state.isTimerExpired {
+                    // Timer abgelaufen - große Anzeige
+                    VStack(spacing: 12) {
+                        Text("Weiter geht's. 💪🏼")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.blue)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                } else if context.state.remainingSeconds > 0 {
                     // Progress bar
                     ProgressView(value: Double(context.state.totalSeconds - context.state.remainingSeconds),
                                total: Double(context.state.totalSeconds))
                         .progressViewStyle(.linear)
                         .tint(.blue)
-                    
+
                     HStack {
                         if let exerciseName = context.state.exerciseName {
                             Text(exerciseName)
@@ -56,20 +66,22 @@ struct WorkoutWidgetsLiveActivity: Widget {
             }
             .padding()
             .background(Color(.systemBackground))
+            .widgetURL(URL(string: "workout://active"))
         } dynamicIsland: { context in
             // Dynamic Island UI
             DynamicIsland {
                 // Expanded UI
                 DynamicIslandExpandedRegion(.leading) {
                     HStack {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .foregroundStyle(.blue)
+                        // Icon zeigt Pause-Status oder Training
+                        Image(systemName: context.state.remainingSeconds > 0 ? "pause.circle.fill" : "figure.strengthtraining.traditional")
+                            .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
                         Text(context.attributes.workoutName)
                             .font(.headline)
                             .lineLimit(1)
                     }
                 }
-                
+
                 DynamicIslandExpandedRegion(.trailing) {
                     if context.state.remainingSeconds > 0 {
                         VStack(alignment: .trailing) {
@@ -77,7 +89,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .contentTransition(.numericText())
-                            Text(context.state.title)
+                            Text("Pausentimer")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -92,42 +104,60 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         }
                     }
                 }
-                
+
                 DynamicIslandExpandedRegion(.bottom) {
-                    if context.state.remainingSeconds > 0 {
+                    if context.state.isTimerExpired {
+                        VStack(spacing: 8) {
+                            Text("Weiter geht's. 💪🏼")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.blue)
+                        }
+                        .padding(.vertical, 8)
+                    } else if context.state.remainingSeconds > 0 {
                         VStack(spacing: 4) {
                             ProgressView(value: Double(context.state.totalSeconds - context.state.remainingSeconds),
                                        total: Double(context.state.totalSeconds))
                                 .progressViewStyle(.linear)
-                                .tint(.blue)
-                            
+                                .tint(.orange)
+
                             if let exerciseName = context.state.exerciseName {
-                                Text(exerciseName)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                HStack {
+                                    Image(systemName: "dumbbell.fill")
+                                        .font(.caption2)
+                                    Text(exerciseName)
+                                        .font(.subheadline)
+                                }
+                                .foregroundStyle(.secondary)
                             }
                         }
                     }
                 }
             } compactLeading: {
                 // Compact Leading UI (links in der Dynamic Island)
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .foregroundStyle(.blue)
+                Image(systemName: context.state.remainingSeconds > 0 ? "timer" : "figure.strengthtraining.traditional")
+                    .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
             } compactTrailing: {
                 // Compact Trailing UI (rechts in der Dynamic Island)
                 if context.state.remainingSeconds > 0 {
-                    Text(formatTime(context.state.remainingSeconds))
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .contentTransition(.numericText())
+                    HStack(spacing: 2) {
+                        Image(systemName: "pause.fill")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.orange)
+                        Text(formatTime(context.state.remainingSeconds))
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .contentTransition(.numericText())
+                    }
                 } else {
                     Text("💪")
                 }
             } minimal: {
                 // Minimal UI (wenn viele Apps gleichzeitig in der Dynamic Island sind)
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .foregroundStyle(.blue)
+                Image(systemName: context.state.remainingSeconds > 0 ? "timer" : "figure.strengthtraining.traditional")
+                    .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
             }
+            .widgetURL(URL(string: "workout://active"))
         }
     }
     
@@ -146,13 +176,23 @@ struct WorkoutWidgetsLiveActivity: Widget {
         remainingSeconds: 45,
         totalSeconds: 60,
         title: "Pause",
-        exerciseName: "Bankdrücken"
+        exerciseName: "Bankdrücken",
+        isTimerExpired: false
     )
-    
+
+    WorkoutActivityAttributes.ContentState(
+        remainingSeconds: 0,
+        totalSeconds: 1,
+        title: "Pause beendet",
+        exerciseName: nil,
+        isTimerExpired: true
+    )
+
     WorkoutActivityAttributes.ContentState(
         remainingSeconds: 0,
         totalSeconds: 1,
         title: "Workout läuft",
-        exerciseName: nil
+        exerciseName: nil,
+        isTimerExpired: false
     )
 }

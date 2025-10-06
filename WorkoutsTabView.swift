@@ -523,8 +523,8 @@ struct WorkoutsTabView: View {
         if !success {
             showingHomeLimitAlert = true
         } else {
-            // Force a UI refresh by saving the context
-            // SwiftData @Query should automatically update the UI
+            // Force a UI refresh by processing changes immediately
+            modelContext.processPendingChanges()
             try? modelContext.save()
         }
     }

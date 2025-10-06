@@ -47,6 +47,10 @@ struct StatisticsView: View {
                     HeroStreakCard()
                         .padding(.horizontal, 20)
 
+                    // Smart Tips Card (AI-Coach)
+                    SmartTipsCard()
+                        .padding(.horizontal, 20)
+
                     // Quick-Stats Grid (2x2)
                     QuickStatsGrid()
                         .padding(.horizontal, 20)

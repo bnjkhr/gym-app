@@ -202,10 +202,13 @@ struct ContentView: View {
             // Handle deep link from Live Activity to jump into the active workout
             guard url.scheme?.lowercased() == "workout" else { return }
             if url.host?.lowercased() == "active" {
-                if let activeID = workoutStore.activeSessionID {
-                    // This will trigger navigation in WorkoutsHomeView when it sees the activeSessionID
-                    // Signal the WorkoutsHomeView to navigate to active workout
-                    NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+                if workoutStore.activeSessionID != nil {
+                    // Switch to Home tab first
+                    selectedTab = 0
+                    // Then signal the WorkoutsHomeView to navigate to active workout
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+                    }
                 }
             }
         }
@@ -996,9 +999,11 @@ struct WorkoutsHomeView: View {
         if !success {
             showingHomeLimitAlert = true
         } else {
-            // Force a UI refresh by saving the context
-            // SwiftData @Query should automatically update the UI
+            // Force a UI refresh by processing changes and refreshing the cache
+            modelContext.processPendingChanges()
             try? modelContext.save()
+            // Update cache immediately to trigger UI refresh
+            updateWorkoutCache(workoutEntities)
         }
     }
 

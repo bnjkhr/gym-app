@@ -8,6 +8,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var totalSeconds: Int
         var title: String
         var exerciseName: String?
+        var isTimerExpired: Bool
     }
 
     var workoutName: String

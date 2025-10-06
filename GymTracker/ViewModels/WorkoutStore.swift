@@ -120,6 +120,7 @@ class WorkoutStore: ObservableObject {
                 print("⚠️ Aktives Workout mit ID \(activeSessionID) nicht gefunden")
                 // Clear the invalid activeSessionID
                 self.activeSessionID = nil
+                WorkoutLiveActivityController.shared.end()
                 return nil
             }
         } catch {
@@ -240,6 +241,7 @@ class WorkoutStore: ObservableObject {
             print("🔚 Session beendet für Workout-ID: \(sessionID)")
             activeSessionID = nil
             stopRest()
+            WorkoutLiveActivityController.shared.end()
         }
     }
 
@@ -930,13 +932,13 @@ class WorkoutStore: ObservableObject {
     
     func toggleHomeFavorite(workoutID: UUID) -> Bool {
         guard let context = modelContext else { return false }
-        
+
         let descriptor = FetchDescriptor<WorkoutEntity>(
             predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
         )
-        
+
         guard let entity = try? context.fetch(descriptor).first else { return false }
-        
+
         // Check if we're trying to add to home favorites
         if !entity.isFavorite {
             // Adding to favorites - check 4-workout limit
@@ -946,12 +948,14 @@ class WorkoutStore: ObservableObject {
                 return false
             }
         }
-        
+
         // Toggle the favorite status
         entity.isFavorite.toggle()
-        
+
         do {
             try context.save()
+            // Force SwiftData to process changes immediately
+            context.processPendingChanges()
             let action = entity.isFavorite ? "hinzugefügt" : "entfernt"
             print("✅ Home-Favorit für Workout '\(entity.name)' \(action)")
             return true
@@ -1109,13 +1113,22 @@ class WorkoutStore: ObservableObject {
             }
 
             if remaining <= 0 {
+                // Timer sofort stoppen um doppelte Ausführung zu vermeiden
+                restTimer?.invalidate()
+                restTimer = nil
+
                 SoundPlayer.playBoxBell()
                 #if canImport(UIKit)
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)
                 #endif
                 WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
-                stopRest()
+
+                // Zeige "Timer abgelaufen" für 3 Sekunden bevor automatisch geschlossen wird
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    self.stopRest()
+                }
             }
         } else {
             // Fallback: decrement by one
@@ -1124,13 +1137,22 @@ class WorkoutStore: ObservableObject {
                 activeRestState = state // Always update since we decrement
                 updateLiveActivityRest()
                 if state.remainingSeconds <= 0 {
+                    // Timer sofort stoppen um doppelte Ausführung zu vermeiden
+                    restTimer?.invalidate()
+                    restTimer = nil
+
                     SoundPlayer.playBoxBell()
                     #if canImport(UIKit)
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
                     #endif
                     WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
-                    stopRest()
+
+                    // Zeige "Timer abgelaufen" für 3 Sekunden bevor automatisch geschlossen wird
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        self.stopRest()
+                    }
                 }
             } else {
                 stopRest()
@@ -1662,7 +1684,8 @@ class WorkoutStore: ObservableObject {
             // Stop any active timers and sessions
             stopRest()
             activeSessionID = nil
-            
+            WorkoutLiveActivityController.shared.end()
+
             // Fetch and delete all entities
             let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
             let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())

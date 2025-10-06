@@ -8,6 +8,8 @@ final class WorkoutLiveActivityController {
     static let shared = WorkoutLiveActivityController()
 
     private var activity: Activity<WorkoutActivityAttributes>?
+    private var lastUpdateTime: Date?
+    private let minimumUpdateInterval: TimeInterval = 0.5 // Mindestens 0.5 Sekunden zwischen Updates
 
     private init() {}
     
@@ -40,13 +42,22 @@ final class WorkoutLiveActivityController {
 
     func updateRest(workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        // Throttle updates to avoid overwhelming ActivityKit
+        let now = Date()
+        if let lastUpdate = lastUpdateTime, now.timeIntervalSince(lastUpdate) < minimumUpdateInterval {
+            return
+        }
+        lastUpdateTime = now
+
         Task {
             await ensureActivityExists(workoutName: workoutName)
             await updateState(
                 remaining: max(remainingSeconds, 0),
                 total: max(totalSeconds, 1),
                 title: "Pause",
-                exerciseName: exerciseName
+                exerciseName: exerciseName,
+                isTimerExpired: false
             )
         }
     }
@@ -64,9 +75,14 @@ final class WorkoutLiveActivityController {
                 remainingSeconds: 0,
                 totalSeconds: 1,
                 title: "Pause beendet",
-                exerciseName: nil
+                exerciseName: nil,
+                isTimerExpired: true
             )
-            await updateState(state: state)
+            await updateState(state: state, alertConfig: .init(
+                title: "Weiter geht's. 💪🏼",
+                body: "Die Pause ist vorbei",
+                sound: .default
+            ))
         }
     }
 
@@ -77,7 +93,8 @@ final class WorkoutLiveActivityController {
                 remainingSeconds: 0,
                 totalSeconds: 1,
                 title: "Workout beendet",
-                exerciseName: nil
+                exerciseName: nil,
+                isTimerExpired: false
             )
 
             await activity.end(using: closingState, dismissalPolicy: .immediate)
@@ -140,7 +157,8 @@ final class WorkoutLiveActivityController {
                 remaining: 30,
                 total: 60,
                 title: "Test Pause",
-                exerciseName: "Test Exercise"
+                exerciseName: "Test Exercise",
+                isTimerExpired: false
             )
             
             // Auto-end after 10 seconds
@@ -166,7 +184,8 @@ final class WorkoutLiveActivityController {
             remainingSeconds: 0,
             totalSeconds: 1,
             title: "Workout läuft",
-            exerciseName: nil
+            exerciseName: nil,
+            isTimerExpired: false
         )
 
         if let activity {
@@ -224,19 +243,29 @@ final class WorkoutLiveActivityController {
         }
     }
 
-    private func updateState(remaining: Int, total: Int, title: String, exerciseName: String?) async {
+    private func updateState(remaining: Int, total: Int, title: String, exerciseName: String?, isTimerExpired: Bool) async {
         let state = WorkoutActivityAttributes.ContentState(
             remainingSeconds: remaining,
             totalSeconds: max(total, 1),
             title: title,
-            exerciseName: exerciseName
+            exerciseName: exerciseName,
+            isTimerExpired: isTimerExpired
         )
         await updateState(state: state)
     }
 
-    private func updateState(state: WorkoutActivityAttributes.ContentState) async {
-        guard let activity else { return }
-        await activity.update(using: state)
+    private func updateState(state: WorkoutActivityAttributes.ContentState, alertConfig: AlertConfiguration? = nil) async {
+        guard let activity else {
+            print("[LiveActivity] ⚠️ Update fehlgeschlagen - keine aktive Activity")
+            return
+        }
+
+        do {
+            await activity.update(using: state, alertConfiguration: alertConfig)
+            print("[LiveActivity] ✅ Update erfolgreich - remaining: \(state.remainingSeconds)s, expired: \(state.isTimerExpired)")
+        } catch {
+            print("[LiveActivity] ❌ Update fehlgeschlagen: \(error.localizedDescription)")
+        }
     }
 }
 
