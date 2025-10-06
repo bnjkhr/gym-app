@@ -528,11 +528,9 @@ open GymBo.xcodeproj
 - SpeechRecognizer incomplete
 
 ### Geplante Features
-- [ ] Apple Watch Companion App
+- [ ] Apple Watch Companion App (vielleicht)
 - [ ] iCloud Sync
-- [ ] Workout-Templates Marketplace
 - [ ] Social Features (Freunde, Challenges)
-- [ ] Video-Anleitungen für Übungen
 - [ ] Erweiterte Analytics (Charts, Trends)
 
 ---
