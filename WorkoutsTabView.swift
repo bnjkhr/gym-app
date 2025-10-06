@@ -21,6 +21,7 @@ struct WorkoutsTabView: View {
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
     @State private var workoutToDelete: Workout?
+    @State private var shareItem: ShareItem?
     @State private var quickGeneratedWorkout: Workout?
     @State private var quickWorkoutName: String = ""
     @State private var showingHomeLimitAlert = false
@@ -75,7 +76,7 @@ struct WorkoutsTabView: View {
                                             onDelete: { workoutToDelete = workout },
                                             onToggleHome: { toggleHomeFavorite(workoutID: workout.id) },
                                             onDuplicate: { duplicateWorkout(id: workout.id) },
-                                            onShare: { /* Später implementieren */ }
+                                            onShare: { shareWorkout(id: workout.id) }
                                         )
                                     }
                                 }
@@ -209,6 +210,27 @@ struct WorkoutsTabView: View {
             } message: {
                 Text("Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen.")
             }
+        }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(activityItems: [item.url])
+        }
+        .confirmationDialog(
+            "Workout löschen?",
+            isPresented: Binding(
+                get: { workoutToDelete != nil },
+                set: { if !$0 { workoutToDelete = nil } }
+            ),
+            presenting: workoutToDelete
+        ) { workout in
+            Button("Löschen", role: .destructive) {
+                deleteWorkout(id: workout.id)
+                workoutToDelete = nil
+            }
+            Button("Abbrechen", role: .cancel) {
+                workoutToDelete = nil
+            }
+        } message: { workout in
+            Text("'\(workout.name)' wird unwiderruflich gelöscht.")
         }
         .onAppear {
             if workoutStore.modelContext == nil {
@@ -459,6 +481,25 @@ struct WorkoutsTabView: View {
         try? modelContext.save()
 
         print("✅ Workout '\(originalEntity.name)' erfolgreich dupliziert")
+    }
+
+    private func shareWorkout(id: UUID) {
+        guard let entity = workoutEntities.first(where: { $0.id == id }) else { return }
+
+        do {
+            // Workout in ShareableWorkout konvertieren
+            let shareable = ShareableWorkout.from(entity: entity)
+
+            // Als JSON-Datei exportieren
+            let fileURL = try shareable.exportToFile()
+
+            // Share-Sheet öffnen
+            shareItem = ShareItem(url: fileURL)
+
+            print("✅ Workout '\(entity.name)' bereit zum Teilen")
+        } catch {
+            print("❌ Fehler beim Exportieren des Workouts: \(error)")
+        }
     }
 
     private func endActiveSession() {

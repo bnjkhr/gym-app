@@ -9,6 +9,23 @@ import ActivityKit
 
 // Import the keyboard dismissal utilities
 
+// MARK: - ShareSheet for Workout Sharing
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+struct ShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
 struct ContentView: View {
     @StateObject private var workoutStore = WorkoutStore()
     @Environment(\.scenePhase) private var scenePhase
@@ -100,6 +117,12 @@ struct ContentView: View {
             }
         }
         .onOpenURL { url in
+            // Handle .gymtracker file import
+            if url.pathExtension.lowercased() == "gymtracker" {
+                importWorkout(from: url)
+                return
+            }
+
             // Handle deep link from Live Activity to jump into the active workout
             guard url.scheme?.lowercased() == "workout" else { return }
             if url.host?.lowercased() == "active" {
@@ -127,6 +150,24 @@ struct ContentView: View {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
+    }
+
+    private func importWorkout(from url: URL) {
+        do {
+            // JSON-Datei laden
+            let shareable = try ShareableWorkout.importFrom(url: url)
+
+            // Übungen aus DB laden
+            let descriptor = FetchDescriptor<ExerciseEntity>()
+            let exercises = try modelContext.fetch(descriptor)
+
+            // WorkoutEntity erstellen
+            let _ = try shareable.toWorkoutEntity(in: modelContext, exerciseEntities: exercises)
+
+            print("✅ Workout '\(shareable.workout.name)' erfolgreich importiert")
+        } catch {
+            print("❌ Fehler beim Importieren des Workouts: \(error)")
+        }
     }
 }
 
@@ -170,6 +211,7 @@ struct WorkoutsHomeView: View {
 
     // Neu: Zustand für Löschbestätigung
     @State private var workoutToDelete: Workout?
+    @State private var shareItem: ShareItem?
     @State private var showingHomeLimitAlert = false
 
     @State private var headerHidden: Bool = false
@@ -370,6 +412,27 @@ struct WorkoutsHomeView: View {
                 } else {
                     Text("Workout konnte nicht geladen werden")
                 }
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(activityItems: [item.url])
+            }
+            .confirmationDialog(
+                "Workout löschen?",
+                isPresented: Binding(
+                    get: { workoutToDelete != nil },
+                    set: { if !$0 { workoutToDelete = nil } }
+                ),
+                presenting: workoutToDelete
+            ) { workout in
+                Button("Löschen", role: .destructive) {
+                    deleteWorkout(id: workout.id)
+                    workoutToDelete = nil
+                }
+                Button("Abbrechen", role: .cancel) {
+                    workoutToDelete = nil
+                }
+            } message: { workout in
+                Text("'\(workout.name)' wird unwiderruflich gelöscht.")
             }
     }
     
@@ -572,7 +635,7 @@ struct WorkoutsHomeView: View {
                             onDelete: { workoutToDelete = workout },
                             onToggleHome: { toggleHomeFavorite(workoutID: workout.id) },
                             onDuplicate: { duplicateWorkout(id: workout.id) },
-                            onShare: { /* Später implementieren */ }
+                            onShare: { shareWorkout(id: workout.id) }
                         )
                     }
                 }
@@ -715,6 +778,43 @@ struct WorkoutsHomeView: View {
         try? modelContext.save()
 
         print("✅ Workout '\(originalEntity.name)' erfolgreich dupliziert")
+    }
+
+    private func shareWorkout(id: UUID) {
+        guard let entity = workoutEntities.first(where: { $0.id == id }) else { return }
+
+        do {
+            // Workout in ShareableWorkout konvertieren
+            let shareable = ShareableWorkout.from(entity: entity)
+
+            // Als JSON-Datei exportieren
+            let fileURL = try shareable.exportToFile()
+
+            // Share-Sheet öffnen
+            shareItem = ShareItem(url: fileURL)
+
+            print("✅ Workout '\(entity.name)' bereit zum Teilen")
+        } catch {
+            print("❌ Fehler beim Exportieren des Workouts: \(error)")
+        }
+    }
+
+    private func importWorkout(from url: URL) {
+        do {
+            // JSON-Datei laden
+            let shareable = try ShareableWorkout.importFrom(url: url)
+
+            // Übungen aus DB laden
+            let descriptor = FetchDescriptor<ExerciseEntity>()
+            let exercises = try modelContext.fetch(descriptor)
+
+            // WorkoutEntity erstellen
+            let _ = try shareable.toWorkoutEntity(in: modelContext, exerciseEntities: exercises)
+
+            print("✅ Workout '\(shareable.workout.name)' erfolgreich importiert")
+        } catch {
+            print("❌ Fehler beim Importieren des Workouts: \(error)")
+        }
     }
 
     private func removeSession(id: UUID) {

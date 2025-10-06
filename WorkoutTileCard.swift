@@ -141,7 +141,6 @@ struct WorkoutTileCard: View {
             } label: {
                 Label("Teilen", systemImage: "square.and.arrow.up")
             }
-            .disabled(true)
         }
     }
 }

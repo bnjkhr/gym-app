@@ -88,6 +88,7 @@
 		ADF1AA752E9320CE00DBDAFA /* WorkoutSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1AA742E9320CE00DBDAFA /* WorkoutSeeder.swift */; };
 		ADF1AAB12E93220000DBDAFA /* exercises_with_ids.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AAB02E93220000DBDAFA /* exercises_with_ids.csv */; };
 		ADF1AAB32E93221000DBDAFA /* workouts_with_ids.csv in Resources */ = {isa = PBXBuildFile; fileRef = ADF1AAB22E93221000DBDAFA /* workouts_with_ids.csv */; };
+		ADF43B092E93C0BC0067A017 /* ShareableWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF43B082E93C0BC0067A017 /* ShareableWorkout.swift */; };
 		ADFA7B762E86652D00816DAF /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7B752E86652D00816DAF /* NotificationManager.swift */; };
 		ADFCBABC2E903EAC00B761B1 /* ExerciseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */; };
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
@@ -201,6 +202,7 @@
 		ADF1AA742E9320CE00DBDAFA /* WorkoutSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSeeder.swift; sourceTree = "<group>"; };
 		ADF1AAB02E93220000DBDAFA /* exercises_with_ids.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = exercises_with_ids.csv; sourceTree = "<group>"; };
 		ADF1AAB22E93221000DBDAFA /* workouts_with_ids.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = workouts_with_ids.csv; sourceTree = "<group>"; };
+		ADF43B082E93C0BC0067A017 /* ShareableWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareableWorkout.swift; sourceTree = SOURCE_ROOT; };
 		ADFA7B752E86652D00816DAF /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		ADFCBABB2E903EAC00B761B1 /* ExerciseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecord.swift; sourceTree = "<group>"; };
 		ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordMigration.swift; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 		11E748EE2C9E4B0F00AB1234 /* GymTracker */ = {
 			isa = PBXGroup;
 			children = (
+				ADF43B082E93C0BC0067A017 /* ShareableWorkout.swift */,
 				ADF1AAB22E93221000DBDAFA /* workouts_with_ids.csv */,
 				ADF1AAB02E93220000DBDAFA /* exercises_with_ids.csv */,
 				ADF1AA742E9320CE00DBDAFA /* WorkoutSeeder.swift */,
@@ -575,6 +578,7 @@
 				ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */,
 				AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */,
 				AD03A7872E858BDF0005AE79 /* ProfileImageView.swift in Sources */,
+				ADF43B092E93C0BC0067A017 /* ShareableWorkout.swift in Sources */,
 				11E7490B2C9E4BC100AB1234 /* StatisticsView.swift in Sources */,
 				11E7492A2C9E4E0000AB1234 /* WorkoutPreferences.swift in Sources */,
 				11E7492C2C9E4E1000AB1234 /* WorkoutWizardView.swift in Sources */,

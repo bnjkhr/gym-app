@@ -6,5 +6,38 @@
 	<string>Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Wir benötigen Zugriff auf deine Fotobibliothek, um ein Profilbild auszuwählen.</string>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.gymtracker.workout</string>
+			<key>UTTypeDescription</key>
+			<string>GymTracker Workout</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>gymtracker</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>GymTracker Workout</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.gymtracker.workout</string>
+			</array>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+		</dict>
+	</array>
 </dict>
 </plist>
