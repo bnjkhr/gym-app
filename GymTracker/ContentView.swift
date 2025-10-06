@@ -38,12 +38,13 @@ struct ContentView: View {
     private var workoutEntities: [WorkoutEntity]
 
     @State private var selectedTab = 0
+    @State private var isInWorkoutDetail = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
             // Workouts Tab
             NavigationStack {
-                WorkoutsHomeView()
+                WorkoutsHomeView(isInWorkoutDetail: $isInWorkoutDetail)
                     .environmentObject(workoutStore)
             }
             .tabItem {
@@ -75,7 +76,8 @@ struct ContentView: View {
             .tag(2)
         }
         .overlay(alignment: .bottom) {
-            if let activeWorkout = workoutStore.activeWorkout {
+            // ActiveWorkoutBar wird nicht in WorkoutDetailView angezeigt
+            if let activeWorkout = workoutStore.activeWorkout, !isInWorkoutDetail {
                 VStack(spacing: 0) {
                     Spacer()
 
@@ -188,6 +190,8 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
 // MARK: - Workouts Tab
 
 struct WorkoutsHomeView: View {
+    @Binding var isInWorkoutDetail: Bool
+
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
 
@@ -222,7 +226,9 @@ struct WorkoutsHomeView: View {
     @State private var didSetInitialOffset: Bool = false
 
     // Explicit initializer to avoid private memberwise init caused by private nested types
-    init() {}
+    init(isInWorkoutDetail: Binding<Bool>) {
+        self._isInWorkoutDetail = isInWorkoutDetail
+    }
     
     private func workoutCategory(for workout: Workout) -> String {
         let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
@@ -452,12 +458,14 @@ struct WorkoutsHomeView: View {
                     WorkoutDetailView(
                         entity: entity,
                         isActiveSession: workoutStore.activeSessionID == selection.id,
-                        onActiveSessionEnd: { 
-                            endActiveSession() 
+                        onActiveSessionEnd: {
+                            endActiveSession()
                             // Navigation wird automatisch durch dismiss() gehandhabt
                         }
                     )
                     .environmentObject(workoutStore)
+                    .onAppear { isInWorkoutDetail = true }
+                    .onDisappear { isInWorkoutDetail = false }
                 } else {
                     // Fallback: try direct fetch from modelContext
                     let selectionId = selection.id
@@ -470,12 +478,14 @@ struct WorkoutsHomeView: View {
                         WorkoutDetailView(
                             entity: entity,
                             isActiveSession: workoutStore.activeSessionID == selection.id,
-                            onActiveSessionEnd: { 
-                                endActiveSession() 
+                            onActiveSessionEnd: {
+                                endActiveSession()
                                 // Navigation wird automatisch durch dismiss() gehandhabt
                             }
                         )
                         .environmentObject(workoutStore)
+                        .onAppear { isInWorkoutDetail = true }
+                        .onDisappear { isInWorkoutDetail = false }
                     } else {
                         ErrorWorkoutView()
                     }
