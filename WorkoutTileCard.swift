@@ -184,13 +184,13 @@ struct WorkoutTileCard: View {
     return WorkoutTileCard(
         workout: sampleWorkout,
         isHomeFavorite: true,
-        onTap: { print("Workout tapped") },
-        onEdit: { print("Edit tapped") },
-        onStart: { print("Start tapped") },
-        onDelete: { print("Delete tapped") },
-        onToggleHome: { print("Home toggled") },
-        onDuplicate: { print("Duplicate tapped") },
-        onShare: { print("Share tapped") }
+        onTap: { },
+        onEdit: { },
+        onStart: { },
+        onDelete: { },
+        onToggleHome: { },
+        onDuplicate: { },
+        onShare: { }
     )
     .padding()
 }

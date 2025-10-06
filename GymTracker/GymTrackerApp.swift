@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Foundation
+import OSLog
 
 @main
 struct GymTrackerApp: App {
@@ -22,39 +23,39 @@ struct GymTrackerApp: App {
         let fileManager = FileManager.default
         if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
             try? fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true, attributes: nil)
-            print("📁 Application Support Verzeichnis erstellt/geprüft: \(appSupportURL)")
+            AppLogger.app.info("Application Support directory created: \(appSupportURL.path)")
         }
 
         do {
             // Erstelle einen einfachen persistenten Container
             let container = try ModelContainer(for: schema)
-            print("✅ Persistenter ModelContainer erfolgreich erstellt")
+            AppLogger.app.info("ModelContainer successfully created")
             return container
         } catch {
-            print("❌ Persistenter Container fehlgeschlagen: \(error)")
-            
+            AppLogger.app.error("Failed to create ModelContainer: \(error.localizedDescription)")
+
             // Fallback: Versuche mit Documents-Verzeichnis
             do {
                 let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
                 let storeURL = documentsURL.appendingPathComponent("GymTracker.sqlite")
-                
-                print("🔄 Versuche mit Documents-Pfad: \(storeURL)")
-                
+
+                AppLogger.app.info("Trying fallback with Documents path: \(storeURL.path)")
+
                 let config = ModelConfiguration(url: storeURL)
                 let container = try ModelContainer(for: schema, configurations: [config])
-                print("✅ ModelContainer mit Documents-Pfad erfolgreich erstellt")
+                AppLogger.app.info("ModelContainer created with Documents path")
                 return container
             } catch {
-                print("❌ Documents-Pfad auch fehlgeschlagen: \(error)")
-                
+                AppLogger.app.error("Documents path fallback failed: \(error.localizedDescription)")
+
                 // Als allerletzte Option: In-Memory mit Warnung
                 do {
                     let memoryConfig = ModelConfiguration(isStoredInMemoryOnly: true)
                     let container = try ModelContainer(for: schema, configurations: [memoryConfig])
-                    print("⚠️ WARNUNG: Verwende In-Memory-Datenbank - Daten gehen bei Neustart verloren!")
+                    AppLogger.app.warning("Using in-memory database - data will be lost on restart!")
                     return container
                 } catch {
-                    fatalError("Alle ModelContainer-Optionen fehlgeschlagen: \(error)")
+                    fatalError("All ModelContainer options failed: \(error)")
                 }
             }
         }
@@ -106,7 +107,7 @@ struct GymTrackerApp: App {
                 await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
             }
         } catch {
-            print("❌ Fehler bei Exercise-Migration: \(error)")
+            AppLogger.exercises.error("Exercise migration failed: \(error.localizedDescription)")
         }
 
         // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden
@@ -122,21 +123,21 @@ struct GymTrackerApp: App {
 
             if existingExercises.isEmpty || !hasDeterministicUUIDs {
                 if !existingExercises.isEmpty {
-                    print("🔧 Lösche \(existingExercises.count) Übungen mit falschen UUIDs...")
+                    AppLogger.exercises.info("Deleting \(existingExercises.count) exercises with incorrect UUIDs")
                     for exercise in existingExercises {
                         context.delete(exercise)
                     }
                     try context.save()
                 }
 
-                print("🌱 Lade 161 Übungen aus CSV...")
+                AppLogger.exercises.info("Loading 161 exercises from CSV")
                 ExerciseSeeder.seedExercises(context: context)
-                print("✅ Übungen erfolgreich geladen")
+                AppLogger.exercises.info("Exercises loaded successfully")
             } else {
-                print("✅ \(existingExercises.count) Übungen mit korrekten UUIDs bereits vorhanden")
+                AppLogger.exercises.info("\(existingExercises.count) exercises with correct UUIDs already present")
             }
         } catch {
-            print("❌ Fehler beim Prüfen der Übungen: \(error)")
+            AppLogger.exercises.error("Exercise check failed: \(error.localizedDescription)")
         }
 
         // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
@@ -158,7 +159,7 @@ struct GymTrackerApp: App {
                 // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
                 let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
                 if !sampleWorkouts.isEmpty {
-                    print("🔄 Lösche \(sampleWorkouts.count) veraltete Sample-Workouts...")
+                    AppLogger.workouts.info("Deleting \(sampleWorkouts.count) outdated sample workouts")
                     for workout in sampleWorkouts {
                         context.delete(workout)
                     }
@@ -166,21 +167,19 @@ struct GymTrackerApp: App {
                 }
 
                 // Lade neue Sample-Workouts
-                print("🌱 Lade neue Beispielworkouts (Version \(SAMPLE_WORKOUT_VERSION))...")
+                AppLogger.workouts.info("Loading sample workouts (Version \(SAMPLE_WORKOUT_VERSION))")
                 WorkoutSeeder.seedWorkouts(context: context)
 
                 // Speichere neue Version
                 UserDefaults.standard.set(SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
-                print("✅ Sample-Workouts erfolgreich aktualisiert auf Version \(SAMPLE_WORKOUT_VERSION)")
+                AppLogger.workouts.info("Sample workouts updated to version \(SAMPLE_WORKOUT_VERSION)")
             } else {
                 let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
                 let samples = existingWorkouts.filter { $0.isSampleWorkout == true }
-                print("✅ Sample-Workouts sind aktuell (Version \(SAMPLE_WORKOUT_VERSION))")
-                print("   - \(samples.count) Beispiel-Workouts")
-                print("   - \(userWorkouts.count) Benutzer-Workouts")
+                AppLogger.workouts.info("Sample workouts up to date (v\(SAMPLE_WORKOUT_VERSION)): \(samples.count) samples, \(userWorkouts.count) user workouts")
             }
         } catch {
-            print("❌ Fehler beim Sample-Workout Update: \(error)")
+            AppLogger.workouts.error("Sample workout update failed: \(error.localizedDescription)")
         }
 
         // 🏆 SCHRITT 4: Migration - ExerciseRecords aus bestehenden Sessions generieren
@@ -189,14 +188,14 @@ struct GymTrackerApp: App {
                 await ExerciseRecordMigration.migrateExistingData(context: context)
             }
         } catch {
-            print("❌ Fehler bei ExerciseRecord-Migration: \(error)")
+            AppLogger.data.error("ExerciseRecord migration failed: \(error.localizedDescription)")
         }
 
         // 📊 SCHRITT 5: Migration - Last-Used Daten für bessere UX
         do {
             await ExerciseLastUsedMigration.performInitialMigration(context: context)
         } catch {
-            print("❌ Fehler bei LastUsed-Migration: \(error)")
+            AppLogger.data.error("LastUsed migration failed: \(error.localizedDescription)")
         }
 
         // Wait a bit for app to fully initialize before testing Live Activities
@@ -204,7 +203,7 @@ struct GymTrackerApp: App {
 
         #if canImport(ActivityKit)
         if #available(iOS 16.1, *) {
-            print("=== Live Activity Setup ===")
+            AppLogger.liveActivity.info("Live Activity setup initiated")
             WorkoutLiveActivityController.shared.requestPermissionIfNeeded()
 
             // Live Activity Test nur im Debug-Modus

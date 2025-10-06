@@ -2531,19 +2531,11 @@ struct HeartRateInsightsView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     
-                    VStack(spacing: 8) {
-                        Button("Berechtigung erteilen") {
-                            requestAuthorization()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        
-                        NavigationLink("Debug-Informationen") {
-                            HealthKitDebugView()
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Button("Berechtigung erteilen") {
+                        requestAuthorization()
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
@@ -2880,19 +2872,11 @@ struct BodyMetricsInsightsView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     
-                    VStack(spacing: 8) {
-                        Button("Berechtigung erteilen") {
-                            requestAuthorization()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        
-                        NavigationLink("Debug-Informationen") {
-                            HealthKitDebugView()
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Button("Berechtigung erteilen") {
+                        requestAuthorization()
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
