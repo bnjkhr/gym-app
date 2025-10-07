@@ -91,6 +91,7 @@ struct WorkoutDetailView: View {
                     workoutStore: workoutStore,
                     activeRestForThisWorkout: activeRestForThisWorkout,
                     isActiveRest: isActiveRest,
+                    hasActiveRestState: hasActiveRestState,
                     toggleCompletion: toggleCompletion,
                     addSet: addSet,
                     removeSet: removeSet,
@@ -819,6 +820,11 @@ struct WorkoutDetailView: View {
         return state.exerciseIndex == exerciseIndex && state.setIndex == setIndex && state.isRunning
     }
 
+    private func hasActiveRestState(exerciseIndex: Int, setIndex: Int) -> Bool {
+        guard let state = activeRestForThisWorkout else { return false }
+        return state.exerciseIndex == exerciseIndex && state.setIndex == setIndex
+    }
+
     private func toggleCompletion(for exerciseIndex: Int, setIndex: Int) {
         workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
         let exId = workout.exercises[exerciseIndex].id
@@ -1527,6 +1533,7 @@ private struct ActiveWorkoutNavigationView: View {
     let workoutStore: WorkoutStore
     let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
     let isActiveRest: (Int, Int) -> Bool
+    let hasActiveRestState: (Int, Int) -> Bool
     let toggleCompletion: (Int, Int) -> Void
     let addSet: (Int) -> Void
     let removeSet: (Int, Int) -> Void
@@ -1588,6 +1595,7 @@ private struct ActiveWorkoutNavigationView: View {
                                 workoutStore: workoutStore,
                                 activeRestForThisWorkout: activeRestForThisWorkout,
                                 isActiveRest: isActiveRest,
+                                hasActiveRestState: hasActiveRestState,
                                 toggleCompletion: toggleCompletion,
                                 addSet: addSet,
                                 removeSet: removeSet,
@@ -1625,27 +1633,6 @@ private struct ActiveWorkoutNavigationView: View {
                 AutoAdvanceIndicator(
                     nextExerciseName: nextExerciseDisplayName
                 )
-            }
-
-            // Rest timer overlay - centered and floating
-            if let activeRest = activeRestForThisWorkout {
-                ZStack {
-                    // Semi-transparent background that allows scrolling
-                    Color.black.opacity(0.2)
-                        .ignoresSafeArea()
-                        .allowsHitTesting(false)
-
-                    RestTimerOverlay(
-                        activeRest: activeRest,
-                        workout: workout,
-                        workoutStore: workoutStore,
-                        navigateToExercise: { exerciseIndex in
-                            withAnimation(.easeInOut(duration: 0.6)) {
-                                currentExerciseIndex = exerciseIndex
-                            }
-                        }
-                    )
-                }
             }
         }
         .sheet(isPresented: $showingReorderSheet, onDismiss: nil) {
@@ -1750,6 +1737,7 @@ private struct ActiveWorkoutExerciseView: View {
     let workoutStore: WorkoutStore
     let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
     let isActiveRest: (Int, Int) -> Bool
+    let hasActiveRestState: (Int, Int) -> Bool
     let toggleCompletion: (Int, Int) -> Void
     let addSet: (Int) -> Void
     let removeSet: (Int, Int) -> Void
@@ -1835,6 +1823,7 @@ private struct ActiveWorkoutExerciseView: View {
                             index: setIndex,
                             set: setBinding,
                             isActiveRest: isActiveRest(exerciseIndex, setIndex),
+                            hasRestState: hasActiveRestState(exerciseIndex, setIndex),
                             remainingSeconds: activeRestForThisWorkout?.remainingSeconds ?? 0,
                             previousReps: previous.reps,
                             previousWeight: previous.weight,
@@ -1946,6 +1935,7 @@ private struct ActiveWorkoutSetCard: View {
     let index: Int
     @Binding var set: ExerciseSet
     var isActiveRest: Bool
+    var hasRestState: Bool
     var remainingSeconds: Int
     var previousReps: Int?
     var previousWeight: Double?
@@ -2041,27 +2031,93 @@ private struct ActiveWorkoutSetCard: View {
             }
             
             // Rest time and completion button
-            HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                // Rest time editor button (tapping on pause icon)
                 Button {
                     restMinutes = Int(set.restTime) / 60
                     restSeconds = Int(set.restTime) % 60
                     showingRestEditor = true
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "hourglass")
-                            .font(.caption)
-                        Text("Pause: \(formattedTime)")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray5), in: Capsule())
+                    Image(systemName: "hourglass")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(.systemGray5), in: Circle())
                 }
                 .buttonStyle(.plain)
-                
+
+                // Timer display (compact)
+                if set.completed && hasRestState {
+                    // Active rest timer
+                    Text(formattedRemaining)
+                        .font(.system(size: 16, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(AppTheme.deepBlue)
+                        .contentTransition(.numericText())
+
+                    // Timer control buttons (with more spacing)
+                    HStack(spacing: 8) {
+                        // Pause/Play button
+                        if let restState = workoutStore?.activeRestState, restState.isRunning {
+                            Button {
+                                workoutStore?.pauseRest()
+                            } label: {
+                                Image(systemName: "pause.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 34, height: 34)
+                                    .background(AppTheme.deepBlue, in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button {
+                                workoutStore?.resumeRest()
+                            } label: {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 34, height: 34)
+                                    .background(AppTheme.mossGreen, in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(remainingSeconds == 0)
+                        }
+
+                        // +15s button
+                        Button {
+                            workoutStore?.addRest(seconds: 15)
+                        } label: {
+                            Text("+15")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 34, height: 34)
+                                .background(AppTheme.deepBlue, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+
+                        // Stop button
+                        Button {
+                            workoutStore?.stopRest()
+                        } label: {
+                            Image(systemName: "stop.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 34, height: 34)
+                                .background(AppTheme.powerOrange, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    // Static rest time display when not active
+                    Text(formattedTime)
+                        .font(.system(size: 16, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer()
-                
+
+                // Completion button (round checkmark)
                 Button {
                     // Haptisches Feedback beim Tippen
                     let generator = UINotificationFeedbackGenerator()
@@ -2070,26 +2126,22 @@ private struct ActiveWorkoutSetCard: View {
                 } label: {
                     if set.completed {
                         Image(systemName: "checkmark")
-                            .font(.title3)
+                            .font(.system(size: 18))
                             .fontWeight(.bold)
                             .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
+                            .frame(width: 40, height: 40)
                             .background(AppTheme.mossGreen, in: Circle())
                     } else {
-                        HStack(spacing: 8) {
-                            Image(systemName: "circle")
-                                .font(.title3)
-                            Text("Abschließen")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(AppTheme.mossGreen)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(AppTheme.mossGreen.opacity(0.1), in: Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(AppTheme.mossGreen, lineWidth: 1)
-                        )
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 18))
+                            .fontWeight(.bold)
+                            .foregroundStyle(AppTheme.mossGreen)
+                            .frame(width: 40, height: 40)
+                            .background(Color.white, in: Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(AppTheme.mossGreen, lineWidth: 2)
+                            )
                     }
                 }
                 .buttonStyle(.plain)
@@ -2339,136 +2391,6 @@ private struct StatRow: View {
 }
 
 // MARK: - Rest Timer Overlay
-
-private struct RestTimerOverlay: View {
-    let activeRest: WorkoutStore.ActiveRestState
-    let workout: Workout
-    let workoutStore: WorkoutStore
-    let navigateToExercise: (Int) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Exercise info
-            HStack {
-                Text("Pause: Satz \(activeRest.setIndex + 1)")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.white)
-                Spacer()
-                Text(workout.exercises[safe: activeRest.exerciseIndex]?.exercise.name ?? "Übung")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-
-            // Timer
-            HStack(alignment: .center, spacing: 16) {
-                Text(formatTime(activeRest.remainingSeconds))
-                    .font(.system(size: activeRest.isRunning ? 28 : 26, weight: .bold))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.2), value: activeRest.isRunning)
-                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-
-                Spacer()
-
-                HStack(spacing: 10) {
-                    if activeRest.isRunning {
-                        Button { workoutStore.pauseRest() } label: {
-                            Image(systemName: "pause.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .frame(width: 44, height: 44)
-                        .background(Color.white.opacity(0.2), in: Circle())
-                        .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
-
-                        Button { workoutStore.addRest(seconds: 15) } label: {
-                            Text("+15s")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(.white)
-                                .fixedSize()
-                        }
-                        .frame(height: 44)
-                        .padding(.horizontal, 16)
-                        .background(Color.white.opacity(0.2), in: Capsule())
-                        .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                    } else {
-                        Button { workoutStore.resumeRest() } label: {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .frame(width: 44, height: 44)
-                        .background(AppTheme.mossGreen.opacity(0.8), in: Circle())
-                        .disabled(activeRest.remainingSeconds == 0)
-                    }
-
-                    Button { workoutStore.stopRest() } label: {
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .frame(width: 44, height: 44)
-                    .background(AppTheme.powerOrange.opacity(0.8), in: Circle())
-                }
-            }
-
-            // Progress bar for remaining time
-            if activeRest.isRunning {
-                let totalTime = activeRest.totalSeconds > 0 ? activeRest.totalSeconds : 90
-                let progress = Double(activeRest.remainingSeconds) / Double(totalTime)
-
-                ProgressView(value: progress)
-                    .progressViewStyle(LinearProgressViewStyle(tint: .white))
-                    .scaleEffect(y: 2)
-                    .animation(.linear(duration: 1), value: progress)
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: 320)
-        .background(
-            LinearGradient(
-                colors: [
-                    AppTheme.deepBlue.opacity(0.95),
-                    AppTheme.deepBlue.opacity(0.9),
-                    Color.indigo.opacity(0.9)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 24)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.4), Color.white.opacity(0.2)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.5
-                )
-        )
-        .shadow(color: AppTheme.deepBlue.opacity(0.5), radius: 16, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.3), radius: 24, x: 0, y: 12)
-        .scaleEffect(activeRest.isRunning ? 1.0 : 0.98)
-        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: activeRest.isRunning)
-        .onTapGesture {
-            // Navigate to the exercise with active rest
-            navigateToExercise(activeRest.exerciseIndex)
-        }
-    }
-    
-    private func formatTime(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let remaining = seconds % 60
-        return String(format: "%d:%02d", minutes, remaining)
-    }
-}
 
 // MARK: - Auto Advance Indicator
 
