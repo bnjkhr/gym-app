@@ -168,6 +168,11 @@ final class WorkoutSessionEntity {
     var duration: TimeInterval?
     var notes: String
 
+    // Herzfrequenzdaten
+    var minHeartRate: Int?
+    var maxHeartRate: Int?
+    var avgHeartRate: Int?
+
     init(
         id: UUID = UUID(),
         templateId: UUID?,
@@ -176,7 +181,10 @@ final class WorkoutSessionEntity {
         exercises: [WorkoutExerciseEntity],
         defaultRestTime: TimeInterval,
         duration: TimeInterval? = nil,
-        notes: String = ""
+        notes: String = "",
+        minHeartRate: Int? = nil,
+        maxHeartRate: Int? = nil,
+        avgHeartRate: Int? = nil
     ) {
         self.id = id
         self.templateId = templateId
@@ -186,6 +194,9 @@ final class WorkoutSessionEntity {
         self.defaultRestTime = defaultRestTime
         self.duration = duration
         self.notes = notes
+        self.minHeartRate = minHeartRate
+        self.maxHeartRate = maxHeartRate
+        self.avgHeartRate = avgHeartRate
     }
 }
 

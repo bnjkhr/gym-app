@@ -10,6 +10,11 @@ struct WorkoutSession: Identifiable, Codable {
     var duration: TimeInterval?
     var notes: String
 
+    // Herzfrequenzdaten
+    var minHeartRate: Int?
+    var maxHeartRate: Int?
+    var avgHeartRate: Int?
+
     init(
         id: UUID = UUID(),
         templateId: UUID?,
@@ -18,7 +23,10 @@ struct WorkoutSession: Identifiable, Codable {
         exercises: [WorkoutExercise],
         defaultRestTime: TimeInterval,
         duration: TimeInterval?,
-        notes: String
+        notes: String,
+        minHeartRate: Int? = nil,
+        maxHeartRate: Int? = nil,
+        avgHeartRate: Int? = nil
     ) {
         self.id = id
         self.templateId = templateId
@@ -28,6 +36,9 @@ struct WorkoutSession: Identifiable, Codable {
         self.defaultRestTime = defaultRestTime
         self.duration = duration
         self.notes = notes
+        self.minHeartRate = minHeartRate
+        self.maxHeartRate = maxHeartRate
+        self.avgHeartRate = avgHeartRate
     }
 }
 

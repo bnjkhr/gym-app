@@ -303,6 +303,34 @@ struct SessionDetailView: View {
                 label: "Ø Pause",
                 color: AppTheme.deepBlue
             )
+
+            // Herzfrequenzdaten, wenn vorhanden
+            if let minHR = session.minHeartRate {
+                SessionStatCard(
+                    icon: "heart.fill",
+                    value: "\(minHR) bpm",
+                    label: "Min. HF",
+                    color: .blue
+                )
+            }
+
+            if let maxHR = session.maxHeartRate {
+                SessionStatCard(
+                    icon: "heart.fill",
+                    value: "\(maxHR) bpm",
+                    label: "Max. HF",
+                    color: .red
+                )
+            }
+
+            if let avgHR = session.avgHeartRate {
+                SessionStatCard(
+                    icon: "heart.fill",
+                    value: "\(avgHR) bpm",
+                    label: "Ø HF",
+                    color: .orange
+                )
+            }
         }
     }
 

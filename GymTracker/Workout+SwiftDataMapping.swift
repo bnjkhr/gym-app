@@ -147,7 +147,10 @@ extension WorkoutSession {
             exercises: [],
             defaultRestTime: entity.defaultRestTime,
             duration: entity.duration,
-            notes: entity.notes
+            notes: entity.notes,
+            minHeartRate: entity.minHeartRate,
+            maxHeartRate: entity.maxHeartRate,
+            avgHeartRate: entity.avgHeartRate
         )
     }
 }
@@ -174,7 +177,10 @@ extension WorkoutSession {
             exercises: mapped,
             defaultRestTime: fresh.defaultRestTime,
             duration: fresh.duration,
-            notes: fresh.notes
+            notes: fresh.notes,
+            minHeartRate: fresh.minHeartRate,
+            maxHeartRate: fresh.maxHeartRate,
+            avgHeartRate: fresh.avgHeartRate
         )
     }
 }
@@ -245,7 +251,10 @@ extension WorkoutSessionEntity {
             exercises: exerciseEntities,
             defaultRestTime: session.defaultRestTime,
             duration: session.duration,
-            notes: session.notes
+            notes: session.notes,
+            minHeartRate: session.minHeartRate,
+            maxHeartRate: session.maxHeartRate,
+            avgHeartRate: session.avgHeartRate
         )
     }
 }
