@@ -31,6 +31,7 @@
 		11E749322C9E4E8A00AB1234 /* WizardSelectionStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E749312C9E4E8A00AB1234 /* WizardSelectionStepView.swift */; };
 		3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */; };
 		3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */; };
+		52906B8CBE674C51BA35B01D /* AddFolderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E481BFAB02FB4555AECB6A98 /* AddFolderView.swift */; };
 		7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */; };
 		AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7802E858AEC0005AE79 /* UserProfile.swift */; };
 		AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7822E858B920005AE79 /* ProfileEditView.swift */; };
@@ -218,6 +219,7 @@
 		ADFCBABD2E90402F00B761B1 /* ExerciseRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordMigration.swift; sourceTree = "<group>"; };
 		ADFCBABF2E90453800B761B1 /* ExerciseRecordViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRecordViews.swift; sourceTree = "<group>"; };
 		BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActionButton.swift; sourceTree = "<group>"; };
+		E481BFAB02FB4555AECB6A98 /* AddFolderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFolderView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -380,6 +382,7 @@
 				11E7490A2C9E4BC100AB1234 /* StatisticsView.swift */,
 				11E7490C2C9E4BCF00AB1234 /* AddExerciseView.swift */,
 				11E7490E2C9E4BDD00AB1234 /* AddWorkoutView.swift */,
+				E481BFAB02FB4555AECB6A98 /* AddFolderView.swift */,
 				11E749132C9E4C4B00AB1234 /* SettingsView.swift */,
 				11E749152C9E4C4B00AB1234 /* WorkoutDetailView.swift */,
 				11E749202C9E4D9300AB1234 /* EditWorkoutView.swift */,
@@ -584,6 +587,7 @@
 				11E748F22C9E4B0F00AB1234 /* ContentView.swift in Sources */,
 				AD4B5D4C2E8A6CBB0083787B /* ExercisePickerView.swift in Sources */,
 				11E7490F2C9E4BDD00AB1234 /* AddWorkoutView.swift in Sources */,
+				52906B8CBE674C51BA35B01D /* AddFolderView.swift in Sources */,
 				AD2A83D22E94614300A6ADBE /* HealthKitWorkoutTracker.swift in Sources */,
 				11E749142C9E4C4B00AB1234 /* SettingsView.swift in Sources */,
 				AD960EA42E8C0A7000E91131 /* SwiftDataSafeMapping.swift in Sources */,
@@ -785,7 +789,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = GymBo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 81;
+				CURRENT_PROJECT_VERSION = 82;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
@@ -826,7 +830,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = GymBo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 81;
+				CURRENT_PROJECT_VERSION = 82;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
@@ -865,7 +869,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 81;
+				CURRENT_PROJECT_VERSION = 82;
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutWidgets/Info.plist;
@@ -900,7 +904,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 81;
+				CURRENT_PROJECT_VERSION = 82;
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutWidgets/Info.plist;

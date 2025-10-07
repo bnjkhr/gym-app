@@ -108,6 +108,32 @@ final class WorkoutExerciseEntity {
     }
 }
 
+// MARK: - WorkoutFolderEntity
+@Model
+final class WorkoutFolderEntity {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    var color: String // Hex color string
+    var order: Int
+    var createdDate: Date
+    @Relationship(deleteRule: .nullify, inverse: \WorkoutEntity.folder) var workouts: [WorkoutEntity] = []
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        color: String = "#8B5CF6", // Default purple
+        order: Int = 0,
+        createdDate: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.order = order
+        self.createdDate = createdDate
+        self.workouts = []
+    }
+}
+
 // MARK: - WorkoutEntity (Template)
 @Model
 final class WorkoutEntity {
@@ -121,6 +147,10 @@ final class WorkoutEntity {
     var isFavorite: Bool
     var isSampleWorkout: Bool? // Markiert Beispiel-Workouts für versioniertes Update (nil = alte Workouts)
 
+    // Folder organization (default values for migration compatibility)
+    @Relationship(deleteRule: .nullify) var folder: WorkoutFolderEntity? = nil
+    var orderInFolder: Int = 0
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -130,7 +160,9 @@ final class WorkoutEntity {
         duration: TimeInterval? = nil,
         notes: String = "",
         isFavorite: Bool = false,
-        isSampleWorkout: Bool? = nil
+        isSampleWorkout: Bool? = nil,
+        folder: WorkoutFolderEntity? = nil,
+        orderInFolder: Int = 0
     ) {
         self.id = id
         self.name = name
@@ -141,6 +173,8 @@ final class WorkoutEntity {
         self.notes = notes
         self.isFavorite = isFavorite
         self.isSampleWorkout = isSampleWorkout
+        self.folder = folder
+        self.orderInFolder = orderInFolder
     }
     
     /// Clean up any workout exercises that reference invalid exercise entities

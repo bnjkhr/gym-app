@@ -10,13 +10,21 @@ struct WorkoutsTabView: View {
         SortDescriptor(\WorkoutEntity.date, order: SortOrder.reverse)
     ])
     private var workoutEntities: [WorkoutEntity]
-    
+
+    @Query(sort: [
+        SortDescriptor(\WorkoutFolderEntity.order, order: .forward)
+    ])
+    private var folders: [WorkoutFolderEntity]
+
     @State private var showingAddWorkout = false
+    @State private var showingAddFolder = false
     @State private var showingProfileAlert = false
     @State private var showingProfileEditor = false
     @State private var navigateToManualAdd = false
     @State private var navigateToWorkoutWizard = false
     @State private var navigateToQuickWorkout = false
+    @State private var expandedFolders: Set<UUID> = []
+    @State private var draggedWorkout: WorkoutEntity?
     
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
@@ -42,9 +50,52 @@ struct WorkoutsTabView: View {
                 
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 20) {
-                        // Workouts list section
+                        // Ordner-Sections
+                        ForEach(folders) { folder in
+                            FolderGridSection(
+                                folder: folder,
+                                workouts: workoutsInFolder(folder),
+                                isExpanded: expandedFolders.contains(folder.id),
+                                onToggle: {
+                                    withAnimation {
+                                        if expandedFolders.contains(folder.id) {
+                                            expandedFolders.remove(folder.id)
+                                        } else {
+                                            expandedFolders.insert(folder.id)
+                                        }
+                                    }
+                                },
+                                onTap: { id in startWorkout(with: id) },
+                                onEdit: { id in editWorkout(id: id) },
+                                onDelete: { workout in workoutToDelete = workout },
+                                onToggleHome: { id in toggleHomeFavorite(workoutID: id) },
+                                onDuplicate: { id in duplicateWorkout(id: id) },
+                                onShare: { id in shareWorkout(id: id) },
+                                onRemoveFromFolder: { entity in
+                                    entity.folder = nil
+                                    try? modelContext.save()
+                                },
+                                onDeleteFolder: {
+                                    // Move workouts out before deleting
+                                    for workout in folder.workouts {
+                                        workout.folder = nil
+                                    }
+                                    modelContext.delete(folder)
+                                    try? modelContext.save()
+                                }
+                            )
+                        }
+
+                        // Workouts ohne Ordner
                         VStack(alignment: .leading, spacing: 16) {
-                            if displayWorkouts.isEmpty {
+                            if !folders.isEmpty && !workoutsWithoutFolder.isEmpty {
+                                Text("Workouts")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 16)
+                            }
+
+                            if displayWorkouts.isEmpty && folders.isEmpty {
                                 VStack(spacing: 12) {
                                     Image(systemName: "figure.strengthtraining.functional")
                                         .font(.system(size: 40))
@@ -58,8 +109,7 @@ struct WorkoutsTabView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 40)
-                            } else {
-                                // Performance: Explicit ID for better grid recycling
+                            } else if !workoutsWithoutFolder.isEmpty {
                                 LazyVGrid(
                                     columns: [
                                         GridItem(.flexible(), spacing: 8),
@@ -67,7 +117,7 @@ struct WorkoutsTabView: View {
                                     ],
                                     spacing: 12
                                 ) {
-                                    ForEach(displayWorkouts, id: \.id) { workout in
+                                    ForEach(workoutsWithoutFolder.compactMap { mapWorkoutEntity($0) }, id: \.id) { workout in
                                         WorkoutTileCard(
                                             workout: workout,
                                             isHomeFavorite: workout.isFavorite,
@@ -77,20 +127,34 @@ struct WorkoutsTabView: View {
                                             onDelete: { workoutToDelete = workout },
                                             onToggleHome: { toggleHomeFavorite(workoutID: workout.id) },
                                             onDuplicate: { duplicateWorkout(id: workout.id) },
-                                            onShare: { shareWorkout(id: workout.id) }
+                                            onShare: { shareWorkout(id: workout.id) },
+                                            onMoveToFolder: { folder in
+                                                moveWorkoutToFolder(workoutID: workout.id, folder: folder)
+                                            },
+                                            isInFolder: false
                                         )
-                                        .id(workout.id) // Performance: Explicit ID for optimal recycling
+                                        .id(workout.id)
                                     }
                                 }
+                                .padding(.horizontal, 16)
                             }
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
                 }
             }
             .navigationTitle("Workouts")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showingAddFolder = true
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingAddWorkout = true
@@ -103,6 +167,9 @@ struct WorkoutsTabView: View {
             }
             .sheet(isPresented: $showingAddWorkout) {
                 createAddWorkoutSheet()
+            }
+            .sheet(isPresented: $showingAddFolder) {
+                AddFolderView()
             }
             .sheet(isPresented: $showingProfileEditor) {
                 ProfileEditView()
@@ -267,7 +334,17 @@ struct WorkoutsTabView: View {
     }
     
     // MARK: - Helper Functions
-    
+
+    private var workoutsWithoutFolder: [WorkoutEntity] {
+        workoutEntities.filter { $0.folder == nil }
+    }
+
+    private func workoutsInFolder(_ folder: WorkoutFolderEntity) -> [WorkoutEntity] {
+        workoutEntities
+            .filter { $0.folder?.id == folder.id }
+            .sorted { $0.orderInFolder < $1.orderInFolder }
+    }
+
     private func createWorkoutAssistantButton() -> some View {
         Button {
             showingAddWorkout = false // Schließe erst das Sheet
@@ -555,6 +632,16 @@ struct WorkoutsTabView: View {
             try? modelContext.save()
         }
     }
+
+    private func moveWorkoutToFolder(workoutID: UUID, folder: WorkoutFolderEntity) {
+        guard let entity = workoutEntities.first(where: { $0.id == workoutID }) else { return }
+
+        entity.folder = folder
+        let maxOrder = workoutsInFolder(folder).map(\.orderInFolder).max() ?? -1
+        entity.orderInFolder = maxOrder + 1
+
+        try? modelContext.save()
+    }
 }
 
 // MARK: - Supporting Types
@@ -563,7 +650,103 @@ private struct WorkoutSelection: Identifiable, Hashable {
     let id: UUID
 }
 
+// MARK: - FolderGridSection
 
+private struct FolderGridSection: View {
+    let folder: WorkoutFolderEntity
+    let workouts: [WorkoutEntity]
+    let isExpanded: Bool
+    let onToggle: () -> Void
+    let onTap: (UUID) -> Void
+    let onEdit: (UUID) -> Void
+    let onDelete: (Workout) -> Void
+    let onToggleHome: (UUID) -> Void
+    let onDuplicate: (UUID) -> Void
+    let onShare: (UUID) -> Void
+    let onRemoveFromFolder: (WorkoutEntity) -> Void
+    let onDeleteFolder: () -> Void
+
+    @Environment(\.modelContext) private var modelContext
+    @State private var showingFolderOptions = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Folder Header
+            Button(action: onToggle) {
+                HStack {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(hex: folder.color))
+                        .frame(width: 20)
+
+                    Image(systemName: "folder.fill")
+                        .foregroundColor(Color(hex: folder.color))
+
+                    Text(folder.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("(\(workouts.count))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    Button {
+                        showingFolderOptions = true
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title3)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+            }
+            .buttonStyle(.plain)
+
+            // Workouts Grid
+            if isExpanded && !workouts.isEmpty {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 8),
+                        GridItem(.flexible(), spacing: 8)
+                    ],
+                    spacing: 12
+                ) {
+                    ForEach(workouts.compactMap { Workout(entity: $0, in: modelContext) }, id: \.id) { workout in
+                        WorkoutTileCard(
+                            workout: workout,
+                            isHomeFavorite: workout.isFavorite,
+                            onTap: { onTap(workout.id) },
+                            onEdit: { onEdit(workout.id) },
+                            onStart: { onTap(workout.id) },
+                            onDelete: { onDelete(workout) },
+                            onToggleHome: { onToggleHome(workout.id) },
+                            onDuplicate: { onDuplicate(workout.id) },
+                            onShare: { onShare(workout.id) },
+                            onRemoveFromFolder: {
+                                if let entity = workouts.first(where: { $0.id == workout.id }) {
+                                    onRemoveFromFolder(entity)
+                                }
+                            },
+                            isInFolder: true
+                        )
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+        .confirmationDialog("Ordner verwalten", isPresented: $showingFolderOptions) {
+            Button("Ordner löschen", role: .destructive) {
+                onDeleteFolder()
+            }
+            Button("Abbrechen", role: .cancel) { }
+        } message: {
+            Text("Die Workouts in diesem Ordner werden nicht gelöscht.")
+        }
+    }
+}
 
 #Preview {
     WorkoutsTabView()

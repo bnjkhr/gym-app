@@ -11,11 +11,18 @@ struct WorkoutTileCard: View {
     let onToggleHome: () -> Void
     let onDuplicate: () -> Void
     let onShare: () -> Void
+    var onMoveToFolder: ((WorkoutFolderEntity) -> Void)? = nil
+    var onRemoveFromFolder: (() -> Void)? = nil
+    var isInFolder: Bool = false
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var allSessions: [WorkoutSessionEntity]
 
+    @Query(sort: [SortDescriptor(\WorkoutFolderEntity.order, order: .forward)])
+    private var folders: [WorkoutFolderEntity]
+
     @Environment(\.modelContext) private var modelContext
+    @State private var showingFolderPicker = false
 
     private var displayLevel: String {
         guard let level = workout.level else { return "" }
@@ -96,6 +103,14 @@ struct WorkoutTileCard: View {
             .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(ScaleButtonStyle())
+        .confirmationDialog("Ordner auswählen", isPresented: $showingFolderPicker, titleVisibility: .visible) {
+            ForEach(folders) { folder in
+                Button(folder.name) {
+                    onMoveToFolder?(folder)
+                }
+            }
+            Button("Abbrechen", role: .cancel) { }
+        }
         .contextMenu {
             // Performance: Grouped menu items for faster rendering
             Group {
@@ -137,6 +152,23 @@ struct WorkoutTileCard: View {
                     onShare()
                 } label: {
                     Label("Teilen", systemImage: "square.and.arrow.up")
+                }
+            }
+
+            // Ordner-Optionen
+            if isInFolder, let onRemove = onRemoveFromFolder {
+                Divider()
+                Button {
+                    onRemove()
+                } label: {
+                    Label("Aus Ordner entfernen", systemImage: "folder.badge.minus")
+                }
+            } else if !folders.isEmpty, onMoveToFolder != nil {
+                Divider()
+                Button {
+                    showingFolderPicker = true
+                } label: {
+                    Label("In Ordner verschieben", systemImage: "folder")
                 }
             }
         } preview: {

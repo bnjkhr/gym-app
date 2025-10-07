@@ -21,7 +21,8 @@ struct GymTrackerApp: App {
             WorkoutEntity.self,
             WorkoutSessionEntity.self,
             UserProfileEntity.self,
-            ExerciseRecordEntity.self
+            ExerciseRecordEntity.self,
+            WorkoutFolderEntity.self
         ])
 
         // Check storage health before attempting creation
