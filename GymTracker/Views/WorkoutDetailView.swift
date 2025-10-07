@@ -117,14 +117,14 @@ struct WorkoutDetailView: View {
                     // Selected tab content
                     selectedTabContent
 
-                    if let activeRest = activeRestForThisWorkout {
+                    if let activeRest = activeRestForThisWorkout, activeRest.remainingSeconds > 0 || activeRest.isRunning {
                         // Divider before rest timer
                         Rectangle()
                             .fill(Color(.systemGray5))
                             .frame(height: 0.5)
                             .listRowBackground(Color.clear)
                             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                        
+
                         restTimerSection(activeRest: activeRest)
                             .id("activeRest")
                     }
@@ -432,7 +432,7 @@ struct WorkoutDetailView: View {
 
     private func restTimerSection(activeRest: WorkoutStore.ActiveRestState) -> some View {
         Section("Pause") {
-            VStack(alignment: .leading, spacing: activeRest.isRunning ? 16 : 8) {
+            VStack(alignment: .leading, spacing: 16) {
                 Text("Aktive Pause: \(activeRest.setIndex + 1) • \(workout.exercises[safe: activeRest.exerciseIndex]?.exercise.name ?? "Übung")")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -443,7 +443,7 @@ struct WorkoutDetailView: View {
                     .monospacedDigit()
                     .animation(.easeInOut(duration: 0.2), value: activeRest.isRunning)
 
-                HStack(spacing: activeRest.isRunning ? 4 : 8) {
+                HStack(spacing: 4) {
                     if activeRest.isRunning {
                         Button(role: .cancel) {
                             workoutStore.pauseRest()
@@ -456,7 +456,7 @@ struct WorkoutDetailView: View {
                                 .background(AppTheme.powerOrange, in: Capsule())
                         }
                         .buttonStyle(.plain)
-                        
+
                         Button {
                             workoutStore.addRest(seconds: 15)
                         } label: {
@@ -468,11 +468,11 @@ struct WorkoutDetailView: View {
                                 .background(AppTheme.turquoiseBoost, in: Capsule())
                         }
                         .buttonStyle(.plain)
-                        
+
                         Button {
                             workoutStore.stopRest()
                         } label: {
-                            Text(activeRest.remainingSeconds == 0 ? "Reset" : "Beenden")
+                            Text("Beenden")
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
@@ -481,6 +481,7 @@ struct WorkoutDetailView: View {
                         }
                         .buttonStyle(.plain)
                     } else {
+                        // Timer pausiert
                         Button {
                             workoutStore.resumeRest()
                         } label: {
@@ -492,12 +493,11 @@ struct WorkoutDetailView: View {
                                 .background(AppTheme.mossGreen, in: Capsule())
                         }
                         .buttonStyle(.plain)
-                        .disabled(activeRest.remainingSeconds == 0)
-                        
+
                         Button {
                             workoutStore.stopRest()
                         } label: {
-                            Text(activeRest.remainingSeconds == 0 ? "Reset" : "Beenden")
+                            Text("Beenden")
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
@@ -878,6 +878,7 @@ struct WorkoutDetailView: View {
     private func completeWorkout() {
         showingCompletionConfirmation = true
     }
+
 
     private var formattedDurationText: String {
         let duration = completionDuration > 0 ? completionDuration : (workout.duration ?? 0)
@@ -1670,7 +1671,7 @@ private struct ActiveWorkoutNavigationView: View {
                restState.workoutId == workout.id,
                restState.exerciseIndex < workout.exercises.count,
                currentExerciseIndex != restState.exerciseIndex {
-                
+
                 // Don't navigate backwards to previous exercise if we just auto-advanced
                 // This prevents the "bounce back" behavior when rest timer ticks
                 let isNavigatingToPreviousExercise = restState.exerciseIndex < currentExerciseIndex

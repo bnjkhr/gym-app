@@ -61,10 +61,18 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Text(formatTime(context.state.remainingSeconds))
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.primary)
+                        if let endDate = context.state.timerEndDate {
+                            Text(timerInterval: Date()...endDate, countsDown: true)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.primary)
+                                .monospacedDigit()
+                        } else {
+                            Text(formatTime(context.state.remainingSeconds))
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.primary)
+                        }
                     }
                 } else if context.state.title == "Workout läuft" {
                     HStack {
@@ -114,10 +122,18 @@ struct WorkoutWidgetsLiveActivity: Widget {
                     Group {
                         if context.state.remainingSeconds > 0 {
                             VStack(alignment: .trailing) {
-                                Text(formatTime(context.state.remainingSeconds))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .contentTransition(.numericText())
+                                if let endDate = context.state.timerEndDate {
+                                    Text(timerInterval: Date()...endDate, countsDown: true)
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .monospacedDigit()
+                                        .contentTransition(.numericText())
+                                } else {
+                                    Text(formatTime(context.state.remainingSeconds))
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .contentTransition(.numericText())
+                                }
                                 Text("Pausentimer")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -192,10 +208,18 @@ struct WorkoutWidgetsLiveActivity: Widget {
                             Image(systemName: "pause.fill")
                                 .font(.system(size: 8))
                                 .foregroundStyle(.orange)
-                            Text(formatTime(context.state.remainingSeconds))
-                                .font(.caption2)
-                                .fontWeight(.medium)
-                                .contentTransition(.numericText())
+                            if let endDate = context.state.timerEndDate {
+                                Text(timerInterval: Date()...endDate, countsDown: true)
+                                    .font(.caption2)
+                                    .fontWeight(.medium)
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
+                            } else {
+                                Text(formatTime(context.state.remainingSeconds))
+                                    .font(.caption2)
+                                    .fontWeight(.medium)
+                                    .contentTransition(.numericText())
+                            }
                         }
                     } else if let heartRate = context.state.currentHeartRate {
                         HStack(spacing: 2) {
@@ -217,10 +241,18 @@ struct WorkoutWidgetsLiveActivity: Widget {
                 Group {
                     if context.state.remainingSeconds > 0 {
                         // Timer läuft - zeige verbleibende Zeit als Text
-                        Text(formatTime(context.state.remainingSeconds))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.orange)
-                            .contentTransition(.numericText())
+                        if let endDate = context.state.timerEndDate {
+                            Text(timerInterval: Date()...endDate, countsDown: true)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.orange)
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                        } else {
+                            Text(formatTime(context.state.remainingSeconds))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.orange)
+                                .contentTransition(.numericText())
+                        }
                     } else if let heartRate = context.state.currentHeartRate {
                         // Kein Timer, aber Herzfrequenz vorhanden
                         Text("\(heartRate)")
@@ -256,7 +288,8 @@ struct WorkoutWidgetsLiveActivity: Widget {
         title: "Pause",
         exerciseName: "Bankdrücken",
         isTimerExpired: false,
-        currentHeartRate: 142
+        currentHeartRate: 142,
+        timerEndDate: Date().addingTimeInterval(45)
     )
 
     WorkoutActivityAttributes.ContentState(
@@ -265,7 +298,8 @@ struct WorkoutWidgetsLiveActivity: Widget {
         title: "Pause beendet",
         exerciseName: nil,
         isTimerExpired: true,
-        currentHeartRate: 156
+        currentHeartRate: 156,
+        timerEndDate: nil
     )
 
     WorkoutActivityAttributes.ContentState(
@@ -274,6 +308,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
         title: "Workout läuft",
         exerciseName: nil,
         isTimerExpired: false,
-        currentHeartRate: 128
+        currentHeartRate: 128,
+        timerEndDate: nil
     )
 }

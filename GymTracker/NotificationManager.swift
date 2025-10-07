@@ -47,10 +47,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             } else {
                 content.body = "Weiter geht's!"
             }
-            // Use custom sound from AudioManager
-            let soundName = UserDefaults.standard.string(forKey: "defaultNotificationSound") ?? "591279__awchacon__go"
-            let soundFileName = "\(soundName).wav"
-            content.sound = UNNotificationSound(named: UNNotificationSoundName(soundFileName))
+            // Use standard iOS notification sound
+            content.sound = .default
             var info: [String: Any] = ["type": "rest_end", "workout": workoutName]
             if let workoutId { info["workoutId"] = workoutId.uuidString }
             content.userInfo = info
@@ -62,9 +60,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 #if DEBUG
                 if let error = error {
                     print("[NotificationManager] Failed to schedule rest notification: \(error.localizedDescription)")
-                    print("[NotificationManager] Tried to use sound: \(soundFileName)")
                 } else {
-                    print("[NotificationManager] Successfully scheduled rest notification with sound: \(soundFileName)")
+                    print("[NotificationManager] Successfully scheduled rest notification with default sound")
                 }
                 #endif
             }

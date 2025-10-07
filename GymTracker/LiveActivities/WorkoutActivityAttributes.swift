@@ -10,6 +10,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var exerciseName: String?
         var isTimerExpired: Bool
         var currentHeartRate: Int? // Aktuelle Herzfrequenz in BPM
+        var timerEndDate: Date? // Endzeitpunkt für nativen Timer im Widget
     }
 
     var workoutName: String

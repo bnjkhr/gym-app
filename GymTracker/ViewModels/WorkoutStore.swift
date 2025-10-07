@@ -1200,6 +1200,18 @@ class WorkoutStore: ObservableObject {
         activeRestState = nil
     }
 
+    /// Clear rest state after user interaction (e.g. "Continue" button)
+    /// Does NOT cancel notification - only called after user acknowledged timer end
+    func clearRestState() {
+        restTimer?.invalidate()
+        restTimer = nil
+        // Note: We DON'T cancel notification here - it already fired or user dismissed it
+        if let state = activeRestState {
+            WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
+        }
+        activeRestState = nil
+    }
+
     private func setupRestTimer() {
         restTimer?.invalidate()
         restTimer = nil
@@ -1245,21 +1257,24 @@ class WorkoutStore: ObservableObject {
             }
 
             if remaining <= 0 {
-                // Timer sofort stoppen um doppelte Ausführung zu vermeiden
+                // Timer sofort stoppen
                 restTimer?.invalidate()
                 restTimer = nil
 
+                // Sound & Haptic Feedback (nur im Foreground)
                 SoundPlayer.playBoxBell()
                 #if canImport(UIKit)
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)
                 #endif
+
+                // Live Activity zeigt "Pause beendet"
                 WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
 
-                // Zeige "Timer abgelaufen" für 3 Sekunden bevor automatisch geschlossen wird
+                // Timer automatisch clearen nach 2 Sekunden
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    self.stopRest()
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    self.clearRestState()
                 }
             }
         } else {
@@ -1269,21 +1284,24 @@ class WorkoutStore: ObservableObject {
                 activeRestState = state // Always update since we decrement
                 updateLiveActivityRest()
                 if state.remainingSeconds <= 0 {
-                    // Timer sofort stoppen um doppelte Ausführung zu vermeiden
+                    // Timer sofort stoppen
                     restTimer?.invalidate()
                     restTimer = nil
 
+                    // Sound & Haptic Feedback
                     SoundPlayer.playBoxBell()
                     #if canImport(UIKit)
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
                     #endif
+
+                    // Live Activity zeigt "Pause beendet"
                     WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
 
-                    // Zeige "Timer abgelaufen" für 3 Sekunden bevor automatisch geschlossen wird
+                    // Timer automatisch clearen nach 2 Sekunden
                     Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 3_000_000_000)
-                        self.stopRest()
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        self.clearRestState()
                     }
                 }
             } else {
@@ -1299,30 +1317,39 @@ class WorkoutStore: ObservableObject {
         }
         let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ?
             activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
-        print("[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining")
+        print("[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining, endDate: \(state.endDate?.description ?? "nil")")
         WorkoutLiveActivityController.shared.updateRest(
             workoutName: state.workoutName,
             exerciseName: exerciseName,
             remainingSeconds: state.remainingSeconds,
-            totalSeconds: max(state.totalSeconds, 1)
+            totalSeconds: max(state.totalSeconds, 1),
+            endDate: state.endDate
         )
     }
 
     // Refresh rest timer from wall clock (for example after app resumes from background)
     func refreshRestFromWallClock() {
-        guard var state = activeRestState, state.isRunning, let end = state.endDate else { 
-            return 
+        guard var state = activeRestState, state.isRunning, let end = state.endDate else {
+            return
         }
-        
+
         let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
         state.remainingSeconds = remaining
-        activeRestState = state
-        
+
         if remaining <= 0 {
-            // If already elapsed while in background, just stop without duplicating sounds
-            stopRest()
+            // Timer ist abgelaufen während App im Background war
+            // Live Activity zeigt "Pause beendet"
+            WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+
+            // Timer automatisch clearen nach 2 Sekunden
+            // Notification kommt durch, da wir sie nicht canceln
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                self.clearRestState()
+            }
         } else {
-            // Only setup timer if we still have remaining time
+            // Timer läuft noch - fortsetzen
+            activeRestState = state
             setupRestTimer()
         }
     }

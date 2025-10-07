@@ -15,17 +15,8 @@ class AudioManager: ObservableObject {
         }
     }
     
-    // MARK: - Standard Notification Sound
-    @Published var defaultNotificationSound: String {
-        didSet {
-            UserDefaults.standard.set(defaultNotificationSound, forKey: "defaultNotificationSound")
-        }
-    }
-    
     private init() {
         self.ignoreMuteSwitch = UserDefaults.standard.bool(forKey: "ignoreMuteSwitch")
-        // Setzen Sie hier den Namen Ihrer .wav-Datei (ohne Erweiterung) als Standard
-        self.defaultNotificationSound = UserDefaults.standard.string(forKey: "defaultNotificationSound") ?? "591279__awchacon__go"
         updateAudioSession()
         
         // Listen for audio session interruptions and route changes
@@ -216,9 +207,12 @@ class AudioManager: ObservableObject {
         content.title = title
         content.body = body
         
-        // Use provided sound or default
-        let soundToUse = soundName ?? defaultNotificationSound
-        content.sound = UNNotificationSound(named: UNNotificationSoundName("\(soundToUse).wav"))
+        // Use provided sound or standard iOS sound
+        if let soundName = soundName {
+            content.sound = UNNotificationSound(named: UNNotificationSoundName("\(soundName).wav"))
+        } else {
+            content.sound = .default
+        }
         
         // Trigger immediately
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
