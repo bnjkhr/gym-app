@@ -92,6 +92,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.isInWorkoutDetail) private var isInWorkoutDetail
 
     // Performance: Pre-warm keyboard to avoid initial delay
     @State private var keyboardPreWarmer: UITextField? = nil
@@ -102,14 +103,13 @@ struct ContentView: View {
     private var workoutEntities: [WorkoutEntity]
 
     @State private var selectedTab = 0
-    @State private var isInWorkoutDetail = false
     @State private var showingEndWorkoutConfirmation = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
             // Workouts Tab
             NavigationStack {
-                WorkoutsHomeView(isInWorkoutDetail: $isInWorkoutDetail)
+                WorkoutsHomeView()
                     .environmentObject(workoutStore)
             }
             .tabItem {
@@ -141,8 +141,8 @@ struct ContentView: View {
             .tag(2)
         }
         .overlay(alignment: .bottom) {
-            // ActiveWorkoutBar wird nicht in WorkoutDetailView angezeigt
-            if let activeWorkout = workoutStore.activeWorkout, !isInWorkoutDetail {
+            // ActiveWorkoutBar wird angezeigt wenn ein aktives Workout existiert (aber nicht in WorkoutDetailView)
+            if let activeWorkout = workoutStore.activeWorkout, !workoutStore.isShowingWorkoutDetail {
                 GeometryReader { geometry in
                     VStack(spacing: 0) {
                         Spacer()
@@ -282,8 +282,6 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
 // MARK: - Workouts Tab
 
 struct WorkoutsHomeView: View {
-    @Binding var isInWorkoutDetail: Bool
-
     @EnvironmentObject var workoutStore: WorkoutStore
     @Environment(\.colorScheme) private var colorScheme
 
@@ -321,11 +319,6 @@ struct WorkoutsHomeView: View {
     // Performance: Cache mapped entities to avoid re-mapping on every render
     @State private var cachedWorkouts: [Workout] = []
     @State private var cachedSessions: [WorkoutSession] = []
-
-    // Explicit initializer to avoid private memberwise init caused by private nested types
-    init(isInWorkoutDetail: Binding<Bool>) {
-        self._isInWorkoutDetail = isInWorkoutDetail
-    }
     
     private func workoutCategory(for workout: Workout) -> String {
         let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
@@ -566,8 +559,9 @@ struct WorkoutsHomeView: View {
                         }
                     )
                     .environmentObject(workoutStore)
-                    .onAppear { isInWorkoutDetail = true }
-                    .onDisappear { isInWorkoutDetail = false }
+                    .environment(\.isInWorkoutDetail, true)
+                    .onAppear { workoutStore.isShowingWorkoutDetail = true }
+                    .onDisappear { workoutStore.isShowingWorkoutDetail = false }
                 } else {
                     // Fallback: try direct fetch from modelContext
                     let selectionId = selection.id
@@ -586,8 +580,9 @@ struct WorkoutsHomeView: View {
                             }
                         )
                         .environmentObject(workoutStore)
-                        .onAppear { isInWorkoutDetail = true }
-                        .onDisappear { isInWorkoutDetail = false }
+                        .environment(\.isInWorkoutDetail, true)
+                        .onAppear { workoutStore.isShowingWorkoutDetail = true }
+                        .onDisappear { workoutStore.isShowingWorkoutDetail = false }
                     } else {
                         ErrorWorkoutView()
                     }
@@ -608,12 +603,8 @@ struct WorkoutsHomeView: View {
                         workoutStore.activeSessionID = nil
                         WorkoutLiveActivityController.shared.end()
                     }
-                } else {
-                    // Auto-navigate to active workout if we don't have a selection yet
-                    if selectedWorkout == nil {
-                        selectedWorkout = WorkoutSelection(id: activeID)
-                    }
                 }
+                // Removed auto-navigation - user must explicitly tap ActiveWorkoutBar to resume
             }
             .onReceive(NotificationCenter.default.publisher(for: .resumeActiveWorkout)) { _ in
                 if let activeID = workoutStore.activeSessionID {
@@ -2183,6 +2174,18 @@ struct ErrorWorkoutView: View {
 extension Notification.Name {
     static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
     static let navigateToWorkoutsTab = Notification.Name("navigateToWorkoutsTab")
+}
+
+// MARK: - Environment Key for WorkoutDetailView visibility
+private struct IsInWorkoutDetailKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var isInWorkoutDetail: Bool {
+        get { self[IsInWorkoutDetailKey.self] }
+        set { self[IsInWorkoutDetailKey.self] = newValue }
+    }
 }
 
 // MARK: - Locker Number Input View

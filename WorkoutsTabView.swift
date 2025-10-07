@@ -127,6 +127,8 @@ struct WorkoutsTabView: View {
                         }
                     )
                     .environmentObject(workoutStore)
+                    .onAppear { workoutStore.isShowingWorkoutDetail = true }
+                    .onDisappear { workoutStore.isShowingWorkoutDetail = false }
                 } else {
                     Text("Workout konnte nicht geladen werden")
                 }
@@ -176,11 +178,14 @@ struct WorkoutsTabView: View {
                     WorkoutDetailView(
                         entity: entity,
                         isActiveSession: workoutStore.activeSessionID == selection.id,
-                        onActiveSessionEnd: { 
-                            endActiveSession() 
+                        onActiveSessionEnd: {
+                            endActiveSession()
                         }
                     )
                     .environmentObject(workoutStore)
+                    .environment(\.isInWorkoutDetail, true)
+                    .onAppear { workoutStore.isShowingWorkoutDetail = true }
+                    .onDisappear { workoutStore.isShowingWorkoutDetail = false }
                 } else {
                     ErrorWorkoutView()
                 }

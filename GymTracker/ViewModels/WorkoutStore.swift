@@ -54,6 +54,7 @@ struct ExerciseLastUsedMetrics {
 @MainActor
 class WorkoutStore: ObservableObject {
     @Published var activeSessionID: UUID?
+    @Published var isShowingWorkoutDetail: Bool = false
 
     // Zentrale Rest-Timer-State
     // Performance: Equatable to prevent unnecessary UI updates
