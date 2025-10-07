@@ -152,7 +152,7 @@ struct AddWorkoutView: View {
         var byId: [UUID: ExerciseEntity] = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0) })
 
         var workoutExerciseEntities: [WorkoutExerciseEntity] = []
-        for selection in selectedExercises {
+        for (index, selection) in selectedExercises.enumerated() {
             // Resolve or create ExerciseEntity
             let exId = selection.exercise.id
             let exerciseEntity: ExerciseEntity = byId[exId] ?? {
@@ -169,7 +169,7 @@ struct AddWorkoutView: View {
                 return e
             }()
 
-            let we = WorkoutExerciseEntity(exercise: exerciseEntity)
+            let we = WorkoutExerciseEntity(exercise: exerciseEntity, order: index)
             for _ in 0..<selection.setCount {
                 let set = ExerciseSetEntity(
                     id: UUID(),

@@ -89,19 +89,22 @@ final class WorkoutExerciseEntity {
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSetEntity.owner) var sets: [ExerciseSetEntity]
     var workout: WorkoutEntity?
     var session: WorkoutSessionEntity?
+    var order: Int = 0 // Maintains the order of exercises in the workout (default 0 for existing data)
 
     init(
         id: UUID = UUID(),
         exercise: ExerciseEntity? = nil,
         sets: [ExerciseSetEntity] = [],
         workout: WorkoutEntity? = nil,
-        session: WorkoutSessionEntity? = nil
+        session: WorkoutSessionEntity? = nil,
+        order: Int = 0
     ) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
         self.workout = workout
         self.session = session
+        self.order = order
     }
 }
 

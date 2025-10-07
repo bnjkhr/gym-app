@@ -428,9 +428,9 @@ struct EditWorkoutView: View {
         // Resolve ExerciseEntity by id
         let byId: [UUID: ExerciseEntity] = Dictionary(uniqueKeysWithValues: exerciseEntities.map { ($0.id, $0) })
         var newExercises: [WorkoutExerciseEntity] = []
-        for editable in editableExercises {
+        for (index, editable) in editableExercises.enumerated() {
             guard let exEntity = byId[editable.exerciseId] else { continue }
-            let we = WorkoutExerciseEntity(exercise: exEntity)
+            let we = WorkoutExerciseEntity(exercise: exEntity, order: index)
             // Create a set for each EditableSet with individual weight/reps
             for editableSet in editable.sets {
                 let set = ExerciseSetEntity(

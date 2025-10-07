@@ -32,8 +32,8 @@ struct GymTrackerApp: App {
             AppLogger.app.warning("Critical storage issues detected, but attempting creation anyway")
         }
 
-        // Use new factory with robust fallback chain
-        // This automatically handles lightweight migrations (new optional properties, etc.)
+        // Use schema with lightweight migration support
+        // SwiftData will automatically migrate when new properties have default values
         let result = ModelContainerFactory.createContainer(schema: schema)
 
         switch result {

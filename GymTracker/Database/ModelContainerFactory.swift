@@ -25,7 +25,7 @@ enum ModelContainerFactory {
     }
 
     /// Creates a ModelContainer with comprehensive fallback strategy
-    /// - Parameter schema: The SwiftData schema to use
+    /// - Parameter schema: The SwiftData schema to use (deprecated, use migrationPlan instead)
     /// - Returns: ContainerResult with either success or failure
     static func createContainer(schema: Schema) -> ContainerResult {
         // Try each fallback location in order
@@ -34,6 +34,39 @@ enum ModelContainerFactory {
             (.documents, { try createDocumentsContainer(schema: schema) }),
             (.temporary, { try createTemporaryContainer(schema: schema) }),
             (.inMemory, { try createInMemoryContainer(schema: schema) })
+        ]
+
+        for (location, createAttempt) in fallbackChain {
+            do {
+                let container = try createAttempt()
+                logSuccess(location: location)
+                return .success(container, location: location)
+            } catch {
+                logFailure(location: location, error: error)
+                continue
+            }
+        }
+
+        // This should never happen since in-memory container should always work
+        let finalError = NSError(
+            domain: "com.gymbo.modelcontainer",
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: "All ModelContainer creation attempts failed"]
+        )
+        AppLogger.app.critical("All container creation methods failed - this should be impossible!")
+        return .failure(finalError)
+    }
+
+    /// Creates a ModelContainer with migration plan support
+    /// - Parameter migrationPlan: The migration plan type to use
+    /// - Returns: ContainerResult with either success or failure
+    static func createContainer<T: SchemaMigrationPlan>(migrationPlan: T.Type) -> ContainerResult {
+        // Try each fallback location in order
+        let fallbackChain: [(StorageLocation, () throws -> ModelContainer)] = [
+            (.applicationSupport, { try createApplicationSupportContainer(migrationPlan: migrationPlan) }),
+            (.documents, { try createDocumentsContainer(migrationPlan: migrationPlan) }),
+            (.temporary, { try createTemporaryContainer(migrationPlan: migrationPlan) }),
+            (.inMemory, { try createInMemoryContainer(migrationPlan: migrationPlan) })
         ]
 
         for (location, createAttempt) in fallbackChain {
@@ -89,6 +122,40 @@ enum ModelContainerFactory {
     private static func createInMemoryContainer(schema: Schema) throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])
+    }
+
+    // MARK: - Container Creation Methods with Migration Plan
+
+    private static func createApplicationSupportContainer<T: SchemaMigrationPlan>(migrationPlan: T.Type) throws -> ModelContainer {
+        // Create Application Support directory if needed
+        let fileManager = FileManager.default
+        if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            try? fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true, attributes: nil)
+        }
+
+        // Try default location (Application Support) with migration plan
+        return try ModelContainer(for: migrationPlan)
+    }
+
+    private static func createDocumentsContainer<T: SchemaMigrationPlan>(migrationPlan: T.Type) throws -> ModelContainer {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let storeURL = documentsURL.appendingPathComponent("GymTracker.sqlite")
+
+        let config = ModelConfiguration(url: storeURL)
+        return try ModelContainer(for: migrationPlan, configurations: [config])
+    }
+
+    private static func createTemporaryContainer<T: SchemaMigrationPlan>(migrationPlan: T.Type) throws -> ModelContainer {
+        let tempURL = FileManager.default.temporaryDirectory
+        let storeURL = tempURL.appendingPathComponent("GymTracker.sqlite")
+
+        let config = ModelConfiguration(url: storeURL)
+        return try ModelContainer(for: migrationPlan, configurations: [config])
+    }
+
+    private static func createInMemoryContainer<T: SchemaMigrationPlan>(migrationPlan: T.Type) throws -> ModelContainer {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        return try ModelContainer(for: migrationPlan, configurations: [config])
     }
 
     // MARK: - Diagnostics

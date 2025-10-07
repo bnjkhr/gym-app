@@ -230,7 +230,9 @@ struct WorkoutDetailView: View {
             if let fresh = try? modelContext.fetch(descriptor).first {
                 // Map exercises directly without batch fetching (SwiftData relationship issue)
                 var mappedExercises: [WorkoutExercise] = []
-                for we in fresh.exercises {
+                // Sort exercises by order to maintain correct sequence
+                let sortedExercises = fresh.exercises.sorted { $0.order < $1.order }
+                for we in sortedExercises {
                     if let exEntity = we.exercise {
                         let groups = exEntity.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
                         let equipmentType = EquipmentType(rawValue: exEntity.equipmentTypeRaw) ?? .mixed

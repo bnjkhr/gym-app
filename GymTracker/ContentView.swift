@@ -908,10 +908,12 @@ struct WorkoutsHomeView: View {
             isSampleWorkout: false // Benutzer-Workout
         )
 
-        // Kopiere alle Übungen mit Sets
-        for originalWorkoutExercise in originalEntity.exercises {
+        // Kopiere alle Übungen mit Sets, sortiere nach order
+        let sortedExercises = originalEntity.exercises.sorted { $0.order < $1.order }
+        for (index, originalWorkoutExercise) in sortedExercises.enumerated() {
             let copiedWorkoutExercise = WorkoutExerciseEntity(
-                exercise: originalWorkoutExercise.exercise
+                exercise: originalWorkoutExercise.exercise,
+                order: index
             )
 
             // Kopiere alle Sets

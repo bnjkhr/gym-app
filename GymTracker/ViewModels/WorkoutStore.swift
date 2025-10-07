@@ -221,13 +221,15 @@ class WorkoutStore: ObservableObject {
                 // Reset all sets as not completed and update the date
                 workout.date = Date()
                 workout.duration = nil
-                
-                for exercise in workout.exercises {
+
+                // Sort exercises by order to maintain correct sequence
+                let sortedExercises = workout.exercises.sorted { $0.order < $1.order }
+                for exercise in sortedExercises {
                     for set in exercise.sets {
                         set.completed = false
                     }
                 }
-                
+
                 try context.save()
                 activeSessionID = workoutId
                 print("✅ Session gestartet für Workout: \(workout.name)")
@@ -333,7 +335,9 @@ class WorkoutStore: ObservableObject {
     }
 
     private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout {
-        let exercises: [WorkoutExercise] = entity.exercises.compactMap { we in
+        // Sort exercises by order to maintain correct sequence
+        let sortedExercises = entity.exercises.sorted { $0.order < $1.order }
+        let exercises: [WorkoutExercise] = sortedExercises.compactMap { we in
             guard let exerciseEntity = we.exercise else { return nil }
             let ex = mapExerciseEntity(exerciseEntity)
             let sets: [ExerciseSet] = we.sets.map { set in
@@ -640,17 +644,22 @@ class WorkoutStore: ObservableObject {
     }
 
     func recordSession(from workout: Workout) {
-        guard let context = modelContext else { 
+        guard let context = modelContext else {
             print("❌ WorkoutStore: ModelContext ist nil beim Speichern einer Session")
-            return 
+            return
         }
-        
+
         do {
+            // Ensure exercises are sorted by order before recording session
+            // Note: workout.exercises should already be sorted from mapWorkoutEntity,
+            // but we sort again here to be absolutely certain
+            let sortedExercises = workout.exercises // Already sorted from UI
+
             let session = WorkoutSession(
                 templateId: workout.id,
                 name: workout.name,
                 date: workout.date,
-                exercises: workout.exercises,
+                exercises: sortedExercises,
                 defaultRestTime: workout.defaultRestTime,
                 duration: workout.duration,
                 notes: workout.notes

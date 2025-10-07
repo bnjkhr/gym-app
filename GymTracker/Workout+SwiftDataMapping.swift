@@ -24,11 +24,13 @@ extension Workout {
             entity.id == workoutId
         })
         let fresh = (try? context.fetch(wDesc).first) ?? entity
-        
-        let mappedExercises: [WorkoutExercise] = fresh.exercises.compactMap { we in
+
+        // Sort exercises by order to maintain correct sequence
+        let sortedExercises = fresh.exercises.sorted { $0.order < $1.order }
+        let mappedExercises: [WorkoutExercise] = sortedExercises.compactMap { we in
             return WorkoutExercise(entity: we, in: context)
         }
-        
+
         self.init(
             id: fresh.id,
             name: fresh.name,
@@ -157,11 +159,13 @@ extension WorkoutSession {
             entity.id == sId
         })
         let fresh = (try? context.fetch(sDesc).first) ?? entity
-        
-        let mapped = fresh.exercises.compactMap { we in
+
+        // Sort exercises by order to maintain correct sequence
+        let sortedExercises = fresh.exercises.sorted { $0.order < $1.order }
+        let mapped = sortedExercises.compactMap { we in
             return WorkoutExercise(entity: we, in: context)
         }
-        
+
         self.init(
             id: fresh.id,
             templateId: fresh.templateId,
@@ -178,7 +182,9 @@ extension WorkoutSession {
 // MARK: - Mapping from Value Types to Entities
 extension WorkoutEntity {
     static func make(from workout: Workout) -> WorkoutEntity {
-        let exerciseEntities: [WorkoutExerciseEntity] = workout.exercises.map { WorkoutExerciseEntity.make(from: $0) }
+        let exerciseEntities: [WorkoutExerciseEntity] = workout.exercises.enumerated().map { (index, exercise) in
+            WorkoutExerciseEntity.make(from: exercise, order: index)
+        }
         return WorkoutEntity(
             id: workout.id,
             name: workout.name,
@@ -193,15 +199,15 @@ extension WorkoutEntity {
 }
 
 extension WorkoutExerciseEntity {
-    static func make(from we: WorkoutExercise) -> WorkoutExerciseEntity {
+    static func make(from we: WorkoutExercise, order: Int = 0) -> WorkoutExerciseEntity {
         let exerciseEntity = ExerciseEntity.make(from: we.exercise)
         let setEntities = we.sets.map { ExerciseSetEntity.make(from: $0) }
-        return WorkoutExerciseEntity(id: we.id, exercise: exerciseEntity, sets: setEntities)
+        return WorkoutExerciseEntity(id: we.id, exercise: exerciseEntity, sets: setEntities, order: order)
     }
-    
-    static func make(from we: WorkoutExercise, withExistingExercise exerciseEntity: ExerciseEntity) -> WorkoutExerciseEntity {
+
+    static func make(from we: WorkoutExercise, withExistingExercise exerciseEntity: ExerciseEntity, order: Int = 0) -> WorkoutExerciseEntity {
         let setEntities = we.sets.map { ExerciseSetEntity.make(from: $0) }
-        return WorkoutExerciseEntity(id: we.id, exercise: exerciseEntity, sets: setEntities)
+        return WorkoutExerciseEntity(id: we.id, exercise: exerciseEntity, sets: setEntities, order: order)
     }
 }
 
@@ -228,7 +234,9 @@ extension ExerciseEntity {
 
 extension WorkoutSessionEntity {
     static func make(from session: WorkoutSession) -> WorkoutSessionEntity {
-        let exerciseEntities = session.exercises.map { WorkoutExerciseEntity.make(from: $0) }
+        let exerciseEntities = session.exercises.enumerated().map { (index, exercise) in
+            WorkoutExerciseEntity.make(from: exercise, order: index)
+        }
         return WorkoutSessionEntity(
             id: session.id,
             templateId: session.templateId,

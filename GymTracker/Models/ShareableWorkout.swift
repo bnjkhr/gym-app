@@ -108,7 +108,7 @@ extension ShareableWorkout {
         )
 
         // Erstelle Übungen und Sets
-        for exerciseData in workout.exercises {
+        for (index, exerciseData) in workout.exercises.enumerated() {
             // Finde Exercise in DB
             guard let exerciseId = UUID(uuidString: exerciseData.exerciseId),
                   let exerciseEntity = exerciseEntities.first(where: { $0.id == exerciseId }) else {
@@ -116,8 +116,8 @@ extension ShareableWorkout {
                 continue
             }
 
-            // Erstelle WorkoutExerciseEntity
-            let workoutExercise = WorkoutExerciseEntity(exercise: exerciseEntity)
+            // Erstelle WorkoutExerciseEntity with order
+            let workoutExercise = WorkoutExerciseEntity(exercise: exerciseEntity, order: index)
 
             // Erstelle Sets
             for setData in exerciseData.sets {
