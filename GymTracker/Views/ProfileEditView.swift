@@ -357,6 +357,7 @@ struct ProfileEditView: View {
             equipment = profile.equipment
             preferredDuration = profile.preferredDuration
             profileImage = profile.profileImage
+            selectedImage = profile.profileImage // Initialize selectedImage with existing profile image
         }
         .onReceive(NotificationCenter.default.publisher(for: .profileUpdatedFromHealthKit)) { _ in
             // Refresh profile data when HealthKit import completes
