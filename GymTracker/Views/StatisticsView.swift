@@ -93,7 +93,7 @@ private struct FloatingInsightsHeader: View {
         HStack(spacing: 12) {
             Image(systemName: "chart.line.uptrend.xyaxis")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(AppTheme.deepBlue)
+                .foregroundStyle(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
 
             Text("Insights")
                 .font(.system(size: 22, weight: .bold))
@@ -278,6 +278,7 @@ private struct HeroStreakCard: View {
 private struct QuickStatsGrid: View {
     let sessionEntities: [WorkoutSessionEntity]
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var cachedTrainingsThisMonth: Int = 0
     @State private var cachedTotalVolumeThisWeek: Double = 0
@@ -375,7 +376,7 @@ private struct QuickStatsGrid: View {
             // Trainings
             QuickStatCard(
                 icon: "dumbbell.fill",
-                iconColor: AppTheme.deepBlue,
+                iconColor: colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue,
                 value: "\(cachedTrainingsThisMonth)",
                 label: "Trainings",
                 subtitle: "diesen Monat"
@@ -515,7 +516,7 @@ private struct VolumeChartCard: View {
                 HStack {
                     HStack(spacing: 8) {
                         Image(systemName: "chart.bar.fill")
-                            .foregroundStyle(AppTheme.deepBlue)
+                            .foregroundStyle(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                         Text("Volumen-Verlauf")
                             .font(.headline)
                             .foregroundStyle(.primary)
@@ -635,7 +636,7 @@ private struct CompactPersonalRecordsCard: View {
                     showingAllRecords = true
                 }
                 .font(.caption)
-                .foregroundStyle(AppTheme.deepBlue)
+                .foregroundStyle(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
             }
 
             if recentRecords.isEmpty {
@@ -786,7 +787,7 @@ private struct CompactHealthCard: View {
                         HStack(spacing: 4) {
                             Image(systemName: "figure.stand")
                                 .font(.caption)
-                                .foregroundStyle(AppTheme.deepBlue)
+                                .foregroundStyle(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                             Text("\(weight, specifier: "%.1f") kg")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -970,6 +971,7 @@ private struct ConsistencyCardView: View {
 // 2. Personal Records
 private struct PersonalRecordCardView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingAllRecords = false
     
     private var recentRecords: [ExerciseRecord] {
@@ -1047,7 +1049,7 @@ private struct PersonalRecordCardView: View {
                                     if record.bestEstimatedOneRepMax > 0 {
                                         Text("1RM: \(String(format: "%.0f", record.bestEstimatedOneRepMax)) kg")
                                             .font(.caption)
-                                            .foregroundStyle(AppTheme.deepBlue)
+                                            .foregroundStyle(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                                     }
                                 }
                             }
@@ -1203,6 +1205,7 @@ private struct WeeklyVolumeCardView: View {
 
 // 4. Muscle Group Balance
 private struct MuscleGroupBalanceCardView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
     
@@ -1298,7 +1301,7 @@ private struct MuscleGroupBalanceCardView: View {
             
             // Donut Chart (vereinfacht mit Balken)
             VStack(spacing: 8) {
-                balanceBar(title: "Push", ratio: muscleBalance.push, color: AppTheme.deepBlue)
+                balanceBar(title: "Push", ratio: muscleBalance.push, color: colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                 balanceBar(title: "Pull", ratio: muscleBalance.pull, color: AppTheme.mossGreen)
                 balanceBar(title: "Legs", ratio: muscleBalance.legs, color: .gray)
             }
@@ -1794,6 +1797,7 @@ struct MostUsedExercisesView: View {
     private var exerciseEntities: [ExerciseEntity]
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
 
     private var displayWorkouts: [Workout] {
         workoutEntities.map { Workout(entity: $0) }
@@ -1835,7 +1839,7 @@ struct MostUsedExercisesView: View {
                     HStack {
                         Text("\(index + 1).")
                             .fontWeight(.semibold)
-                            .foregroundColor(AppTheme.deepBlue)
+                            .foregroundColor(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
 
                         Text(exercise.name)
 
@@ -1907,6 +1911,7 @@ struct RecentActivityView: View {
 private struct DayStripView: View {
     let showCalendar: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
 
@@ -1959,7 +1964,7 @@ private struct DayStripView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Circle()
-                            .fill(AppTheme.deepBlue)
+                            .fill(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                             .frame(width: 6, height: 6)
                             .opacity(hasSession ? 1 : 0)
                     }
@@ -1979,6 +1984,7 @@ private struct DayStripView: View {
 private struct CalendarSessionsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
@@ -2071,14 +2077,14 @@ private struct CalendarSessionsView: View {
                                 ZStack {
                                     Circle()
                                         .fill(
-                                            isSelected ? AppTheme.deepBlue.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                            isSelected ? (colorScheme == .dark ? AppTheme.turquoiseBoost.opacity(0.25) : AppTheme.deepBlue.opacity(0.25)) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
                                         )
                                         .frame(width: 36, height: 36)
                                     Text(String(cal.component(.day, from: day)))
                                         .font(.subheadline.weight(.medium))
                                 }
                                 Circle()
-                                    .fill(AppTheme.deepBlue)
+                                    .fill(colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                                     .frame(width: 6, height: 6)
                                     .opacity(hasSession ? 1 : 0)
                             }
@@ -2200,6 +2206,7 @@ private extension Calendar {
 // 0. Last Workout Summary
 private struct LastWorkoutCardView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
 
@@ -2344,7 +2351,7 @@ private struct LastWorkoutCardView: View {
                 // Mögliche Rekorde
                 HStack(spacing: 6) {
                     Image(systemName: potentialPRs.isEmpty ? "trophy" : "trophy.fill")
-                        .foregroundStyle(potentialPRs.isEmpty ? Color.secondary : AppTheme.deepBlue)
+                        .foregroundStyle(potentialPRs.isEmpty ? Color.secondary : (colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue))
                     if potentialPRs.isEmpty {
                         Text("Keine neuen Rekorde erkannt")
                             .font(.caption)
@@ -2416,6 +2423,7 @@ private struct LastWorkoutCardView: View {
 // MARK: - Heart Rate Insights
 struct HeartRateInsightsView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var heartRateReadings: [HeartRateReading] = []
     @State private var isLoading = false
     @State private var error: HealthKitError?
@@ -2506,26 +2514,27 @@ struct HeartRateInsightsView: View {
                         // Stats
                         HStack(spacing: 12) {
                             heartRateStatBox(title: "Ø", value: Int(averageHeartRate), color: .gray)
-                            heartRateStatBox(title: "Max", value: Int(maxHeartRate), color: AppTheme.deepBlue)
+                            heartRateStatBox(title: "Max", value: Int(maxHeartRate), color: colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue)
                             heartRateStatBox(title: "Min", value: Int(minHeartRate), color: AppTheme.mossGreen)
                         }
                         
                         // Compact Chart
                         Chart(heartRateReadings.prefix(20)) { reading in
+                            let chartColor = colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue
                             LineMark(
                                 x: .value("Zeit", reading.timestamp),
                                 y: .value("Herzfrequenz", reading.heartRate)
                             )
-                            .foregroundStyle(AppTheme.deepBlue)
+                            .foregroundStyle(chartColor)
                             .interpolationMethod(.cardinal)
-                            
+
                             AreaMark(
                                 x: .value("Zeit", reading.timestamp),
                                 y: .value("Herzfrequenz", reading.heartRate)
                             )
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [AppTheme.deepBlue.opacity(0.3), AppTheme.deepBlue.opacity(0.1)],
+                                    colors: [chartColor.opacity(0.3), chartColor.opacity(0.1)],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 )
@@ -2671,6 +2680,7 @@ struct HeartRateInsightsView: View {
 // MARK: - Body Metrics Insights
 struct BodyMetricsInsightsView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var weightReadings: [BodyWeightReading] = []
     @State private var bodyFatReadings: [BodyFatReading] = []
     @State private var isLoading = false
@@ -2739,6 +2749,14 @@ struct BodyMetricsInsightsView: View {
     enum WeightTrend {
         case increasing, decreasing, stable
 
+        func color(for colorScheme: ColorScheme) -> Color {
+            switch self {
+            case .increasing: return .gray
+            case .decreasing: return AppTheme.mossGreen
+            case .stable: return colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue
+            }
+        }
+
         var color: Color {
             switch self {
             case .increasing: return .gray
@@ -2766,6 +2784,14 @@ struct BodyMetricsInsightsView: View {
     
     enum BodyFatTrend {
         case increasing, decreasing, stable
+
+        func color(for colorScheme: ColorScheme) -> Color {
+            switch self {
+            case .increasing: return .gray
+            case .decreasing: return AppTheme.mossGreen
+            case .stable: return colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue
+            }
+        }
 
         var color: Color {
             switch self {
@@ -2852,7 +2878,7 @@ struct BodyMetricsInsightsView: View {
                                     value: "\(weight.formatted(.number.precision(.fractionLength(1)))) kg",
                                     trend: weightTrend.description,
                                     trendIcon: weightTrend.icon,
-                                    color: weightTrend.color
+                                    color: weightTrend.color(for: colorScheme)
                                 )
                             }
                             
@@ -2862,7 +2888,7 @@ struct BodyMetricsInsightsView: View {
                                     value: "\((bodyFat * 100).formatted(.number.precision(.fractionLength(1))))%",
                                     trend: bodyFatTrend.description,
                                     trendIcon: bodyFatTrend.icon,
-                                    color: bodyFatTrend.color
+                                    color: bodyFatTrend.color(for: colorScheme)
                                 )
                             }
                         }
@@ -2922,20 +2948,21 @@ struct BodyMetricsInsightsView: View {
                                     .fontWeight(.medium)
                                 
                                 Chart(bodyFatReadings.suffix(30)) { reading in
+                                    let chartColor = colorScheme == .dark ? AppTheme.turquoiseBoost : AppTheme.deepBlue
                                     LineMark(
                                         x: .value("Datum", reading.date),
                                         y: .value("Körperfett", reading.bodyFatPercentage * 100)
                                     )
-                                    .foregroundStyle(AppTheme.deepBlue)
+                                    .foregroundStyle(chartColor)
                                     .interpolationMethod(.cardinal)
-                                    
+
                                     AreaMark(
                                         x: .value("Datum", reading.date),
                                         y: .value("Körperfett", reading.bodyFatPercentage * 100)
                                     )
                                     .foregroundStyle(
                                         LinearGradient(
-                                            colors: [AppTheme.deepBlue.opacity(0.3), AppTheme.deepBlue.opacity(0.1)],
+                                            colors: [chartColor.opacity(0.3), chartColor.opacity(0.1)],
                                             startPoint: .top,
                                             endPoint: .bottom
                                         )

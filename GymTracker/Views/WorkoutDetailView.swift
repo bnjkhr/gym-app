@@ -1950,6 +1950,7 @@ private struct ActiveWorkoutSetCard: View {
     @State private var restMinutes: Int = 0
     @State private var restSeconds: Int = 0
     @State private var showingDeleteConfirmation = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -2137,7 +2138,7 @@ private struct ActiveWorkoutSetCard: View {
                             .fontWeight(.bold)
                             .foregroundStyle(AppTheme.mossGreen)
                             .frame(width: 40, height: 40)
-                            .background(Color.white, in: Circle())
+                            .background(colorScheme == .dark ? Color(.systemGray6) : Color.white, in: Circle())
                             .overlay(
                                 Circle()
                                     .stroke(AppTheme.mossGreen, lineWidth: 2)

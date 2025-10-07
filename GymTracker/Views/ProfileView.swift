@@ -69,20 +69,20 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(profile.goal.displayName)
                         .font(.headline)
-                    
+
                     Text(profile.goal.description)
                         .font(.caption)
-                        .foregroundStyle(.black.opacity(0.6))
+                        .foregroundStyle(.primary.opacity(0.6))
                         .multilineTextAlignment(.leading)
                 }
-                
+
                 Spacer()
             }
-            .foregroundStyle(.black)
+            .foregroundStyle(.primary)
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white)
+                    .fill(colorScheme == .dark ? Color(.systemGray6) : Color.white)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
