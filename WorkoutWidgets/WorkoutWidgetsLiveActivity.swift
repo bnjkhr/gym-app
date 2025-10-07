@@ -288,7 +288,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
         title: "Pause",
         exerciseName: "Bankdrücken",
         isTimerExpired: false,
-        currentHeartRate: 142,
+        currentHeartRate: nil,
         timerEndDate: Date().addingTimeInterval(45)
     )
 
@@ -298,7 +298,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
         title: "Pause beendet",
         exerciseName: nil,
         isTimerExpired: true,
-        currentHeartRate: 156,
+        currentHeartRate: nil,
         timerEndDate: nil
     )
 
@@ -308,7 +308,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
         title: "Workout läuft",
         exerciseName: nil,
         isTimerExpired: false,
-        currentHeartRate: 128,
+        currentHeartRate: nil,
         timerEndDate: nil
     )
 }

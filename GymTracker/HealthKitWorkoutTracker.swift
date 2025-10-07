@@ -7,8 +7,10 @@ import OSLog
 class HealthKitWorkoutTracker: ObservableObject {
     private let healthStore = HKHealthStore()
     private var heartRateQuery: HKQuery?
+    private var pollingTimer: Timer?
     private var lastUpdateTime: Date?
     private let minimumUpdateInterval: TimeInterval = 1.0 // Maximal alle 1 Sekunde updaten
+    private let pollingInterval: TimeInterval = 3.0 // Alle 3 Sekunden aktiv abfragen
 
     @Published var currentHeartRate: Int?
     @Published var isTracking = false
@@ -43,22 +45,39 @@ class HealthKitWorkoutTracker: ObservableObject {
 
         AppLogger.health.info("[HR Tracker] Starte Live-Herzfrequenz-Tracking")
 
-        // Erstelle Query für kontinuierliche Updates
+        // Erstelle Observer Query für Updates bei neuen Samples
         let query = createHeartRateStreamingQuery()
         heartRateQuery = query
         healthStore.execute(query)
 
         isTracking = true
+
+        // Hole sofort den aktuellen Wert beim Start
+        Task {
+            await fetchLatestHeartRate()
+        }
+
+        // Starte zusätzlichen Polling-Timer für regelmäßige Updates
+        // Dies stellt sicher, dass wir auch dann Updates bekommen, wenn der Observer nicht triggert
+        pollingTimer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.fetchLatestHeartRate()
+            }
+        }
     }
 
     /// Stoppt das Live-Herzfrequenz-Tracking
     func stopTracking() {
-        guard let query = heartRateQuery else { return }
-
         AppLogger.health.info("[HR Tracker] Stoppe Live-Herzfrequenz-Tracking")
 
-        healthStore.stop(query)
-        heartRateQuery = nil
+        if let query = heartRateQuery {
+            healthStore.stop(query)
+            heartRateQuery = nil
+        }
+
+        pollingTimer?.invalidate()
+        pollingTimer = nil
+
         isTracking = false
         currentHeartRate = nil
     }
@@ -70,32 +89,52 @@ class HealthKitWorkoutTracker: ObservableObject {
             fatalError("Herzfrequenz-Typ sollte verfügbar sein")
         }
 
-        // Nur Samples der letzten 10 Sekunden berücksichtigen
-        let predicate = HKQuery.predicateForSamples(
-            withStart: Date().addingTimeInterval(-10),
-            end: nil,
-            options: .strictStartDate
-        )
-
-        let query = HKAnchoredObjectQuery(
-            type: heartRateType,
-            predicate: predicate,
-            anchor: nil,
-            limit: HKObjectQueryNoLimit
-        ) { [weak self] query, samples, deletedObjects, anchor, error in
-            Task { @MainActor [weak self] in
-                self?.handleHeartRateSamples(samples: samples, error: error)
+        // Observer Query für kontinuierliche Updates - wird bei jedem neuen Sample getriggert
+        let query = HKObserverQuery(sampleType: heartRateType, predicate: nil) { [weak self] query, completionHandler, error in
+            if let error = error {
+                AppLogger.health.error("[HR Tracker] Observer Query Fehler: \(error.localizedDescription)")
+                completionHandler()
+                return
             }
-        }
 
-        // Update-Handler für kontinuierliche Updates
-        query.updateHandler = { [weak self] query, samples, deletedObjects, anchor, error in
+            // Hole die neuesten Herzfrequenz-Samples
             Task { @MainActor [weak self] in
-                self?.handleHeartRateSamples(samples: samples, error: error)
+                await self?.fetchLatestHeartRate()
+                completionHandler()
             }
         }
 
         return query
+    }
+
+    private func fetchLatestHeartRate() async {
+        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
+            return
+        }
+
+        // Hole nur die neuesten Samples der letzten 30 Sekunden
+        let now = Date()
+        let startDate = now.addingTimeInterval(-30)
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
+
+        // Sortiere nach Datum, neueste zuerst
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: heartRateType,
+                predicate: predicate,
+                limit: 1, // Nur den neuesten Wert
+                sortDescriptors: [sortDescriptor]
+            ) { [weak self] query, samples, error in
+                Task { @MainActor [weak self] in
+                    self?.handleHeartRateSamples(samples: samples, error: error)
+                    continuation.resume()
+                }
+            }
+
+            healthStore.execute(query)
+        }
     }
 
     private func handleHeartRateSamples(samples: [HKSample]?, error: Error?) {
@@ -141,5 +180,6 @@ class HealthKitWorkoutTracker: ObservableObject {
         if let query = heartRateQuery {
             healthStore.stop(query)
         }
+        pollingTimer?.invalidate()
     }
 }
