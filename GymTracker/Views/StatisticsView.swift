@@ -26,6 +26,14 @@ struct StatisticsView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
 
+    // Filter out active/incomplete workouts - only show completed sessions
+    private var completedSessions: [WorkoutSessionEntity] {
+        sessionEntities.filter { session in
+            // Only include sessions with a duration (completed workouts)
+            session.duration != nil && session.duration! > 0
+        }
+    }
+
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground)
@@ -39,19 +47,19 @@ struct StatisticsView: View {
                         .padding(.top, 8)
 
                     // Hero-Card: Streak/Konsistenz
-                    HeroStreakCard(sessionEntities: sessionEntities)
+                    HeroStreakCard(sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
 
                     // Smart Tips Card (AI-Coach)
-                    SmartTipsCard(sessionEntities: sessionEntities)
+                    SmartTipsCard(sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
 
                     // Quick-Stats Grid (2x2)
-                    QuickStatsGrid(sessionEntities: sessionEntities)
+                    QuickStatsGrid(sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
 
                     // Volumen-Chart Card (expandierbar)
-                    VolumeChartCard(isExpanded: $expandedVolumeCard, sessionEntities: sessionEntities)
+                    VolumeChartCard(isExpanded: $expandedVolumeCard, sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
 
                     // Personal Records Card (kompakt)
@@ -60,7 +68,7 @@ struct StatisticsView: View {
 
                     // Health Cards (optional, nur wenn Daten vorhanden)
                     if workoutStore.healthKitManager.isAuthorized {
-                        CompactHealthCard(isExpanded: $expandedHealthCard, sessionEntities: sessionEntities)
+                        CompactHealthCard(isExpanded: $expandedHealthCard, sessionEntities: completedSessions)
                             .padding(.horizontal, 20)
                     }
                 }
@@ -129,6 +137,7 @@ private struct HeroStreakCard: View {
     @State private var cachedConsistencyWeeks: Int = 0
     @State private var cachedWorkoutsThisWeek: Int = 0
     @State private var cachedHeroText: (title: String, subtitle: String) = ("", "")
+    @State private var updateTask: Task<Void, Never>?
 
     private var weekStart: Date {
         let calendar = Calendar.current
@@ -140,7 +149,7 @@ private struct HeroStreakCard: View {
         let calendar = Calendar.current
         let today = Date()
         var consecutiveWeeks = 0
-        var currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
 
         for i in 0..<12 {
             let weekStart = calendar.date(byAdding: .weekOfYear, value: -i, to: currentWeekStart) ?? currentWeekStart
@@ -242,10 +251,25 @@ private struct HeroStreakCard: View {
         )
         .shadow(color: AppTheme.mossGreen.opacity(0.3), radius: 20, x: 0, y: 10)
         .onAppear {
-            calculateStreakData()
+            scheduleUpdate()
         }
         .onChange(of: sessionEntities.count) { _, _ in
-            calculateStreakData()
+            scheduleUpdate()
+        }
+        .onDisappear {
+            updateTask?.cancel()
+        }
+    }
+
+    // Debounced update to prevent constant recalculations
+    private func scheduleUpdate() {
+        updateTask?.cancel()
+        updateTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms delay
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                calculateStreakData()
+            }
         }
     }
 }
@@ -260,6 +284,7 @@ private struct QuickStatsGrid: View {
     @State private var cachedNewPRsThisWeek: Int = 0
     @State private var cachedPreviousWeekVolume: Double = 0
     @State private var cachedVolumeTrend: String = "→"
+    @State private var updateTask: Task<Void, Never>?
 
     private var monthStart: Date {
         let calendar = Calendar.current
@@ -335,6 +360,7 @@ private struct QuickStatsGrid: View {
                 label: "Volumen",
                 subtitle: cachedVolumeTrend
             )
+            .equatable()
 
             // Neue PRs
             QuickStatCard(
@@ -344,6 +370,7 @@ private struct QuickStatsGrid: View {
                 label: "Neue PRs",
                 subtitle: "diese Woche"
             )
+            .equatable()
 
             // Trainings
             QuickStatCard(
@@ -353,6 +380,7 @@ private struct QuickStatsGrid: View {
                 label: "Trainings",
                 subtitle: "diesen Monat"
             )
+            .equatable()
 
             // Trend
             QuickStatCard(
@@ -362,23 +390,46 @@ private struct QuickStatsGrid: View {
                 label: "Trend",
                 subtitle: "vs. Vorwoche"
             )
+            .equatable()
         }
         .onAppear {
-            calculateStats()
+            scheduleUpdate()
         }
         .onChange(of: sessionEntities.count) { _, _ in
-            calculateStats()
+            scheduleUpdate()
+        }
+        .onDisappear {
+            updateTask?.cancel()
+        }
+    }
+
+    // Debounced update to prevent constant recalculations
+    private func scheduleUpdate() {
+        updateTask?.cancel()
+        updateTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms delay
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                calculateStats()
+            }
         }
     }
 }
 
-private struct QuickStatCard: View {
+private struct QuickStatCard: View, Equatable {
     let icon: String
     let iconColor: Color
     let value: String
     let label: String
     let subtitle: String
     @Environment(\.colorScheme) private var colorScheme
+
+    static func == (lhs: QuickStatCard, rhs: QuickStatCard) -> Bool {
+        lhs.icon == rhs.icon &&
+        lhs.value == rhs.value &&
+        lhs.label == rhs.label &&
+        lhs.subtitle == rhs.subtitle
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -427,6 +478,7 @@ private struct VolumeChartCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var cachedLast4WeeksData: [(week: String, volume: Double)] = []
+    @State private var updateTask: Task<Void, Never>?
 
     private func calculateChartData() {
         let calendar = Calendar.current
@@ -530,10 +582,25 @@ private struct VolumeChartCard: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .onAppear {
-            calculateChartData()
+            scheduleUpdate()
         }
         .onChange(of: sessionEntities.count) { _, _ in
-            calculateChartData()
+            scheduleUpdate()
+        }
+        .onDisappear {
+            updateTask?.cancel()
+        }
+    }
+
+    // Debounced update to prevent constant recalculations
+    private func scheduleUpdate() {
+        updateTask?.cancel()
+        updateTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms delay
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                calculateChartData()
+            }
         }
     }
 }
@@ -819,7 +886,7 @@ private struct ConsistencyCardView: View {
         let calendar = Calendar.current
         let today = Date()
         var consecutiveWeeks = 0
-        var currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
         
         for i in 0..<12 { // Maximal 12 Wochen zurückschauen
             let weekStart = calendar.date(byAdding: .weekOfYear, value: -i, to: currentWeekStart) ?? currentWeekStart
@@ -1911,6 +1978,7 @@ private struct DayStripView: View {
 // MARK: - Calendar Sessions Sheet
 private struct CalendarSessionsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
@@ -1953,7 +2021,7 @@ private struct CalendarSessionsView: View {
         let cal = Calendar.current
         let start = cal.startOfDay(for: date)
         let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
-        return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
+        return sameDay.map { WorkoutSession(entity: $0, in: modelContext) }.sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -2036,25 +2104,32 @@ private struct CalendarSessionsView: View {
                 } else {
                     List {
                         ForEach(daySessions) { session in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(session.name)
-                                    .font(.subheadline.weight(.semibold))
-                                HStack(spacing: 8) {
-                                    Text({
-                                        let formatter = DateFormatter()
-                                        formatter.locale = Locale(identifier: "de_DE")
-                                        formatter.timeStyle = .short
-                                        formatter.dateStyle = .none
-                                        return formatter.string(from: session.date)
-                                    }())
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text("• \(session.exercises.count) Übungen")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                            NavigationLink {
+                                SessionDetailView(session: session)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(session.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    HStack(spacing: 8) {
+                                        Text({
+                                            let formatter = DateFormatter()
+                                            formatter.locale = Locale(identifier: "de_DE")
+                                            formatter.timeStyle = .short
+                                            formatter.dateStyle = .none
+                                            return formatter.string(from: session.date)
+                                        }())
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        let completedExercises = session.exercises.filter { exercise in
+                                            exercise.sets.contains(where: { $0.completed })
+                                        }.count
+                                        Text("• \(completedExercises) Übungen abgeschlossen")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
+                                .padding(.vertical, 4)
                             }
-                            .padding(.vertical, 4)
                         }
                     }
                     .listStyle(.plain)
