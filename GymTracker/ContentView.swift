@@ -143,22 +143,24 @@ struct ContentView: View {
         .overlay(alignment: .bottom) {
             // ActiveWorkoutBar wird nicht in WorkoutDetailView angezeigt
             if let activeWorkout = workoutStore.activeWorkout, !isInWorkoutDetail {
-                VStack(spacing: 0) {
-                    Spacer()
+                GeometryReader { geometry in
+                    VStack(spacing: 0) {
+                        Spacer()
 
-                    ActiveWorkoutBar(
-                        workout: activeWorkout,
-                        resumeAction: {
-                            // Switch to Home tab and signal to navigate to active workout
-                            selectedTab = 0
-                            NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
-                        },
-                        endAction: { showingEndWorkoutConfirmation = true }
-                    )
-                    .environmentObject(workoutStore)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 90) // Platz für die Tab-Bar
+                        ActiveWorkoutBar(
+                            workout: activeWorkout,
+                            resumeAction: {
+                                // Switch to Home tab and signal to navigate to active workout
+                                selectedTab = 0
+                                NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+                            },
+                            endAction: { showingEndWorkoutConfirmation = true }
+                        )
+                        .environmentObject(workoutStore)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, geometry.size.height < 700 ? 70 : 90) // Weniger Padding für kleine Bildschirme (iPhone Mini, SE)
+                    }
                 }
                 .ignoresSafeArea(.keyboard)
             }

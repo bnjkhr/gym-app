@@ -211,8 +211,6 @@ struct GymTrackerApp: App {
 
         // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
         do {
-            let lastVersion = UserDefaults.standard.integer(forKey: "sampleWorkoutVersion")
-
             let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
             let existingWorkouts = try context.fetch(workoutDescriptor)
 
@@ -222,12 +220,22 @@ struct GymTrackerApp: App {
             }
             try? context.save()
 
-            // Wenn Version veraltet ist ODER keine Workouts vorhanden
-            if lastVersion < DataVersions.SAMPLE_WORKOUT_VERSION || existingWorkouts.isEmpty {
+            // Prüfe, ob Sample-Workouts korrupte Exercise-Referenzen haben
+            let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
+            var hasCorruptedWorkouts = false
+            for workout in sampleWorkouts {
+                let nilExerciseCount = workout.exercises.filter { $0.exercise == nil }.count
+                if nilExerciseCount > 0 {
+                    AppLogger.workouts.warning("⚠️ Workout '\(workout.name)' hat \(nilExerciseCount) korrupte Exercise-Referenzen")
+                    hasCorruptedWorkouts = true
+                }
+            }
+
+            // Lösche und lade neu, wenn Workouts korrupt sind
+            if hasCorruptedWorkouts || existingWorkouts.isEmpty {
                 // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
-                let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
                 if !sampleWorkouts.isEmpty {
-                    AppLogger.workouts.info("Deleting \(sampleWorkouts.count) outdated sample workouts")
+                    AppLogger.workouts.info("Deleting \(sampleWorkouts.count) corrupted/outdated sample workouts")
                     for workout in sampleWorkouts {
                         context.delete(workout)
                     }
@@ -243,8 +251,7 @@ struct GymTrackerApp: App {
                 AppLogger.workouts.info("Sample workouts updated to version \(DataVersions.SAMPLE_WORKOUT_VERSION)")
             } else {
                 let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
-                let samples = existingWorkouts.filter { $0.isSampleWorkout == true }
-                AppLogger.workouts.info("Sample workouts up to date (v\(DataVersions.SAMPLE_WORKOUT_VERSION)): \(samples.count) samples, \(userWorkouts.count) user workouts")
+                AppLogger.workouts.info("Sample workouts OK: \(sampleWorkouts.count) samples, \(userWorkouts.count) user workouts")
             }
         } catch {
             AppLogger.workouts.error("Sample workout update failed: \(error.localizedDescription)")
