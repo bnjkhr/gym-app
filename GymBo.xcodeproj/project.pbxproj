@@ -48,7 +48,6 @@
 		AD2A83C72E942E7500A6ADBE /* WorkoutAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83C32E942E7500A6ADBE /* WorkoutAnalyzer.swift */; };
 		AD2A83CB2E942EA000A6ADBE /* SmartTipsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */; };
 		AD2A83CD2E94560200A6ADBE /* ExerciseSwapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */; };
-		AD2A83D02E945CC300A6ADBE /* AppIconManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */; };
 		AD2A83D22E94614300A6ADBE /* HealthKitWorkoutTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2A83D12E94614300A6ADBE /* HealthKitWorkoutTracker.swift */; };
 		AD363D982E8C556A0015A34D /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D972E8C556A0015A34D /* HealthKitManager.swift */; };
 		AD363D9A2E8C56740015A34D /* HeartRateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD363D992E8C56740015A34D /* HeartRateView.swift */; };
@@ -163,7 +162,6 @@
 		AD2A83C32E942E7500A6ADBE /* WorkoutAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAnalyzer.swift; sourceTree = "<group>"; };
 		AD2A83C92E942EA000A6ADBE /* SmartTipsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTipsCard.swift; sourceTree = "<group>"; };
 		AD2A83CC2E94560200A6ADBE /* ExerciseSwapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSwapView.swift; sourceTree = "<group>"; };
-		AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconManager.swift; sourceTree = "<group>"; };
 		AD2A83D12E94614300A6ADBE /* HealthKitWorkoutTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitWorkoutTracker.swift; sourceTree = "<group>"; };
 		AD363D972E8C556A0015A34D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		AD363D992E8C56740015A34D /* HeartRateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateView.swift; sourceTree = "<group>"; };
@@ -422,7 +420,6 @@
 		AD2A83CF2E945CC300A6ADBE /* Managers */ = {
 			isa = PBXGroup;
 			children = (
-				AD2A83CE2E945CC300A6ADBE /* AppIconManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -609,7 +606,6 @@
 				AD271CB92E8529B900FECDA1 /* SpeechRecognizer.swift in Sources */,
 				11E749052C9E4B9700AB1234 /* WorkoutStore.swift in Sources */,
 				ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */,
-				AD2A83D02E945CC300A6ADBE /* AppIconManager.swift in Sources */,
 				AD2568DE2E904996009BE060 /* ExerciseRecord.swift in Sources */,
 				ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */,
 				AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */,
@@ -777,7 +773,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = GymBo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 40;
+				CURRENT_PROJECT_VERSION = 79;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
@@ -818,7 +814,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = GymBo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 40;
+				CURRENT_PROJECT_VERSION = 79;
 				DEVELOPMENT_ASSET_PATHS = "\"GymTracker/Preview Content\"";
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				ENABLE_PREVIEWS = YES;
@@ -857,7 +853,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 40;
+				CURRENT_PROJECT_VERSION = 79;
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutWidgets/Info.plist;
@@ -892,7 +888,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 40;
+				CURRENT_PROJECT_VERSION = 79;
 				DEVELOPMENT_TEAM = 5N2YD2P2G5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutWidgets/Info.plist;

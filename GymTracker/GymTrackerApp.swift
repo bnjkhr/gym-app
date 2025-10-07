@@ -33,6 +33,7 @@ struct GymTrackerApp: App {
         }
 
         // Use new factory with robust fallback chain
+        // This automatically handles lightweight migrations (new optional properties, etc.)
         let result = ModelContainerFactory.createContainer(schema: schema)
 
         switch result {
@@ -114,11 +115,62 @@ struct GymTrackerApp: App {
 
     // MARK: - Performance: Background Migration
 
+    /// Data version constants - increment these manually when database updates are needed
+    private struct DataVersions {
+        static let EXERCISE_DATABASE_VERSION = 1  // Increment when exercises.csv changes
+        static let SAMPLE_WORKOUT_VERSION = 2     // Increment when workouts.csv changes (already in use)
+        static let FORCE_FULL_RESET_VERSION = 2   // Increment for critical breaking changes (nuclear option)
+    }
+
     /// Performs all database migrations in the background to avoid blocking UI
     private func performMigrations() async {
         let context = sharedModelContainer.mainContext
 
-        // 🔄 SCHRITT 1: Exercise-Migration (alte Übungen → CSV-Übungen)
+        // 🔍 SCHRITT -1: Check if migration from old schema is needed (schema validation)
+        do {
+            // Try to fetch one entity of each type to verify schema compatibility
+            var exerciseDescriptor = FetchDescriptor<ExerciseEntity>()
+            exerciseDescriptor.fetchLimit = 1
+            _ = try context.fetch(exerciseDescriptor)
+
+            var workoutDescriptor = FetchDescriptor<WorkoutEntity>()
+            workoutDescriptor.fetchLimit = 1
+            _ = try context.fetch(workoutDescriptor)
+
+            AppLogger.data.info("✅ Schema validation successful - database is compatible")
+        } catch {
+            // Schema incompatible - this happens when old app version has different entity structure
+            AppLogger.data.error("❌ Schema validation failed: \(error.localizedDescription)")
+            AppLogger.data.warning("⚠️ Database schema incompatible - this may require a reset")
+
+            // Check if we're using in-memory storage (fallback already happened)
+            if storageLocation == .inMemory {
+                AppLogger.data.warning("Already using in-memory storage - proceeding with fresh data")
+                await performForceReset(context: context)
+                return
+            }
+        }
+
+        // 🚨 SCHRITT 0: Force Full Reset (Nuclear Option - nur bei kritischen Breaking Changes)
+        let forceResetVersion = UserDefaults.standard.integer(forKey: "forceResetVersion")
+        if forceResetVersion < DataVersions.FORCE_FULL_RESET_VERSION {
+            AppLogger.data.warning("🚨 Force full reset triggered (version \(forceResetVersion) → \(DataVersions.FORCE_FULL_RESET_VERSION))")
+            await performForceReset(context: context)
+            UserDefaults.standard.set(DataVersions.FORCE_FULL_RESET_VERSION, forKey: "forceResetVersion")
+            AppLogger.data.info("✅ Force reset completed - all data reloaded")
+            return // Nach Force-Reset sind alle Daten bereits neu geladen
+        }
+
+        // 🔄 SCHRITT 1: Exercise Database Update (wenn Exercise-CSV sich geändert hat)
+        let lastExerciseVersion = UserDefaults.standard.integer(forKey: "exerciseDatabaseVersion")
+        if lastExerciseVersion < DataVersions.EXERCISE_DATABASE_VERSION {
+            AppLogger.exercises.info("🔄 Exercise database update needed (version \(lastExerciseVersion) → \(DataVersions.EXERCISE_DATABASE_VERSION))")
+            await performExerciseUpdate(context: context)
+            UserDefaults.standard.set(DataVersions.EXERCISE_DATABASE_VERSION, forKey: "exerciseDatabaseVersion")
+            AppLogger.exercises.info("✅ Exercise database updated successfully")
+        }
+
+        // 🔄 SCHRITT 1b: Legacy Exercise-Migration (alte Übungen → CSV-Übungen, für alte Installationen)
         do {
             if await ExerciseDatabaseMigration.isMigrationNeeded() {
                 await ExerciseDatabaseMigration.migrateToCSVExercises(context: context)
@@ -127,7 +179,7 @@ struct GymTrackerApp: App {
             AppLogger.exercises.error("Exercise migration failed: \(error.localizedDescription)")
         }
 
-        // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden
+        // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden (Fallback)
         do {
             let descriptor = FetchDescriptor<ExerciseEntity>()
             let existingExercises = try context.fetch(descriptor)
@@ -159,7 +211,6 @@ struct GymTrackerApp: App {
 
         // 🌱 SCHRITT 3: Versioniertes Sample-Workout Update
         do {
-            let SAMPLE_WORKOUT_VERSION = 2 // Bei neuen Samples erhöhen!
             let lastVersion = UserDefaults.standard.integer(forKey: "sampleWorkoutVersion")
 
             let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
@@ -172,7 +223,7 @@ struct GymTrackerApp: App {
             try? context.save()
 
             // Wenn Version veraltet ist ODER keine Workouts vorhanden
-            if lastVersion < SAMPLE_WORKOUT_VERSION || existingWorkouts.isEmpty {
+            if lastVersion < DataVersions.SAMPLE_WORKOUT_VERSION || existingWorkouts.isEmpty {
                 // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
                 let sampleWorkouts = existingWorkouts.filter { $0.isSampleWorkout == true }
                 if !sampleWorkouts.isEmpty {
@@ -184,16 +235,16 @@ struct GymTrackerApp: App {
                 }
 
                 // Lade neue Sample-Workouts
-                AppLogger.workouts.info("Loading sample workouts (Version \(SAMPLE_WORKOUT_VERSION))")
+                AppLogger.workouts.info("Loading sample workouts (Version \(DataVersions.SAMPLE_WORKOUT_VERSION))")
                 WorkoutSeeder.seedWorkouts(context: context)
 
                 // Speichere neue Version
-                UserDefaults.standard.set(SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
-                AppLogger.workouts.info("Sample workouts updated to version \(SAMPLE_WORKOUT_VERSION)")
+                UserDefaults.standard.set(DataVersions.SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
+                AppLogger.workouts.info("Sample workouts updated to version \(DataVersions.SAMPLE_WORKOUT_VERSION)")
             } else {
                 let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
                 let samples = existingWorkouts.filter { $0.isSampleWorkout == true }
-                AppLogger.workouts.info("Sample workouts up to date (v\(SAMPLE_WORKOUT_VERSION)): \(samples.count) samples, \(userWorkouts.count) user workouts")
+                AppLogger.workouts.info("Sample workouts up to date (v\(DataVersions.SAMPLE_WORKOUT_VERSION)): \(samples.count) samples, \(userWorkouts.count) user workouts")
             }
         } catch {
             AppLogger.workouts.error("Sample workout update failed: \(error.localizedDescription)")
@@ -229,6 +280,99 @@ struct GymTrackerApp: App {
             #endif
         }
         #endif
+    }
+
+    // MARK: - Reset Functions
+
+    /// Force Full Reset: Deletes all data except workout sessions (history)
+    /// Use this for critical breaking changes that require a clean slate
+    private func performForceReset(context: ModelContext) async {
+        do {
+            // 1. Lösche ALLE Exercises (Sample + Custom)
+            let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            AppLogger.data.info("🗑️ Deleting \(exercises.count) exercises")
+            for exercise in exercises {
+                context.delete(exercise)
+            }
+
+            // 2. Lösche ALLE Workouts (Sample + Custom)
+            let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
+            AppLogger.data.info("🗑️ Deleting \(workouts.count) workouts")
+            for workout in workouts {
+                context.delete(workout)
+            }
+
+            // 3. Lösche User Profile (wird neu erstellt)
+            let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
+            AppLogger.data.info("🗑️ Deleting \(profiles.count) profiles")
+            for profile in profiles {
+                context.delete(profile)
+            }
+
+            // 4. Lösche ExerciseRecords (wird aus Sessions neu generiert)
+            let records = try context.fetch(FetchDescriptor<ExerciseRecordEntity>())
+            AppLogger.data.info("🗑️ Deleting \(records.count) exercise records")
+            for record in records {
+                context.delete(record)
+            }
+
+            // WICHTIG: Sessions (Workout-Historie) bleiben erhalten!
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            AppLogger.data.info("✅ Preserving \(sessions.count) workout sessions (history)")
+
+            try context.save()
+            AppLogger.data.info("✅ Force reset: all data deleted")
+
+            // 5. Lade Daten neu
+            AppLogger.data.info("🔄 Reloading fresh data...")
+
+            // Exercises neu laden
+            ExerciseSeeder.seedExercises(context: context)
+            UserDefaults.standard.set(DataVersions.EXERCISE_DATABASE_VERSION, forKey: "exerciseDatabaseVersion")
+
+            // Sample-Workouts neu laden
+            WorkoutSeeder.seedWorkouts(context: context)
+            UserDefaults.standard.set(DataVersions.SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
+
+            // User Profile neu erstellen
+            let profile = UserProfileEntity()
+            context.insert(profile)
+            try context.save()
+
+            // ExerciseRecords aus Sessions regenerieren
+            if await ExerciseRecordMigration.isMigrationNeeded(context: context) {
+                await ExerciseRecordMigration.migrateExistingData(context: context)
+            }
+
+            AppLogger.data.info("✅ Force reset completed successfully")
+
+        } catch {
+            AppLogger.data.error("❌ Force reset failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Exercise Database Update: Deletes all exercises and reloads from CSV
+    /// Use this when exercises.csv has been updated
+    private func performExerciseUpdate(context: ModelContext) async {
+        do {
+            // 1. Lösche ALLE Exercises
+            let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            AppLogger.exercises.info("🗑️ Deleting \(exercises.count) exercises for update")
+            for exercise in exercises {
+                context.delete(exercise)
+            }
+            try context.save()
+
+            // 2. Lade Exercises neu aus CSV
+            AppLogger.exercises.info("🔄 Loading exercises from CSV")
+            ExerciseSeeder.seedExercises(context: context)
+
+            let newExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+            AppLogger.exercises.info("✅ Exercise update completed: \(newExercises.count) exercises loaded")
+
+        } catch {
+            AppLogger.exercises.error("❌ Exercise update failed: \(error.localizedDescription)")
+        }
     }
 }
 

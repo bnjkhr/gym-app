@@ -41,5 +41,7 @@
 	</array>
 	<key>UISupportsDocumentBrowser</key>
 	<false/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 </dict>
 </plist>
