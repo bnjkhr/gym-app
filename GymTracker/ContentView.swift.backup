@@ -1911,387 +1911,11 @@ struct CapsuleTag: View {
     }
 }
 
-// MARK: - Calendar Sessions Sheet
-private struct CalendarSessionsView: View {
-    @Environment(\.dismiss) private var dismiss
+// MARK: - Session Detail UI Components moved to SessionDetailComponents.swift
+// MARK: - Session Statistics moved to SessionStatistics.swift
+// MARK: - SessionDetailView moved to SessionDetailView.swift
 
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
-
-    @State private var displayedMonth: Date = Date()
-    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
-
-    // Performance: Use cached DateFormatter
-    private var monthTitle: String {
-        DateFormatters.germanMonthYear.string(from: displayedMonth)
-    }
-
-    private var daysInMonth: [Date] {
-        let cal = Calendar.current
-        guard let range = cal.range(of: .day, in: .month, for: displayedMonth),
-              let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
-        return range.compactMap { day -> Date? in
-            cal.date(byAdding: .day, value: day - 1, to: monthStart)
-        }
-    }
-
-    private var gridDays: [Date?] {
-        let cal = Calendar.current
-        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
-        let weekday = cal.component(.weekday, from: monthStart) // 1=Sun...
-        let leading = (weekday + 5) % 7 // convert to Monday=0 leading count
-        let leadingPlaceholders: [Date?] = Array(repeating: nil, count: leading)
-        return leadingPlaceholders + daysInMonth.map { Optional($0) }
-    }
-
-    private var sessionDays: Set<Date> {
-        let cal = Calendar.current
-        return Set(sessionEntities.map { cal.startOfDay(for: $0.date) })
-    }
-
-    private func sessions(on date: Date) -> [WorkoutSession] {
-        let cal = Calendar.current
-        let start = cal.startOfDay(for: date)
-        let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
-        return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
-    }
-    
-    // Performance: Use cached weekday symbols
-    private func localizedWeekdaySymbols() -> [String] {
-        DateFormatters.germanVeryShortWeekdaySymbols()
-    }
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                // Header with month navigation
-                HStack {
-                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth } label: {
-                        Image(systemName: "chevron.left")
-                    }
-                    Spacer()
-                    Text(monthTitle)
-                        .font(.headline)
-                    Spacer()
-                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth } label: {
-                        Image(systemName: "chevron.right")
-                    }
-                }
-                .padding(.horizontal, 20)
-
-                // Weekday symbols (localized)
-                HStack {
-                    ForEach(localizedWeekdaySymbols(), id: \.self) { d in
-                        Text(d)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal, 20)
-
-                // Calendar grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
-                    ForEach(gridDays.indices, id: \.self) { idx in
-                        if let day = gridDays[idx] {
-                            let cal = Calendar.current
-                            let isToday = cal.isDateInToday(day)
-                            let isSelected = cal.isDate(cal.startOfDay(for: day), inSameDayAs: selectedDate)
-                            let hasSession = sessionDays.contains(cal.startOfDay(for: day))
-                            VStack(spacing: 6) {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            isSelected ? AppTheme.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
-                                        )
-                                        .frame(width: 36, height: 36)
-                                    Text(String(cal.component(.day, from: day)))
-                                        .font(.subheadline.weight(.medium))
-                                }
-                                Circle()
-                                    .fill(AppTheme.darkPurple)
-                                    .frame(width: 6, height: 6)
-                                    .opacity(hasSession ? 1 : 0)
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedDate = cal.startOfDay(for: day)
-                            }
-                        } else {
-                            Color.clear.frame(height: 44)
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-
-                // Sessions list for selected date
-                let daySessions = sessions(on: selectedDate)
-                if daySessions.isEmpty {
-                    VStack(spacing: 8) {
-                        Text("Keine Trainings an diesem Tag")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                } else {
-                    List {
-                        ForEach(daySessions, id: \.id) { session in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(session.name)
-                                    .font(.subheadline.weight(.semibold))
-                                HStack(spacing: 8) {
-                                    Text({
-                                        let formatter = DateFormatter()
-                                        formatter.locale = Locale(identifier: "de_DE")
-                                        formatter.timeStyle = .short
-                                        formatter.dateStyle = .none
-                                        return formatter.string(from: session.date)
-                                    }())
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text("• \(session.exercises.count) Übungen")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                    .listStyle(.plain)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .navigationTitle("Kalender")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Date Helpers
-private extension Calendar {
-    func isDate(_ date1: Date, inSameDayAs startOfDay: Date) -> Bool {
-        isDate(date1, equalTo: startOfDay, toGranularity: .day)
-    }
-}
-
-private extension Array {
-    func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
-        var first: [Element] = []
-        var second: [Element] = []
-        for el in self {
-            if isInFirstPartition(el) {
-                first.append(el)
-            } else {
-                second.append(el)
-            }
-        }
-        return first + second
-    }
-}
-
-private extension View {
-    func erasedToAnyView() -> AnyView { AnyView(self) }
-}
-
-// MARK: - Error View
-struct ErrorWorkoutView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 50))
-                .foregroundColor(.orange)
-            Text("Workout nicht verfügbar")
-                .font(.headline)
-            Text("Das Workout konnte nicht geladen werden.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Button("Zurück") {
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
-    }
-}
-
-#Preview {
-    ContentView()
-}
-
-extension Notification.Name {
-    static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
-    static let navigateToWorkoutsTab = Notification.Name("navigateToWorkoutsTab")
-}
-
-// MARK: - Environment Key for WorkoutDetailView visibility
-private struct IsInWorkoutDetailKey: EnvironmentKey {
-    static let defaultValue: Bool = false
-}
-
-extension EnvironmentValues {
-    var isInWorkoutDetail: Bool {
-        get { self[IsInWorkoutDetailKey.self] }
-        set { self[IsInWorkoutDetailKey.self] = newValue }
-    }
-}
-
-// MARK: - Custom Button Styles for Smooth Interactions
-struct ScaleButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Locker Number Input View
-struct LockerNumberInputView: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var workoutStore: WorkoutStore
-    @State private var lockerNumber: String = ""
-    @FocusState private var isTextFieldFocused: Bool
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.background
-                    .ignoresSafeArea()
-
-                VStack(spacing: 24) {
-                    Spacer()
-
-                    // Icon
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 60, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [AppTheme.deepBlue, AppTheme.turquoiseBoost],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .padding(.bottom, 8)
-
-                    // Title
-                    Text("Deine Spintnummer")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(.primary)
-
-                    Text("Damit du sie nicht vergisst 😉")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.bottom, 16)
-
-                    // Input Field
-                    TextField("z.B. 42", text: $lockerNumber)
-                        .font(.system(size: 48, weight: .bold))
-                        .multilineTextAlignment(.center)
-                        .keyboardType(.numberPad)
-                        .focused($isTextFieldFocused)
-                        .defaultFocus($isTextFieldFocused, true)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.systemGray6))
-                        )
-                        .frame(maxWidth: 200)
-                        .onChange(of: isTextFieldFocused) { _, isFocused in
-                            if isFocused && !lockerNumber.isEmpty {
-                                // Auto-select all text when focused
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                    UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
-                                }
-                            }
-                        }
-
-                    Spacer()
-
-                    // Save Button
-                    Button {
-                        saveLockerNumber()
-                    } label: {
-                        Text("Speichern")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [AppTheme.mossGreen, AppTheme.turquoiseBoost],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 32)
-                }
-            }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") {
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear {
-                lockerNumber = workoutStore.userProfile.lockerNumber ?? ""
-                // Aggressive focus - mehrfach versuchen
-                isTextFieldFocused = true
-                DispatchQueue.main.async {
-                    isTextFieldFocused = true
-                }
-            }
-        }
-    }
-
-    private func saveLockerNumber() {
-        workoutStore.updateLockerNumber(lockerNumber.trimmingCharacters(in: .whitespacesAndNewlines))
-        dismiss()
-    }
-}
-
-
-// MARK: - Session Statistics Helper Structs
-// TODO: Diese Structs sind auch in SessionStatistics.swift - nach Xcode-Integration dort löschen
-
-struct ExerciseStatistic: Identifiable {
-    let id: UUID
-    let exerciseName: String
-    let maxWeight: Double
-    let totalVolume: Double
-    let averageReps: Double
-    let completedSets: Int
-    let totalSets: Int
-    let progressionPercentage: Double?
-}
-
-struct VolumeDataPoint: Identifiable {
-    let id = UUID()
-    let exerciseName: String
-    let volume: Double
-}
-import SwiftUI
-import Charts
-
-// MARK: - Session Detail UI Components
-
-struct SessionStatCard: View {
+// Keep only WorkoutHighlightCard here as it's used in WorkoutsHomeView
     let icon: String
     let value: String
     let label: String
@@ -2599,9 +2223,8 @@ struct VolumeChart: View {
         .accessibilityLabel("Volumenverteilung Diagramm")
     }
 }
-import SwiftUI
-import SwiftData
 
+// Re-add SessionDetailView to fix missing type
 struct SessionDetailView: View {
     let session: WorkoutSession
     @Environment(\.dismiss) private var dismiss
@@ -3066,3 +2689,359 @@ struct SessionDetailView: View {
         }
     }
 }
+
+// MARK: - Calendar Sessions Sheet
+private struct CalendarSessionsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    private var sessionEntities: [WorkoutSessionEntity]
+
+    @State private var displayedMonth: Date = Date()
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+
+    // Performance: Use cached DateFormatter
+    private var monthTitle: String {
+        DateFormatters.germanMonthYear.string(from: displayedMonth)
+    }
+
+    private var daysInMonth: [Date] {
+        let cal = Calendar.current
+        guard let range = cal.range(of: .day, in: .month, for: displayedMonth),
+              let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+        return range.compactMap { day -> Date? in
+            cal.date(byAdding: .day, value: day - 1, to: monthStart)
+        }
+    }
+
+    private var gridDays: [Date?] {
+        let cal = Calendar.current
+        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+        let weekday = cal.component(.weekday, from: monthStart) // 1=Sun...
+        let leading = (weekday + 5) % 7 // convert to Monday=0 leading count
+        let leadingPlaceholders: [Date?] = Array(repeating: nil, count: leading)
+        return leadingPlaceholders + daysInMonth.map { Optional($0) }
+    }
+
+    private var sessionDays: Set<Date> {
+        let cal = Calendar.current
+        return Set(sessionEntities.map { cal.startOfDay(for: $0.date) })
+    }
+
+    private func sessions(on date: Date) -> [WorkoutSession] {
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: date)
+        let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
+        return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
+    }
+    
+    // Performance: Use cached weekday symbols
+    private func localizedWeekdaySymbols() -> [String] {
+        DateFormatters.germanVeryShortWeekdaySymbols()
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                // Header with month navigation
+                HStack {
+                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                    Spacer()
+                    Text(monthTitle)
+                        .font(.headline)
+                    Spacer()
+                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth } label: {
+                        Image(systemName: "chevron.right")
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Weekday symbols (localized)
+                HStack {
+                    ForEach(localizedWeekdaySymbols(), id: \.self) { d in
+                        Text(d)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Calendar grid
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                    ForEach(gridDays.indices, id: \.self) { idx in
+                        if let day = gridDays[idx] {
+                            let cal = Calendar.current
+                            let isToday = cal.isDateInToday(day)
+                            let isSelected = cal.isDate(cal.startOfDay(for: day), inSameDayAs: selectedDate)
+                            let hasSession = sessionDays.contains(cal.startOfDay(for: day))
+                            VStack(spacing: 6) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            isSelected ? AppTheme.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                        )
+                                        .frame(width: 36, height: 36)
+                                    Text(String(cal.component(.day, from: day)))
+                                        .font(.subheadline.weight(.medium))
+                                }
+                                Circle()
+                                    .fill(AppTheme.darkPurple)
+                                    .frame(width: 6, height: 6)
+                                    .opacity(hasSession ? 1 : 0)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedDate = cal.startOfDay(for: day)
+                            }
+                        } else {
+                            Color.clear.frame(height: 44)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // Sessions list for selected date
+                let daySessions = sessions(on: selectedDate)
+                if daySessions.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("Keine Trainings an diesem Tag")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                } else {
+                    List {
+                        ForEach(daySessions, id: \.id) { session in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(session.name)
+                                    .font(.subheadline.weight(.semibold))
+                                HStack(spacing: 8) {
+                                    Text({
+                                        let formatter = DateFormatter()
+                                        formatter.locale = Locale(identifier: "de_DE")
+                                        formatter.timeStyle = .short
+                                        formatter.dateStyle = .none
+                                        return formatter.string(from: session.date)
+                                    }())
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("• \(session.exercises.count) Übungen")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .navigationTitle("Kalender")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schließen") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Date Helpers
+private extension Calendar {
+    func isDate(_ date1: Date, inSameDayAs startOfDay: Date) -> Bool {
+        isDate(date1, equalTo: startOfDay, toGranularity: .day)
+    }
+}
+
+private extension Array {
+    func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
+        var first: [Element] = []
+        var second: [Element] = []
+        for el in self {
+            if isInFirstPartition(el) {
+                first.append(el)
+            } else {
+                second.append(el)
+            }
+        }
+        return first + second
+    }
+}
+
+private extension View {
+    func erasedToAnyView() -> AnyView { AnyView(self) }
+}
+
+// MARK: - Error View
+struct ErrorWorkoutView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 50))
+                .foregroundColor(.orange)
+            Text("Workout nicht verfügbar")
+                .font(.headline)
+            Text("Das Workout konnte nicht geladen werden.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Button("Zurück") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ContentView()
+}
+
+extension Notification.Name {
+    static let resumeActiveWorkout = Notification.Name("resumeActiveWorkout")
+    static let navigateToWorkoutsTab = Notification.Name("navigateToWorkoutsTab")
+}
+
+// MARK: - Environment Key for WorkoutDetailView visibility
+private struct IsInWorkoutDetailKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var isInWorkoutDetail: Bool {
+        get { self[IsInWorkoutDetailKey.self] }
+        set { self[IsInWorkoutDetailKey.self] = newValue }
+    }
+}
+
+// MARK: - Custom Button Styles for Smooth Interactions
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Locker Number Input View
+struct LockerNumberInputView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var workoutStore: WorkoutStore
+    @State private var lockerNumber: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.background
+                    .ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    Spacer()
+
+                    // Icon
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 60, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [AppTheme.deepBlue, AppTheme.turquoiseBoost],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .padding(.bottom, 8)
+
+                    // Title
+                    Text("Deine Spintnummer")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.primary)
+
+                    Text("Damit du sie nicht vergisst 😉")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 16)
+
+                    // Input Field
+                    TextField("z.B. 42", text: $lockerNumber)
+                        .font(.system(size: 48, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .keyboardType(.numberPad)
+                        .focused($isTextFieldFocused)
+                        .defaultFocus($isTextFieldFocused, true)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray6))
+                        )
+                        .frame(maxWidth: 200)
+                        .onChange(of: isTextFieldFocused) { _, isFocused in
+                            if isFocused && !lockerNumber.isEmpty {
+                                // Auto-select all text when focused
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+                                }
+                            }
+                        }
+
+                    Spacer()
+
+                    // Save Button
+                    Button {
+                        saveLockerNumber()
+                    } label: {
+                        Text("Speichern")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [AppTheme.mossGreen, AppTheme.turquoiseBoost],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 32)
+                }
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                lockerNumber = workoutStore.userProfile.lockerNumber ?? ""
+                // Aggressive focus - mehrfach versuchen
+                isTextFieldFocused = true
+                DispatchQueue.main.async {
+                    isTextFieldFocused = true
+                }
+            }
+        }
+    }
+
+    private func saveLockerNumber() {
+        workoutStore.updateLockerNumber(lockerNumber.trimmingCharacters(in: .whitespacesAndNewlines))
+        dismiss()
+    }
+}
+

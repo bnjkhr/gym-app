@@ -6,6 +6,10 @@ import Combine
 @MainActor
 class TipFeedbackManager: ObservableObject {
 
+    // MARK: - Singleton
+
+    static let shared = TipFeedbackManager()
+
     // MARK: - Published Properties
 
     @Published private(set) var feedbackHistory: [TipFeedback] = []
@@ -17,7 +21,7 @@ class TipFeedbackManager: ObservableObject {
 
     // MARK: - Initialization
 
-    init() {
+    private init() {
         loadFeedback()
     }
 
@@ -26,6 +30,7 @@ class TipFeedbackManager: ObservableObject {
     func rateTip(_ tip: TrainingTip, rating: TipRating) {
         let feedback = TipFeedback(
             tipId: tip.id,
+            tipContentHash: tip.contentHash,
             rating: rating,
             timestamp: Date()
         )
@@ -42,6 +47,10 @@ class TipFeedbackManager: ObservableObject {
 
     func getFeedbackForTip(_ tipId: UUID) -> TipFeedback? {
         feedbackHistory.first(where: { $0.tipId == tipId })
+    }
+
+    func getFeedbackForContentHash(_ contentHash: String) -> TipFeedback? {
+        feedbackHistory.first(where: { $0.tipContentHash == contentHash })
     }
 
     func getFeedbackStats() -> FeedbackStats {
@@ -82,6 +91,7 @@ class TipFeedbackManager: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(feedbackHistory)
             UserDefaults.standard.set(data, forKey: storageKey)
+            UserDefaults.standard.synchronize()
         } catch {
             print("❌ Fehler beim Speichern des Feedbacks: \(error)")
         }

@@ -6,7 +6,10 @@ import SwiftData
 struct SmartTipsCard: View {
     let sessionEntities: [WorkoutSessionEntity]
     @EnvironmentObject var workoutStore: WorkoutStore
-    @StateObject private var feedbackManager = TipFeedbackManager()
+
+    private var feedbackManager: TipFeedbackManager {
+        TipFeedbackManager.shared
+    }
 
     @State private var tips: [TrainingTip] = []
     @State private var currentIndex: Int = 0
@@ -198,6 +201,19 @@ struct SmartTipsCard: View {
         )
 
         currentIndex = 0
+
+        // Lade gespeicherte Feedbacks
+        loadFeedbackState()
+    }
+
+    private func loadFeedbackState() {
+        feedbackGiven.removeAll()
+
+        for tip in tips {
+            if feedbackManager.getFeedbackForContentHash(tip.contentHash) != nil {
+                feedbackGiven.insert(tip.id)
+            }
+        }
     }
 
     private func refreshTips() {

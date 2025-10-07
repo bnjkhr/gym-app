@@ -2313,6 +2313,9 @@ private struct ActiveWorkoutCompletionView: View {
             .padding(.bottom, 40)
         }
         .background(Color(.systemGroupedBackground))
+        .onAppear {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
 }
 
