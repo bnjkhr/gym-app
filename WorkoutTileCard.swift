@@ -93,8 +93,9 @@ struct WorkoutTileCard: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(.systemGray6))
             )
+            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ScaleButtonStyle())
         .contextMenu {
             // Performance: Grouped menu items for faster rendering
             Group {

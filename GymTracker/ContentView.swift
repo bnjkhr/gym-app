@@ -143,28 +143,29 @@ struct ContentView: View {
         .overlay(alignment: .bottom) {
             // ActiveWorkoutBar wird angezeigt wenn ein aktives Workout existiert (aber nicht in WorkoutDetailView)
             if let activeWorkout = workoutStore.activeWorkout, !workoutStore.isShowingWorkoutDetail {
-                GeometryReader { geometry in
-                    VStack(spacing: 0) {
-                        Spacer()
+                VStack(spacing: 0) {
+                    Spacer()
 
-                        ActiveWorkoutBar(
-                            workout: activeWorkout,
-                            resumeAction: {
-                                // Switch to Home tab and signal to navigate to active workout
-                                selectedTab = 0
-                                NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
-                            },
-                            endAction: { showingEndWorkoutConfirmation = true }
-                        )
-                        .environmentObject(workoutStore)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, geometry.size.height < 700 ? 70 : 90) // Weniger Padding für kleine Bildschirme (iPhone Mini, SE)
-                    }
+                    ActiveWorkoutBar(
+                        workout: activeWorkout,
+                        resumeAction: {
+                            // Switch to Home tab and signal to navigate to active workout
+                            selectedTab = 0
+                            NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+                        },
+                        endAction: { showingEndWorkoutConfirmation = true }
+                    )
+                    .environmentObject(workoutStore)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 90) // Platz für die Tab-Bar (ca. 50px TabBar + 40px Spacing)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: workoutStore.isShowingWorkoutDetail)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: workoutStore.activeWorkout?.id)
                 }
                 .ignoresSafeArea(.keyboard)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: selectedTab)
         .tint(AppTheme.powerOrange)
         .environment(\.keyboardDismissalEnabled, true)
         .alert("Workout beenden?", isPresented: $showingEndWorkoutConfirmation) {
@@ -560,8 +561,16 @@ struct WorkoutsHomeView: View {
                     )
                     .environmentObject(workoutStore)
                     .environment(\.isInWorkoutDetail, true)
-                    .onAppear { workoutStore.isShowingWorkoutDetail = true }
-                    .onDisappear { workoutStore.isShowingWorkoutDetail = false }
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            workoutStore.isShowingWorkoutDetail = true
+                        }
+                    }
+                    .onDisappear {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            workoutStore.isShowingWorkoutDetail = false
+                        }
+                    }
                 } else {
                     // Fallback: try direct fetch from modelContext
                     let selectionId = selection.id
@@ -581,8 +590,16 @@ struct WorkoutsHomeView: View {
                         )
                         .environmentObject(workoutStore)
                         .environment(\.isInWorkoutDetail, true)
-                        .onAppear { workoutStore.isShowingWorkoutDetail = true }
-                        .onDisappear { workoutStore.isShowingWorkoutDetail = false }
+                        .onAppear {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                workoutStore.isShowingWorkoutDetail = true
+                            }
+                        }
+                        .onDisappear {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                workoutStore.isShowingWorkoutDetail = false
+                            }
+                        }
                     } else {
                         ErrorWorkoutView()
                     }
@@ -1409,6 +1426,7 @@ struct ActiveWorkoutBar: View {
                             .fixedSize(horizontal: true, vertical: false)
                             .minimumScaleFactor(0.8)
                             .contentTransition(.numericText())
+                            .animation(.linear(duration: 0.3), value: restText)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -1416,6 +1434,7 @@ struct ActiveWorkoutBar: View {
                                 Capsule()
                                     .fill(Color.white.opacity(0.2))
                             )
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
             }
@@ -1429,8 +1448,9 @@ struct ActiveWorkoutBar: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(AppTheme.mossGreen)
                     )
+                    .shadow(color: AppTheme.mossGreen.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScaleButtonStyle())
 
             Button(action: endAction) {
                 Image(systemName: "trash.fill")
@@ -1441,8 +1461,9 @@ struct ActiveWorkoutBar: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(Color.red)
                     )
+                    .shadow(color: Color.red.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScaleButtonStyle())
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
@@ -2185,6 +2206,15 @@ extension EnvironmentValues {
     var isInWorkoutDetail: Bool {
         get { self[IsInWorkoutDetailKey.self] }
         set { self[IsInWorkoutDetailKey.self] = newValue }
+    }
+}
+
+// MARK: - Custom Button Styles for Smooth Interactions
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 

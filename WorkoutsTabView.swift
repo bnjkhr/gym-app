@@ -127,8 +127,20 @@ struct WorkoutsTabView: View {
                         }
                     )
                     .environmentObject(workoutStore)
-                    .onAppear { workoutStore.isShowingWorkoutDetail = true }
-                    .onDisappear { workoutStore.isShowingWorkoutDetail = false }
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(28)
+                    .presentationBackground(.regularMaterial)
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            workoutStore.isShowingWorkoutDetail = true
+                        }
+                    }
+                    .onDisappear {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            workoutStore.isShowingWorkoutDetail = false
+                        }
+                    }
                 } else {
                     Text("Workout konnte nicht geladen werden")
                 }
@@ -184,8 +196,16 @@ struct WorkoutsTabView: View {
                     )
                     .environmentObject(workoutStore)
                     .environment(\.isInWorkoutDetail, true)
-                    .onAppear { workoutStore.isShowingWorkoutDetail = true }
-                    .onDisappear { workoutStore.isShowingWorkoutDetail = false }
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            workoutStore.isShowingWorkoutDetail = true
+                        }
+                    }
+                    .onDisappear {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            workoutStore.isShowingWorkoutDetail = false
+                        }
+                    }
                 } else {
                     ErrorWorkoutView()
                 }
