@@ -170,7 +170,7 @@ class WorkoutStore: ObservableObject {
         // Try to restore from UserDefaults backup
         let backupProfile = ProfilePersistenceHelper.loadFromUserDefaults()
         if !backupProfile.name.isEmpty || backupProfile.weight != nil {
-            // Restore to SwiftData
+            // Restore to SwiftData - pass profileImageData to prevent recursion
             updateProfile(
                 name: backupProfile.name,
                 birthDate: backupProfile.birthDate,
@@ -181,7 +181,8 @@ class WorkoutStore: ObservableObject {
                 experience: backupProfile.experience,
                 equipment: backupProfile.equipment,
                 preferredDuration: backupProfile.preferredDuration,
-                healthKitSyncEnabled: backupProfile.healthKitSyncEnabled
+                healthKitSyncEnabled: backupProfile.healthKitSyncEnabled,
+                profileImageData: backupProfile.profileImageData
             )
             print("✅ Profil aus UserDefaults-Backup wiederhergestellt")
             return backupProfile
@@ -748,7 +749,10 @@ class WorkoutStore: ObservableObject {
     }
     
     // MARK: - Profile Management
-    func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false) {
+    func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil) {
+        // Preserve existing profile image if not provided
+        let imageData = profileImageData ?? ProfilePersistenceHelper.loadFromUserDefaults().profileImageData
+
         // Create updated profile
         let updatedProfile = UserProfile(
             name: name,
@@ -757,7 +761,7 @@ class WorkoutStore: ObservableObject {
             height: height,
             biologicalSex: biologicalSex,
             goal: goal,
-            profileImageData: userProfile.profileImageData, // Keep existing image
+            profileImageData: imageData,
             experience: experience,
             equipment: equipment,
             preferredDuration: preferredDuration,

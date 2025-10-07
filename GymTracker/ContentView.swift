@@ -418,11 +418,6 @@ struct WorkoutsHomeView: View {
 
                     highlightSection(highlightSession: highlightSession)
 
-                    if highlightSession != nil {
-                        WeeklyProgressCard(workoutsThisWeek: workoutsThisWeek, goal: workoutStore.weeklyGoal)
-                            .padding(.top, 24)
-                    }
-
                     favoriteWorkoutsSection(favoritedWorkouts: favoritedWorkouts)
                         .padding(.top, 24)
                 }
@@ -1249,7 +1244,7 @@ struct OnboardingCard: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 24)
-        .padding(.bottom, 20)
+        .padding(.bottom, 24)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
