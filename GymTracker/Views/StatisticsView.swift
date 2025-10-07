@@ -2025,6 +2025,12 @@ private struct CalendarSessionsView: View {
     }
 
     var body: some View {
+        let weekdaySymbols: [String] = {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "de_DE")
+            return formatter.veryShortWeekdaySymbols ?? ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+        }()
+
         NavigationStack {
             VStack(spacing: 12) {
                 // Header with month navigation
@@ -2044,12 +2050,8 @@ private struct CalendarSessionsView: View {
 
                 // Weekday symbols (German)
                 HStack {
-                    ForEach({
-                        let formatter = DateFormatter()
-                        formatter.locale = Locale(identifier: "de_DE")
-                        return formatter.veryShortWeekdaySymbols ?? ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-                    }(), id: \.self) { d in
-                        Text(d)
+                    ForEach(0..<7, id: \.self) { index in
+                        Text(weekdaySymbols[index])
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
