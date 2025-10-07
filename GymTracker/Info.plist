@@ -8,6 +8,10 @@
 	<string>Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Wir benötigen Zugriff auf deine Fotobibliothek, um ein Profilbild auszuwählen.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Wir benötigen Zugriff auf deine Gesundheitsdaten, um Herzfrequenz, Gewicht und Körperfett zu verfolgen.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Wir möchten deine Workouts und Gesundheitsdaten in Health speichern.</string>
 	<key>CFBundleDisplayName</key>
 	<string>GymTracker</string>
 	<key>CFBundleIdentifier</key>
