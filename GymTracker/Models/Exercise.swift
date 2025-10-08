@@ -141,6 +141,19 @@ enum DifficultyLevel: String, CaseIterable, Codable {
     }
 }
 
+// MARK: - Exercise Type Extension
+extension Exercise {
+    /// Prüft ob die Übung eine Cardio-Übung ist (Zeit-basiert statt Gewicht)
+    var isCardio: Bool {
+        return muscleGroups.contains(.cardio)
+    }
+
+    /// Gibt die bevorzugte Einheit für Sets dieser Übung zurück
+    var preferredUnit: SetUnit {
+        return isCardio ? .time : .weight
+    }
+}
+
 // MARK: - Exercise Similarity Extension
 extension Exercise {
     /// Berechnet einen Ähnlichkeitsscore (0-100) zu einer anderen Übung

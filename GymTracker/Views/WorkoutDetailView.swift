@@ -1293,37 +1293,69 @@ private struct WorkoutSetCard: View {
 
                 verticalSeparator
 
+                // Zweites Eingabefeld: Gewicht ODER Zeit (abhängig vom Übungstyp)
                 VStack(spacing: 2) {
                     ZStack(alignment: .center) {
                         // Hidden baseline provider to align with large numbers
                         Text("0")
                             .font(.system(size: 28, weight: .semibold))
                             .opacity(0)
-                        SelectAllTextField(
-                            value: $set.weight,
-                            placeholder: "0",
-                            keyboardType: .decimalPad,
-                            uiFont: UIFont.systemFont(ofSize: 28, weight: .semibold),
-                            textColor: set.completed ? UIColor.systemGray3 : nil
-                        )
-                        .multilineTextAlignment(.center)
-                        .frame(width: 104)
+
+                        if currentExercise?.isCardio == true {
+                            // Cardio: Zeit in Minuten
+                            SelectAllTextField(
+                                value: Binding(
+                                    get: { Int(set.duration ?? 0) / 60 },
+                                    set: { set.duration = TimeInterval($0 * 60) }
+                                ),
+                                placeholder: "0",
+                                keyboardType: .numberPad,
+                                uiFont: UIFont.systemFont(ofSize: 28, weight: .semibold),
+                                textColor: set.completed ? UIColor.systemGray3 : nil
+                            )
+                            .multilineTextAlignment(.center)
+                            .frame(width: 104)
+                        } else {
+                            // Kraft: Gewicht in kg
+                            SelectAllTextField(
+                                value: $set.weight,
+                                placeholder: "0",
+                                keyboardType: .decimalPad,
+                                uiFont: UIFont.systemFont(ofSize: 28, weight: .semibold),
+                                textColor: set.completed ? UIColor.systemGray3 : nil
+                            )
+                            .multilineTextAlignment(.center)
+                            .frame(width: 104)
+                        }
                     }
                     .overlay(alignment: .trailing) {
-                        Text("kg")
+                        Text(currentExercise?.isCardio == true ? "min" : "kg")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .padding(.trailing, 2)
                     }
-                    
-                    // Previous weight value
-                    if let prevWeight = previousWeight, prevWeight > 0 {
-                        Text("zuletzt: \(prevWeight, specifier: "%.1f") kg")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+
+                    // Previous value
+                    if currentExercise?.isCardio == true {
+                        // Cardio: vorherige Zeit
+                        if let prevDuration = set.duration, prevDuration > 0 {
+                            Text("zuletzt: \(Int(prevDuration / 60)) min")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(" ")
+                                .font(.caption2)
+                        }
                     } else {
-                        Text(" ")
-                            .font(.caption2)
+                        // Kraft: vorheriges Gewicht
+                        if let prevWeight = previousWeight, prevWeight > 0 {
+                            Text("zuletzt: \(prevWeight, specifier: "%.1f") kg")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(" ")
+                                .font(.caption2)
+                        }
                     }
                 }
 

@@ -22,6 +22,10 @@ struct WorkoutsView: View {
     @State private var expandedFolders: Set<UUID> = []
     @State private var draggedWorkout: WorkoutEntity?
 
+    // Performance: Cached filtered arrays to avoid recomputing on every render
+    @State private var cachedWorkoutsWithoutFolder: [WorkoutEntity] = []
+    @State private var cachedWorkoutsInFolders: [UUID: [WorkoutEntity]] = [:]
+
     var body: some View {
         List {
             // Folders section
@@ -38,7 +42,7 @@ struct WorkoutsView: View {
                             }
                         }
                     },
-                    workouts: workoutsInFolder(folder),
+                    workouts: cachedWorkoutsInFolders[folder.id] ?? [],
                     modelContext: modelContext,
                     workoutStore: workoutStore,
                     draggedWorkout: $draggedWorkout
@@ -46,17 +50,19 @@ struct WorkoutsView: View {
             }
 
             // Workouts without folder
-            if !workoutsWithoutFolder.isEmpty {
+            if !cachedWorkoutsWithoutFolder.isEmpty {
                 Section {
-                    ForEach(workoutsWithoutFolder) { entity in
+                    ForEach(cachedWorkoutsWithoutFolder) { entity in
                         WorkoutEntityRow(entity: entity, modelContext: modelContext, workoutStore: workoutStore)
+                            .equatable()
+                            .id(entity.id) // Performance: Explicit ID for better view recycling
                             .onDrag {
                                 draggedWorkout = entity
                                 return NSItemProvider(object: entity.id.uuidString as NSString)
                             }
                     }
                     .onDelete { offsets in
-                        deleteWorkouts(offsets, from: workoutsWithoutFolder)
+                        deleteWorkouts(offsets, from: cachedWorkoutsWithoutFolder)
                     }
                 } header: {
                     Text("Workouts")
@@ -118,13 +124,40 @@ struct WorkoutsView: View {
             if let savedExpanded = UserDefaults.standard.array(forKey: "expandedFolders") as? [String] {
                 expandedFolders = Set(savedExpanded.compactMap { UUID(uuidString: $0) })
             }
+            // Performance: Initial cache population
+            updateCache()
         }
         .onChange(of: expandedFolders) { _, newValue in
             // Save expanded state
             UserDefaults.standard.set(newValue.map { $0.uuidString }, forKey: "expandedFolders")
         }
+        .onChange(of: workoutEntities) { _, _ in
+            // Performance: Update cache when workouts change
+            updateCache()
+        }
+        .onChange(of: folders) { _, _ in
+            // Performance: Update cache when folders change
+            updateCache()
+        }
     }
 
+    // Performance: Cache update function - called when data changes
+    private func updateCache() {
+        // Cache workouts without folder
+        cachedWorkoutsWithoutFolder = workoutEntities.filter { $0.folder == nil }
+
+        // Cache workouts in each folder (sorted by orderInFolder)
+        var newCache: [UUID: [WorkoutEntity]] = [:]
+        for folder in folders {
+            let workoutsInFolder = workoutEntities
+                .filter { $0.folder?.id == folder.id }
+                .sorted { $0.orderInFolder < $1.orderInFolder }
+            newCache[folder.id] = workoutsInFolder
+        }
+        cachedWorkoutsInFolders = newCache
+    }
+
+    // Legacy computed properties - kept for compatibility but not used in optimized code
     private var workoutsWithoutFolder: [WorkoutEntity] {
         workoutEntities.filter { $0.folder == nil }
     }
@@ -159,9 +192,12 @@ struct FolderSectionView: View {
 
     var body: some View {
         Section {
+            // Performance: Only render content when expanded (Lazy Loading)
             if isExpanded {
                 ForEach(workouts) { entity in
                     WorkoutEntityRow(entity: entity, modelContext: modelContext, workoutStore: workoutStore)
+                        .equatable()
+                        .id(entity.id) // Performance: Explicit ID for better view recycling
                         .onDrag {
                             draggedWorkout = entity
                             return NSItemProvider(object: entity.id.uuidString as NSString)
@@ -185,38 +221,44 @@ struct FolderSectionView: View {
                 }
             }
         } header: {
-            Button {
-                onToggle()
-            } label: {
-                HStack {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(hex: folder.color))
+            // Performance: Simplified header with better tap target separation
+            HStack {
+                // Tap area for expand/collapse
+                Button {
+                    onToggle()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: folder.color))
 
-                    Image(systemName: "folder.fill")
-                        .foregroundColor(Color(hex: folder.color))
+                        Image(systemName: "folder.fill")
+                            .foregroundColor(Color(hex: folder.color))
 
-                    Text(folder.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                        Text(folder.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
 
-                    Text("(\(workouts.count))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    Button {
-                        showingEditFolder = true
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Text("(\(workouts.count))")
+                            .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.plain)
                 }
-                .padding(.vertical, 4)
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Separate button for folder options
+                Button {
+                    showingEditFolder = true
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundColor(.secondary)
+                        .padding(8) // Larger tap target
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, 4)
         }
         .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
             guard let workout = draggedWorkout else { return false }
@@ -237,10 +279,18 @@ struct FolderSectionView: View {
 }
 
 // MARK: - WorkoutEntityRow
-struct WorkoutEntityRow: View {
+struct WorkoutEntityRow: View, Equatable {
     let entity: WorkoutEntity
     let modelContext: ModelContext
     let workoutStore: WorkoutStore
+
+    // Performance: Equatable conformance to avoid unnecessary re-renders
+    static func == (lhs: WorkoutEntityRow, rhs: WorkoutEntityRow) -> Bool {
+        lhs.entity.id == rhs.entity.id &&
+        lhs.entity.name == rhs.entity.name &&
+        lhs.entity.exerciseCount == rhs.entity.exerciseCount &&
+        lhs.entity.date == rhs.entity.date
+    }
 
     var body: some View {
         NavigationLink {
@@ -257,7 +307,8 @@ struct WorkoutEntityRow: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Text("\(entity.exercises.count) Übungen")
+                // Performance: Use cached count instead of loading relationship
+                Text("\(entity.exerciseCount) Übungen")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

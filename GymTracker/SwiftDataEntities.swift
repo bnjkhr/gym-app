@@ -147,6 +147,9 @@ final class WorkoutEntity {
     var isFavorite: Bool
     var isSampleWorkout: Bool? // Markiert Beispiel-Workouts für versioniertes Update (nil = alte Workouts)
 
+    // Performance: Cached exercise count to avoid loading relationship
+    var exerciseCount: Int = 0
+
     // Folder organization (default values for migration compatibility)
     @Relationship(deleteRule: .nullify) var folder: WorkoutFolderEntity? = nil
     var orderInFolder: Int = 0
@@ -173,8 +176,14 @@ final class WorkoutEntity {
         self.notes = notes
         self.isFavorite = isFavorite
         self.isSampleWorkout = isSampleWorkout
+        self.exerciseCount = exercises.count
         self.folder = folder
         self.orderInFolder = orderInFolder
+    }
+
+    /// Performance: Update cached exercise count
+    func updateExerciseCount() {
+        exerciseCount = exercises.count
     }
     
     /// Clean up any workout exercises that reference invalid exercise entities

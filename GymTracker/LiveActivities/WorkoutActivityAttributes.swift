@@ -14,6 +14,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
     }
 
     var workoutName: String
+    var startDate: Date // Startzeit für Stale-Detection beim App-Neustart
 }
 #endif
 

@@ -67,27 +67,47 @@ struct AddWorkoutView: View {
                                         .labelStyle(.titleAndIcon)
                                 }
 
-                                HStack {
-                                    Label("Gewicht", systemImage: "scalemass.fill")
-                                        .labelStyle(.titleAndIcon)
-                                    Spacer()
-                                    TextField("0.0", text: .init(
-                                        get: { selection.weight > 0 ? String(format: "%.1f", selection.weight) : "" },
-                                        set: { newValue in
-                                            if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
-                                                selection.weight = max(0, min(weight, 999.9))
-                                            } else if newValue.isEmpty {
-                                                selection.weight = 0
+                                // Gewicht ODER Zeit (abhängig vom Übungstyp)
+                                if selection.exercise.isCardio {
+                                    HStack {
+                                        Label("Zeit", systemImage: "clock.fill")
+                                            .labelStyle(.titleAndIcon)
+                                        Spacer()
+                                        TextField("0", value: Binding(
+                                            get: { Int((selection.duration ?? 0) / 60) },
+                                            set: { selection.duration = TimeInterval($0 * 60) }
+                                        ), format: .number)
+                                            .textFieldStyle(.plain)
+                                            .multilineTextAlignment(.trailing)
+                                            .keyboardType(.numberPad)
+                                            .frame(maxWidth: 120)
+                                        Text("min")
+                                            .font(.footnote)
+                                            .foregroundColor(.secondary)
+                                    }
+                                } else {
+                                    HStack {
+                                        Label("Gewicht", systemImage: "scalemass.fill")
+                                            .labelStyle(.titleAndIcon)
+                                        Spacer()
+                                        TextField("0.0", text: .init(
+                                            get: { selection.weight > 0 ? String(format: "%.1f", selection.weight) : "" },
+                                            set: { newValue in
+                                                if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                                    selection.weight = max(0, min(weight, 999.9))
+                                                } else if newValue.isEmpty {
+                                                    selection.weight = 0
+                                                }
                                             }
-                                        }
-                                    ))
-                                        .textFieldStyle(.plain)
-                                        .multilineTextAlignment(.trailing)
-                                        .keyboardType(.decimalPad)
-                                        .frame(maxWidth: 120)
-                                    Text("kg")
-                                        .font(.footnote)
-                                        .foregroundColor(.secondary)
+                                        ))
+                                            .textFieldStyle(.plain)
+                                            .multilineTextAlignment(.trailing)
+                                            .keyboardType(.decimalPad)
+                                            .frame(maxWidth: 120)
+                                        Text("kg")
+                                            .font(.footnote)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                             }
                             .padding(.vertical, 4)
@@ -256,6 +276,7 @@ struct AddWorkoutView: View {
         let id = UUID()
         let exercise: Exercise
         var weight: Double
+        var duration: TimeInterval?
         var setCount: Int
     }
 }

@@ -274,6 +274,13 @@ struct GymTrackerApp: App {
             AppLogger.data.error("LastUsed migration failed: \(error.localizedDescription)")
         }
 
+        // 🚀 SCHRITT 6: Performance - Update cached exercise counts (one-time migration)
+        do {
+            await performExerciseCountMigration(context: context)
+        } catch {
+            AppLogger.data.error("ExerciseCount migration failed: \(error.localizedDescription)")
+        }
+
         // Wait a bit for app to fully initialize before testing Live Activities
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
 
@@ -281,6 +288,9 @@ struct GymTrackerApp: App {
         if #available(iOS 16.1, *) {
             AppLogger.liveActivity.info("Live Activity setup initiated")
             WorkoutLiveActivityController.shared.requestPermissionIfNeeded()
+
+            // Cleanup stale Live Activities (z.B. nach Force-Quit)
+            WorkoutLiveActivityController.shared.cleanupStaleActivities()
 
             // Live Activity Test nur im Debug-Modus
             #if DEBUG
@@ -356,6 +366,37 @@ struct GymTrackerApp: App {
 
         } catch {
             AppLogger.data.error("❌ Force reset failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Performance: Update cached exercise counts for all workouts (one-time migration)
+    private func performExerciseCountMigration(context: ModelContext) async {
+        let hasRun = UserDefaults.standard.bool(forKey: "exerciseCountMigrationCompleted")
+        guard !hasRun else {
+            AppLogger.data.debug("Exercise count migration already completed")
+            return
+        }
+
+        AppLogger.data.info("🚀 Starting exercise count migration...")
+
+        do {
+            let workoutDescriptor = FetchDescriptor<WorkoutEntity>()
+            let workouts = try context.fetch(workoutDescriptor)
+
+            var updatedCount = 0
+            for workout in workouts {
+                let actualCount = workout.exercises.count
+                if workout.exerciseCount != actualCount {
+                    workout.exerciseCount = actualCount
+                    updatedCount += 1
+                }
+            }
+
+            try context.save()
+            UserDefaults.standard.set(true, forKey: "exerciseCountMigrationCompleted")
+            AppLogger.data.info("✅ Exercise count migration completed: updated \(updatedCount) workouts")
+        } catch {
+            AppLogger.data.error("❌ Exercise count migration failed: \(error.localizedDescription)")
         }
     }
 

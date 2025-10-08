@@ -102,17 +102,28 @@ struct WorkoutExercise: Identifiable, Codable {
     }
 }
 
+enum SetUnit: String, Codable, CaseIterable {
+    case weight = "kg"
+    case time = "min"
+    case reps = "reps"
+    case distance = "km"
+}
+
 struct ExerciseSet: Identifiable, Codable {
     let id: UUID
     var reps: Int
     var weight: Double
+    var duration: TimeInterval?  // Für Cardio/zeitbasierte Übungen
+    var unit: SetUnit?           // Einheit (kg, min, etc.)
     var restTime: TimeInterval
     var completed: Bool
 
-    init(id: UUID = UUID(), reps: Int, weight: Double, restTime: TimeInterval = 90, completed: Bool = false) {
+    init(id: UUID = UUID(), reps: Int, weight: Double, duration: TimeInterval? = nil, unit: SetUnit? = nil, restTime: TimeInterval = 90, completed: Bool = false) {
         self.id = id
         self.reps = reps
         self.weight = weight
+        self.duration = duration
+        self.unit = unit
         self.restTime = restTime
         self.completed = completed
     }
@@ -121,6 +132,8 @@ struct ExerciseSet: Identifiable, Codable {
         case id
         case reps
         case weight
+        case duration
+        case unit
         case restTime
         case completed
     }
@@ -130,6 +143,8 @@ struct ExerciseSet: Identifiable, Codable {
         self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         self.reps = try container.decode(Int.self, forKey: .reps)
         self.weight = try container.decode(Double.self, forKey: .weight)
+        self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        self.unit = try container.decodeIfPresent(SetUnit.self, forKey: .unit)
         self.restTime = try container.decodeIfPresent(TimeInterval.self, forKey: .restTime) ?? 90
         self.completed = try container.decodeIfPresent(Bool.self, forKey: .completed) ?? false
     }
@@ -139,6 +154,8 @@ struct ExerciseSet: Identifiable, Codable {
         try container.encode(id, forKey: .id)
         try container.encode(reps, forKey: .reps)
         try container.encode(weight, forKey: .weight)
+        try container.encodeIfPresent(duration, forKey: .duration)
+        try container.encodeIfPresent(unit, forKey: .unit)
         try container.encode(restTime, forKey: .restTime)
         try container.encode(completed, forKey: .completed)
     }

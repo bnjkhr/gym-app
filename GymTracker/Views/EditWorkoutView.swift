@@ -7,11 +7,15 @@ struct EditableSet: Identifiable {
     let id = UUID()
     var reps: Int
     var weight: Double
+    var duration: TimeInterval? // Für Cardio-Übungen
+    var unit: SetUnit?          // Einheit
     var restTime: Double
 
-    init(reps: Int = 10, weight: Double = 0, restTime: Double = 90) {
+    init(reps: Int = 10, weight: Double = 0, duration: TimeInterval? = nil, unit: SetUnit? = nil, restTime: Double = 90) {
         self.reps = reps
         self.weight = weight
+        self.duration = duration
+        self.unit = unit
         self.restTime = restTime
     }
 }
@@ -523,6 +527,14 @@ struct ExerciseCard: View {
     @State private var isExpanded = true
     @Environment(\.editMode) private var editMode
 
+    // Hilfsvariable: Finde die aktuelle Exercise
+    private var currentExercise: Exercise? {
+        guard let entity = exerciseEntities.first(where: { $0.id == editable.exerciseId }) else {
+            return nil
+        }
+        return Exercise(entity: entity)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -583,6 +595,7 @@ struct ExerciseCard: View {
                         SetRow(
                             setNumber: index + 1,
                             set: $set,
+                            exercise: currentExercise,
                             onDelete: {
                                 let indexToRemove = index
                                 withAnimation {
@@ -637,6 +650,7 @@ struct ExerciseCard: View {
 struct SetRow: View {
     let setNumber: Int
     @Binding var set: EditableSet
+    let exercise: Exercise?
     let onDelete: () -> Void
 
     var body: some View {
@@ -669,31 +683,55 @@ struct SetRow: View {
                     )
             }
 
-            // Weight Input
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Gewicht (kg)")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                TextField("0.0", text: .init(
-                    get: { set.weight > 0 ? String(format: "%.1f", set.weight) : "" },
-                    set: { newValue in
-                        if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
-                            set.weight = max(0, min(weight, 999.9))
-                        } else if newValue.isEmpty {
-                            set.weight = 0
+            // Weight OR Time Input (abhängig vom Übungstyp)
+            if exercise?.isCardio == true {
+                // Cardio: Zeit in Minuten
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Zeit (min)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    TextField("0", value: Binding(
+                        get: { Int((set.duration ?? 0) / 60) },
+                        set: { set.duration = TimeInterval($0 * 60) }
+                    ), format: .number)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 80)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.primary.opacity(0.05))
+                        )
+                }
+            } else {
+                // Kraft: Gewicht in kg
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Gewicht (kg)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    TextField("0.0", text: .init(
+                        get: { set.weight > 0 ? String(format: "%.1f", set.weight) : "" },
+                        set: { newValue in
+                            if let weight = Double(newValue.replacingOccurrences(of: ",", with: ".")) {
+                                set.weight = max(0, min(weight, 999.9))
+                            } else if newValue.isEmpty {
+                                set.weight = 0
+                            }
                         }
-                    }
-                ))
-                    .keyboardType(.decimalPad)
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 80)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.primary.opacity(0.05))
-                    )
+                    ))
+                        .keyboardType(.decimalPad)
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 80)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.primary.opacity(0.05))
+                        )
+                }
             }
 
             Spacer()

@@ -20,13 +20,38 @@ final class WorkoutLiveActivityController {
             let authInfo = ActivityAuthorizationInfo()
             print("[LiveActivity] Auth Status - Activities Enabled: \(authInfo.areActivitiesEnabled)")
             print("[LiveActivity] Auth Status - Frequent Push Enabled: \(authInfo.areActivitiesEnabled)")
-            
+
             if !authInfo.areActivitiesEnabled {
                 print("[LiveActivity] ⚠️ Live Activities sind nicht aktiviert")
                 print("[LiveActivity] 💡 Benutzer muss Live Activities in den Einstellungen aktivieren")
                 print("[LiveActivity] 📱 Pfad: Einstellungen > [App Name] > Live Activities")
             } else {
                 print("[LiveActivity] ✅ Live Activities sind aktiviert")
+            }
+        }
+        #endif
+    }
+
+    func cleanupStaleActivities() {
+        #if canImport(ActivityKit)
+        let activities = Activity<WorkoutActivityAttributes>.activities
+        guard !activities.isEmpty else { return }
+
+        print("[LiveActivity] 🔍 Checking \(activities.count) active Live Activities for cleanup")
+
+        for activity in activities {
+            let age = Date().timeIntervalSince(activity.attributes.startDate)
+            let ageInMinutes = Int(age / 60)
+
+            // Wenn älter als 4 Stunden -> beenden (wahrscheinlich durch Force-Quit verwaist)
+            if age > 4 * 3600 {
+                print("[LiveActivity] 🗑️ Removing stale activity (age: \(ageInMinutes) minutes)")
+                Task {
+                    await activity.end(dismissalPolicy: .immediate)
+                    print("[LiveActivity] ✅ Stale activity removed")
+                }
+            } else {
+                print("[LiveActivity] ✓ Activity is fresh (age: \(ageInMinutes) minutes)")
             }
         }
         #endif
@@ -250,7 +275,7 @@ final class WorkoutLiveActivityController {
             return
         }
 
-        let attributes = WorkoutActivityAttributes(workoutName: workoutName)
+        let attributes = WorkoutActivityAttributes(workoutName: workoutName, startDate: Date())
 
         do {
             let newActivity = try Activity.request(attributes: attributes, contentState: baseState, pushType: nil)
