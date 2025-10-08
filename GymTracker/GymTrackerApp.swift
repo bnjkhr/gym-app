@@ -182,16 +182,22 @@ struct GymTrackerApp: App {
 
         // 🌱 SCHRITT 2: Falls Datenbank leer oder Exercises haben falsche UUIDs, neu laden (Fallback)
         do {
-            let descriptor = FetchDescriptor<ExerciseEntity>()
-            let existingExercises = try context.fetch(descriptor)
+            // Performance: Only check a sample for UUID format, not all exercises
+            var descriptor = FetchDescriptor<ExerciseEntity>()
+            descriptor.fetchLimit = 10 // Check only first 10 for UUID format
+            let sampleExercises = try context.fetch(descriptor)
 
             // Prüfe ob Exercises deterministische UUIDs haben (Format: 00000000-0000-0000-0000-XXXXXXXXXXXX)
-            let hasDeterministicUUIDs = existingExercises.contains { exercise in
+            let hasDeterministicUUIDs = sampleExercises.contains { exercise in
                 let uuidString = exercise.id.uuidString
                 return uuidString.hasPrefix("00000000-0000-0000-0000-")
             }
 
-            if existingExercises.isEmpty || !hasDeterministicUUIDs {
+            if sampleExercises.isEmpty || !hasDeterministicUUIDs {
+                // Need to fetch all exercises to delete them
+                let allExercisesDescriptor = FetchDescriptor<ExerciseEntity>()
+                let existingExercises = try context.fetch(allExercisesDescriptor)
+
                 if !existingExercises.isEmpty {
                     AppLogger.exercises.info("Deleting \(existingExercises.count) exercises with incorrect UUIDs")
                     for exercise in existingExercises {
@@ -204,7 +210,7 @@ struct GymTrackerApp: App {
                 ExerciseSeeder.seedExercises(context: context)
                 AppLogger.exercises.info("Exercises loaded successfully")
             } else {
-                AppLogger.exercises.info("\(existingExercises.count) exercises with correct UUIDs already present")
+                AppLogger.exercises.info("\(sampleExercises.count)+ exercises with correct UUIDs already present")
             }
         } catch {
             AppLogger.exercises.error("Exercise check failed: \(error.localizedDescription)")

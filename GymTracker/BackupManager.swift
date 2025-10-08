@@ -48,22 +48,32 @@ class BackupManager: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
-        
+
         let data = try encoder.encode(backup)
-        
+
         // Create filename with timestamp
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         let timestamp = dateFormatter.string(from: Date())
         let filename = "workout_backup_\(timestamp).json"
-        
-        // Save to temporary directory
-        let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent(filename)
-        
-        try data.write(to: fileURL)
-        
-        print("📄 Backup-Datei erstellt: \(filename)")
+
+        // Security: Use Documents directory with file protection instead of temp
+        // Temp directory is not encrypted and can be lost
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDir.appendingPathComponent(filename)
+
+        // Security: Write with file protection enabled
+        // .complete = File encrypted and inaccessible when device is locked
+        try data.write(to: fileURL, options: [.completeFileProtection, .atomic])
+
+        // Security: Exclude from iCloud backup (optional - user decides via share sheet)
+        // This keeps backups local-only until user explicitly shares them
+        var resourceValues = URLResourceValues()
+        resourceValues.isExcludedFromBackup = true
+        var mutableURL = fileURL
+        try? mutableURL.setResourceValues(resourceValues)
+
+        print("📄 Backup-Datei erstellt (verschlüsselt, lokal): \(filename)")
         return fileURL
     }
     
@@ -444,6 +454,41 @@ class BackupManager: ObservableObject {
         entity.goalRaw = backup.goals
         entity.experienceRaw = backup.fitnessLevel
         entity.updatedAt = Date()
+    }
+
+    // MARK: - Security: Backup Cleanup
+
+    /// Security: Clean up old backup files to prevent storage bloat and reduce attack surface
+    /// Keeps only the most recent N backup files
+    func cleanupOldBackups(keepRecent: Int = 5) {
+        let fileManager = FileManager.default
+        guard let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+
+        do {
+            // Find all backup files
+            let backupFiles = try fileManager.contentsOfDirectory(at: documentsDir, includingPropertiesForKeys: [.creationDateKey])
+                .filter { $0.lastPathComponent.hasPrefix("workout_backup_") && $0.pathExtension == "json" }
+                .sorted { (url1, url2) -> Bool in
+                    let date1 = (try? url1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
+                    let date2 = (try? url2.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
+                    return date1 > date2
+                }
+
+            // Delete old backups, keep only recent N
+            let filesToDelete = backupFiles.dropFirst(keepRecent)
+            for file in filesToDelete {
+                try fileManager.removeItem(at: file)
+                print("🗑️ Deleted old backup: \(file.lastPathComponent)")
+            }
+
+            if !filesToDelete.isEmpty {
+                print("✅ Cleaned up \(filesToDelete.count) old backup files")
+            }
+        } catch {
+            print("⚠️ Failed to cleanup old backups: \(error.localizedDescription)")
+        }
     }
 }
 

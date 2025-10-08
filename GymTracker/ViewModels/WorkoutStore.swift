@@ -135,12 +135,15 @@ class WorkoutStore: ObservableObject {
     
     var homeWorkouts: [Workout] {
         guard let context = modelContext else { return [] }
-        
+
         do {
-            let descriptor = FetchDescriptor<WorkoutEntity>(
+            // Performance: Optimize favorites query
+            var descriptor = FetchDescriptor<WorkoutEntity>(
                 predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true },
                 sortBy: [SortDescriptor(\.name)]
             )
+            descriptor.fetchLimit = 50 // Reasonable limit for home screen
+            descriptor.includePendingChanges = false
             let entities = try context.fetch(descriptor)
             return entities.map { mapWorkoutEntity($0) }
         } catch {
@@ -268,15 +271,19 @@ class WorkoutStore: ObservableObject {
     }
     
     private func getWorkouts() -> [Workout] {
-        guard let context = modelContext else { 
+        guard let context = modelContext else {
             print("⚠️ WorkoutStore: ModelContext ist nil beim Abrufen von Workouts")
-            return [] 
+            return []
         }
-        
-        let descriptor = FetchDescriptor<WorkoutEntity>(
+
+        // Performance: Optimize query for large datasets
+        var descriptor = FetchDescriptor<WorkoutEntity>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        
+        // Limit to most recent 200 workouts for initial load
+        descriptor.fetchLimit = 200
+        descriptor.includePendingChanges = false
+
         do {
             let entities = try context.fetch(descriptor)
             return entities.map { mapWorkoutEntity($0) }
@@ -364,9 +371,13 @@ class WorkoutStore: ObservableObject {
 
     private func getExercises() -> [Exercise] {
         guard let context = modelContext else { return [] }
-        let descriptor = FetchDescriptor<ExerciseEntity>(
+        // Performance: Limit query results and disable pending changes tracking
+        var descriptor = FetchDescriptor<ExerciseEntity>(
             sortBy: [SortDescriptor(\.name)]
         )
+        // No fetchLimit here - we need all exercises for filtering
+        // But we optimize by not tracking pending changes
+        descriptor.includePendingChanges = false
         let entities = (try? context.fetch(descriptor)) ?? []
         return entities.map { mapExerciseEntity($0) }
     }
@@ -428,9 +439,12 @@ class WorkoutStore: ObservableObject {
 
     private func getSessionHistory() -> [WorkoutSession] {
         guard let context = modelContext else { return [] }
-        let descriptor = FetchDescriptor<WorkoutSessionEntity>(
+        // Performance: Limit session history to recent 100 sessions
+        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
+        descriptor.fetchLimit = 100
+        descriptor.includePendingChanges = false
         let entities = (try? context.fetch(descriptor)) ?? []
         return entities.map { WorkoutSession(entity: $0) }
     }
@@ -671,6 +685,7 @@ class WorkoutStore: ObservableObject {
             updateLastUsedMetrics(from: session)
             
             // Update ExerciseRecords with new personal bests
+            // Memory: Capture only what's needed, not self
             Task {
                 await ExerciseRecordMigration.updateRecords(from: savedEntity, context: context)
             }
@@ -1285,9 +1300,10 @@ class WorkoutStore: ObservableObject {
                 WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
 
                 // Timer automatisch clearen nach 2 Sekunden
-                Task { @MainActor in
+                // Memory: Use weak self to prevent retain cycle
+                Task { @MainActor [weak self] in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    self.clearRestState()
+                    self?.clearRestState()
                 }
             }
         } else {
@@ -1312,9 +1328,10 @@ class WorkoutStore: ObservableObject {
                     WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
 
                     // Timer automatisch clearen nach 2 Sekunden
-                    Task { @MainActor in
+                    // Memory: Use weak self to prevent retain cycle
+                    Task { @MainActor [weak self] in
                         try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        self.clearRestState()
+                        self?.clearRestState()
                     }
                 }
             } else {
@@ -1356,9 +1373,10 @@ class WorkoutStore: ObservableObject {
 
             // Timer automatisch clearen nach 2 Sekunden
             // Notification kommt durch, da wir sie nicht canceln
-            Task { @MainActor in
+            // Memory: Use weak self to prevent retain cycle
+            Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
-                self.clearRestState()
+                self?.clearRestState()
             }
         } else {
             // Timer läuft noch - fortsetzen
@@ -2995,7 +3013,9 @@ extension WorkoutStore {
         let tracker = HealthKitWorkoutTracker()
         tracker.onHeartRateUpdate = { [weak self] heartRate in
             guard let self = self else { return }
-            Task { @MainActor in
+            // Memory: Use weak self in nested Task to prevent retain cycle
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 // Update Live Activity mit neuer Herzfrequenz
                 WorkoutLiveActivityController.shared.updateHeartRate(
                     workoutName: workoutName,
@@ -3017,6 +3037,27 @@ extension WorkoutStore {
         heartRateTracker = nil
 
         AppLogger.health.info("[WorkoutStore] Herzfrequenz-Tracking gestoppt")
+    }
+
+    // MARK: - Memory Management
+
+    /// Memory: Force cleanup of caches and timers
+    /// Call this when app enters background or memory warning occurs
+    func performMemoryCleanup() {
+        print("[Memory] 🧹 Performing WorkoutStore cleanup")
+
+        // Clear caches
+        exerciseStatsCache.removeAll()
+        weekStreakCache = nil
+
+        // Stop timers if no active session
+        if activeSessionID == nil {
+            restTimer?.invalidate()
+            restTimer = nil
+            activeRestState = nil
+        }
+
+        print("[Memory] ✅ WorkoutStore cleanup completed")
     }
 }
 

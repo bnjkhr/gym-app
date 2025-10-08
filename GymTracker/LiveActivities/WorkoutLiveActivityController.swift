@@ -8,11 +8,29 @@ final class WorkoutLiveActivityController {
     static let shared = WorkoutLiveActivityController()
 
     private var activity: Activity<WorkoutActivityAttributes>?
-    private var lastUpdateTime: Date?
-    private let minimumUpdateInterval: TimeInterval = 0.5 // Mindestens 0.5 Sekunden zwischen Updates
+
+    // Performance: Separate throttling for different update types
+    private var lastTimerUpdateTime: Date?
+    private var lastHeartRateUpdateTime: Date?
+    private let timerUpdateInterval: TimeInterval = 1.0 // Timer updates every 1 second (must match)
+    private let heartRateUpdateInterval: TimeInterval = 2.0 // Heart rate can be throttled more
+
     private var currentHeartRate: Int? // Cache für aktuelle Herzfrequenz
 
+    // Performance: Track last state to avoid redundant updates
+    private var lastSentState: (remainingSeconds: Int, heartRate: Int?)?
+
     private init() {}
+
+    deinit {
+        // Memory: Cleanup on dealloc (should never happen for singleton, but good practice)
+        print("[LiveActivity] 🧹 Deinit called - cleaning up")
+        lastTimerUpdateTime = nil
+        lastHeartRateUpdateTime = nil
+        currentHeartRate = nil
+        lastSentState = nil
+        // Note: Can't end activity in deinit due to async nature
+    }
     
     func requestPermissionIfNeeded() {
         #if canImport(ActivityKit)
@@ -72,17 +90,27 @@ final class WorkoutLiveActivityController {
             return
         }
 
-        // FIXED: Kein Throttling für Timer-Updates, nur für Herzfrequenz
-        // Timer-Updates kommen nur 1x pro Sekunde und müssen durchkommen
-        lastUpdateTime = Date()
+        // Performance: Avoid redundant updates if state hasn't changed
+        let normalizedRemaining = max(remainingSeconds, 0)
+        if let lastState = lastSentState,
+           lastState.remainingSeconds == normalizedRemaining,
+           lastState.heartRate == currentHeartRate {
+            // Skip update - nothing changed
+            return
+        }
 
-        print("[LiveActivity] 🔄 updateRest called: \(remainingSeconds)s / \(totalSeconds)s, exercise: \(exerciseName ?? "none"), endDate: \(endDate?.description ?? "nil")")
+        // Performance: Timer updates should come through every second
+        // but we still track to prevent duplicate calls
+        let now = Date()
+        lastTimerUpdateTime = now
+        lastSentState = (remainingSeconds: normalizedRemaining, heartRate: currentHeartRate)
+
+        print("[LiveActivity] 🔄 updateRest: \(remainingSeconds)s / \(totalSeconds)s, HR: \(currentHeartRate?.description ?? "nil")")
 
         Task {
             await ensureActivityExists(workoutName: workoutName)
-            print("[LiveActivity] 📤 Sending state update to ActivityKit")
             await updateState(
-                remaining: max(remainingSeconds, 0),
+                remaining: normalizedRemaining,
                 total: max(totalSeconds, 1),
                 title: "Pause",
                 exerciseName: exerciseName,
@@ -95,22 +123,34 @@ final class WorkoutLiveActivityController {
 
     func clearRest(workoutName: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        // Performance: Clear cached state when rest is cleared
+        lastSentState = nil
         Task { await startOrUpdateGeneralState(workoutName: workoutName) }
     }
 
     func updateHeartRate(workoutName: String, heartRate: Int?) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-        // Throttle updates
-        let now = Date()
-        if let lastUpdate = lastUpdateTime, now.timeIntervalSince(lastUpdate) < minimumUpdateInterval {
-            // Cache den Wert für spätere Updates
-            currentHeartRate = heartRate
+        // Performance: Always cache, but throttle actual updates
+        let previousHeartRate = currentHeartRate
+        currentHeartRate = heartRate
+
+        // Performance: Skip if heart rate hasn't changed
+        if previousHeartRate == heartRate {
             return
         }
-        lastUpdateTime = now
 
-        currentHeartRate = heartRate
+        // Performance: Throttle heart rate updates more aggressively (2s interval)
+        let now = Date()
+        if let lastUpdate = lastHeartRateUpdateTime,
+           now.timeIntervalSince(lastUpdate) < heartRateUpdateInterval {
+            // Skip update but keep cached value for next timer update
+            print("[LiveActivity] ⏭️ HR update throttled, cached for next update")
+            return
+        }
+        lastHeartRateUpdateTime = now
+
+        print("[LiveActivity] 💓 HR update: \(heartRate?.description ?? "nil")")
 
         Task {
             await ensureActivityExists(workoutName: workoutName)
@@ -154,10 +194,13 @@ final class WorkoutLiveActivityController {
     func end() {
         guard let activity else { return }
 
-        // Sofort die Referenz clearen, um zu verhindern, dass neue Updates gesendet werden
+        // Performance: Clear all state to prevent further updates
         let activityToEnd = activity
         self.activity = nil
         self.currentHeartRate = nil
+        self.lastTimerUpdateTime = nil
+        self.lastHeartRateUpdateTime = nil
+        self.lastSentState = nil
 
         Task {
             let closingState = WorkoutActivityAttributes.ContentState(

@@ -2085,7 +2085,7 @@ private struct ActiveWorkoutSetCard: View {
                     Text(formattedRemaining)
                         .font(.system(size: 16, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(AppTheme.deepBlue)
+                        .foregroundStyle(colorScheme == .dark ? .white : AppTheme.deepBlue)
                         .contentTransition(.numericText())
 
                     // Timer control buttons (with more spacing)

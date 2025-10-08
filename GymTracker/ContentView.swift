@@ -200,6 +200,9 @@ struct ContentView: View {
             switch newPhase {
             case .active:
                 workoutStore.refreshRestFromWallClock()
+            case .background:
+                // Memory: Cleanup caches and timers when app goes to background
+                workoutStore.performMemoryCleanup()
             default:
                 break
             }
