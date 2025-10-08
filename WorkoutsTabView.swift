@@ -184,34 +184,6 @@ struct WorkoutsTabView: View {
                     Text("Workout konnte nicht geladen werden")
                 }
             }
-            .sheet(item: $selectedWorkout) { selection in
-                if let entity = workoutEntities.first(where: { $0.id == selection.id }) {
-                    WorkoutDetailView(
-                        entity: entity,
-                        isActiveSession: workoutStore.activeSessionID == selection.id,
-                        onActiveSessionEnd: {
-                            endActiveSession()
-                        }
-                    )
-                    .environmentObject(workoutStore)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(28)
-                    .presentationBackground(.regularMaterial)
-                    .onAppear {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            workoutStore.isShowingWorkoutDetail = true
-                        }
-                    }
-                    .onDisappear {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            workoutStore.isShowingWorkoutDetail = false
-                        }
-                    }
-                } else {
-                    Text("Workout konnte nicht geladen werden")
-                }
-            }
             .navigationDestination(isPresented: $navigateToManualAdd) {
                 AddWorkoutView()
                     .environmentObject(workoutStore)
