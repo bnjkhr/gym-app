@@ -27,6 +27,14 @@ extension Workout {
 
         // Sort exercises by order to maintain correct sequence
         let sortedExercises = fresh.exercises.sorted { $0.order < $1.order }
+
+        // Debug logging
+        print("📖 [Workout+Mapping] Lade Workout: \(fresh.name)")
+        print("📋 [Workout+Mapping] Übungen aus DB (sortiert nach order):")
+        for (i, we) in sortedExercises.enumerated() {
+            print("  [\(i)] order=\(we.order) \(we.exercise?.name ?? "Unknown")")
+        }
+
         let mappedExercises: [WorkoutExercise] = sortedExercises.compactMap { we in
             return WorkoutExercise(entity: we, in: context)
         }

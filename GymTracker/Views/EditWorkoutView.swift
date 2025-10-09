@@ -90,7 +90,10 @@ struct EditWorkoutView: View {
         _notes = State(initialValue: entity.notes)
         _restTime = State(initialValue: entity.defaultRestTime)
 
-        let editable = entity.exercises.compactMap { we -> EditableExercise? in
+        // WICHTIG: Sortiere die Übungen nach order BEVOR wir das editable Array erstellen!
+        let sortedExercises = entity.exercises.sorted { $0.order < $1.order }
+
+        let editable = sortedExercises.compactMap { we -> EditableExercise? in
             guard let exId = we.exercise?.id else { return nil }
             let sets = we.sets.map { set in
                 EditableSet(
@@ -119,6 +122,18 @@ struct EditWorkoutView: View {
             )
         }
         _cardStates = State(initialValue: initialStates)
+
+        // Debug logging
+        print("🔍 [EditWorkoutView] Init - Workout: \(entity.name)")
+        print("📋 [EditWorkoutView] Übungen geladen (sortiert nach order):")
+        for (i, ex) in sortedExercises.enumerated() {
+            print("  [\(i)] order=\(ex.order) \(ex.exercise?.name ?? "Unknown")")
+        }
+        print("📋 [EditWorkoutView] EditableExercises Array:")
+        for (i, ed) in editable.enumerated() {
+            let exName = sortedExercises.first(where: { $0.exercise?.id == ed.exerciseId })?.exercise?.name ?? "Unknown"
+            print("  [\(i)] \(exName)")
+        }
     }
 
     var body: some View {
@@ -425,17 +440,32 @@ struct EditWorkoutView: View {
     }
 
     private func saveChanges() {
+        print("💾 [EditWorkoutView] Speichere Workout: \(name)")
+        print("📋 [EditWorkoutView] Reihenfolge vor dem Speichern:")
+        let byId: [UUID: ExerciseEntity] = Dictionary(uniqueKeysWithValues: exerciseEntities.map { ($0.id, $0) })
+        for (index, editable) in editableExercises.enumerated() {
+            let exName = byId[editable.exerciseId]?.name ?? "Unknown"
+            print("  [\(index)] \(exName) (ID: \(editable.exerciseId.uuidString.prefix(8)))")
+        }
+
         entity.name = name
         entity.notes = notes
         entity.defaultRestTime = restTime
-        // Rebuild exercises array from editable state
-        // Resolve ExerciseEntity by id
-        let byId: [UUID: ExerciseEntity] = Dictionary(uniqueKeysWithValues: exerciseEntities.map { ($0.id, $0) })
-        var newExercises: [WorkoutExerciseEntity] = []
+
+        // Clear existing exercises
+        entity.exercises.removeAll()
+
+        // Rebuild exercises with explicit order
         for (index, editable) in editableExercises.enumerated() {
-            guard let exEntity = byId[editable.exerciseId] else { continue }
+            guard let exEntity = byId[editable.exerciseId] else {
+                print("⚠️ [EditWorkoutView] Exercise nicht gefunden: \(editable.exerciseId)")
+                continue
+            }
+
+            // Create WorkoutExerciseEntity with explicit order
             let we = WorkoutExerciseEntity(exercise: exEntity, order: index)
-            // Create a set for each EditableSet with individual weight/reps
+
+            // Create sets for this exercise
             for editableSet in editable.sets {
                 let set = ExerciseSetEntity(
                     id: UUID(),
@@ -446,10 +476,22 @@ struct EditWorkoutView: View {
                 )
                 we.sets.append(set)
             }
-            newExercises.append(we)
+
+            entity.exercises.append(we)
         }
-        entity.exercises = newExercises
-        try? modelContext.save()
+
+        // Explicit save with error handling
+        do {
+            try modelContext.save()
+            print("✅ [EditWorkoutView] Workout gespeichert mit \(entity.exercises.count) Übungen")
+            print("📋 [EditWorkoutView] Reihenfolge nach dem Speichern:")
+            for (i, ex) in entity.exercises.enumerated() {
+                print("  [\(i)] order=\(ex.order) exercise=\(ex.exercise?.name ?? "?")")
+            }
+        } catch {
+            print("❌ [EditWorkoutView] Fehler beim Speichern: \(error)")
+        }
+
         dismiss()
     }
 
