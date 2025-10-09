@@ -932,123 +932,179 @@ struct ExpandedSetListView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Header with collapse button
-            HStack {
-                Text("Einzelne Sätze")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary.opacity(0.6))
-
-                Spacer()
-
-                Button(action: onCollapse) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.up")
-                            .font(.caption2)
-                        Text("Einklappen")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(AppTheme.turquoiseBoost)
-                }
-            }
-
-            // Table Header
-            HStack(spacing: 8) {
-                Text("Satz")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary.opacity(0.5))
-                    .frame(width: 50, alignment: .leading)
-
-                Text("WDH")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary.opacity(0.5))
-                    .frame(width: 60, alignment: .center)
-
-                Text("kg")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary.opacity(0.5))
-                    .frame(width: 70, alignment: .center)
-
-                Text("Pause")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary.opacity(0.5))
-                    .frame(width: 70, alignment: .center)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(6)
-
-            // Table Rows
-            ForEach(Array(sets.enumerated()), id: \.offset) { index, _ in
-                HStack(spacing: 8) {
-                    // Satz Number
-                    Text("\(index + 1)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.primary.opacity(0.7))
-                        .frame(width: 50, alignment: .leading)
-
-                    // WDH
-                    TextField("10", value: $sets[index].reps, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .padding(8)
-                        .frame(width: 60)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.primary.opacity(0.08))
-                        )
-
-                    // Gewicht (kg)
-                    TextField("80", value: $sets[index].weight, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .padding(8)
-                        .frame(width: 70)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.primary.opacity(0.08))
-                        )
-
-                    // Pause (s)
-                    TextField("90", value: $sets[index].restTime, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .padding(8)
-                        .frame(width: 70)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.primary.opacity(0.08))
-                        )
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-            }
-
-            // Add set button
-            Button(action: {
-                let lastSet = sets.last ?? EditableSet(reps: 10, weight: 80, restTime: defaultRestTime)
-                sets.append(EditableSet(reps: lastSet.reps, weight: lastSet.weight, restTime: defaultRestTime))
-            }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Satz hinzufügen")
-                }
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(AppTheme.mossGreen)
-                .padding(.vertical, 8)
-            }
+            headerView
+            tableHeaderView
+            setListView
+            addSetButton
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.05))
         )
+    }
+
+    private var headerView: some View {
+        HStack {
+            Text("Einzelne Sätze")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.6))
+
+            Spacer()
+
+            Button(action: onCollapse) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.up")
+                        .font(.caption2)
+                    Text("Einklappen")
+                        .font(.caption)
+                }
+                .foregroundStyle(AppTheme.turquoiseBoost)
+            }
+        }
+    }
+
+    private var tableHeaderView: some View {
+        HStack(spacing: 8) {
+            Text("Satz")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.5))
+                .frame(width: 40, alignment: .leading)
+
+            Text("WDH")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.5))
+                .frame(width: 55, alignment: .center)
+
+            Text("kg")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.5))
+                .frame(width: 60, alignment: .center)
+
+            Text("Pause")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.5))
+                .frame(width: 55, alignment: .center)
+
+            Spacer()
+                .frame(width: 24)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.primary.opacity(0.05))
+        .cornerRadius(6)
+    }
+
+    private var setListView: some View {
+        ForEach(sets) { set in
+            if let index = sets.firstIndex(where: { $0.id == set.id }) {
+                SetRowEditView(
+                    setNumber: index + 1,
+                    set: $sets[index],
+                    onDelete: {
+                        withAnimation {
+                            sets.removeAll { $0.id == set.id }
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private var addSetButton: some View {
+        Button(action: {
+            let lastSet = sets.last ?? EditableSet(reps: 10, weight: 80, restTime: defaultRestTime)
+            sets.append(EditableSet(reps: lastSet.reps, weight: lastSet.weight, restTime: defaultRestTime))
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "plus.circle.fill")
+                Text("Satz hinzufügen")
+            }
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(AppTheme.mossGreen)
+            .padding(.vertical, 8)
+        }
+    }
+}
+
+// MARK: - Set Row Edit View
+
+struct SetRowEditView: View {
+    let setNumber: Int
+    @Binding var set: EditableSet
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            setNumberView
+            repsField
+            weightField
+            restTimeField
+            Spacer()
+            deleteButton
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    private var setNumberView: some View {
+        Text("\(setNumber)")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.primary.opacity(0.7))
+            .frame(width: 40, alignment: .leading)
+    }
+
+    private var repsField: some View {
+        TextField("10", value: $set.reps, format: .number)
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.center)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.primary)
+            .padding(6)
+            .frame(width: 55)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.08))
+            )
+    }
+
+    private var weightField: some View {
+        TextField("80", value: $set.weight, format: .number)
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.center)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.primary)
+            .padding(6)
+            .frame(width: 60)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.08))
+            )
+    }
+
+    private var restTimeField: some View {
+        TextField("90", value: $set.restTime, format: .number)
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.center)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.primary)
+            .padding(6)
+            .frame(width: 55)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.08))
+            )
+    }
+
+    private var deleteButton: some View {
+        Button {
+            onDelete()
+        } label: {
+            Image(systemName: "minus.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(.red.opacity(0.6))
+        }
+        .buttonStyle(.plain)
     }
 }
 

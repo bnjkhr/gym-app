@@ -18,6 +18,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                     Text(context.attributes.workoutName)
                         .font(.headline)
                         .fontWeight(.semibold)
+                        .foregroundStyle(.white)
                     Spacer()
 
                     // Herzfrequenz-Anzeige
@@ -29,12 +30,13 @@ struct WorkoutWidgetsLiveActivity: Widget {
                             Text("\(heartRate)")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
+                                .foregroundStyle(.white)
                         }
                     }
 
                     Text(context.state.title)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.7))
                 }
 
                 if context.state.isTimerExpired {
@@ -43,7 +45,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         Text("Weiter geht's. 💪🏼")
                             .font(.title)
                             .fontWeight(.bold)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.white)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -58,29 +60,29 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         if let exerciseName = context.state.exerciseName {
                             Text(exerciseName)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.white.opacity(0.7))
                         }
                         Spacer()
                         if let endDate = context.state.timerEndDate {
                             Text(timerInterval: Date()...endDate, countsDown: true)
                                 .font(.caption)
                                 .fontWeight(.medium)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
                                 .monospacedDigit()
                         } else {
                             Text(formatTime(context.state.remainingSeconds))
                                 .font(.caption)
                                 .fontWeight(.medium)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
                         }
                     }
                 } else if context.state.title == "Workout läuft" {
                     HStack {
                         Image(systemName: "figure.strengthtraining.traditional")
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.white)
                         Text("Training aktiv")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.white.opacity(0.7))
                         Spacer()
 
                         // Große Herzfrequenz-Anzeige wenn kein Timer läuft
@@ -92,9 +94,10 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                 Text("\(heartRate)")
                                     .font(.title2)
                                     .fontWeight(.semibold)
+                                    .foregroundStyle(.white)
                                 Text("BPM")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.white.opacity(0.7))
                             }
                         }
                     }
@@ -111,10 +114,11 @@ struct WorkoutWidgetsLiveActivity: Widget {
                     HStack {
                         // Icon zeigt Pause-Status oder Training
                         Image(systemName: context.state.remainingSeconds > 0 ? "pause.circle.fill" : "figure.strengthtraining.traditional")
-                            .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
+                            .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .white)
                         Text(context.attributes.workoutName)
                             .font(.headline)
                             .lineLimit(1)
+                            .foregroundStyle(.white)
                     }
                 }
 
@@ -128,15 +132,17 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                         .fontWeight(.bold)
                                         .monospacedDigit()
                                         .contentTransition(.numericText())
+                                        .foregroundStyle(.white)
                                 } else {
                                     Text(formatTime(context.state.remainingSeconds))
                                         .font(.title2)
                                         .fontWeight(.bold)
                                         .contentTransition(.numericText())
+                                        .foregroundStyle(.white)
                                 }
                                 Text("Pausentimer")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.white.opacity(0.7))
                             }
                         } else {
                             VStack(alignment: .trailing, spacing: 4) {
@@ -147,19 +153,21 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                             .foregroundStyle(.red)
                                         Text("\(heartRate)")
                                             .contentTransition(.numericText())
+                                            .foregroundStyle(.white)
                                     }
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     Text("BPM")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.white.opacity(0.7))
                                 } else {
                                     Text("Aktiv")
                                         .font(.title3)
                                         .fontWeight(.semibold)
+                                        .foregroundStyle(.white)
                                     Text(context.state.title)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.white.opacity(0.7))
                                 }
                             }
                         }
@@ -173,7 +181,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                             Text("Weiter geht's. 💪🏼")
                                 .font(.title2)
                                 .fontWeight(.bold)
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(.white)
                         }
                         .padding(.vertical, 8)
                     } else if context.state.remainingSeconds > 0 {
@@ -190,7 +198,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                     Text(exerciseName)
                                         .font(.subheadline)
                                 }
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.white.opacity(0.7))
                             }
                         }
                     }
@@ -198,7 +206,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
             } compactLeading: {
                 // Compact Leading UI (links in der Dynamic Island)
                 Image(systemName: context.state.remainingSeconds > 0 ? "timer" : "figure.strengthtraining.traditional")
-                    .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .blue)
+                    .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .white)
             } compactTrailing: {
                 // Compact Trailing UI (rechts in der Dynamic Island)
                 let _ = print("[Widget] compactTrailing: remainingSeconds = \(context.state.remainingSeconds)")
@@ -214,11 +222,13 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                     .fontWeight(.medium)
                                     .monospacedDigit()
                                     .contentTransition(.numericText())
+                                    .foregroundStyle(.white)
                             } else {
                                 Text(formatTime(context.state.remainingSeconds))
                                     .font(.caption2)
                                     .fontWeight(.medium)
                                     .contentTransition(.numericText())
+                                    .foregroundStyle(.white)
                             }
                         }
                     } else if let heartRate = context.state.currentHeartRate {
@@ -230,6 +240,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                                 .font(.caption2)
                                 .fontWeight(.medium)
                                 .contentTransition(.numericText())
+                                .foregroundStyle(.white)
                         }
                     } else {
                         Text("💪")
@@ -262,7 +273,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                     } else {
                         // Fallback: Icon
                         Image(systemName: "figure.strengthtraining.traditional")
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.white)
                     }
                 }
                 .id(context.state.remainingSeconds)
