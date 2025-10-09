@@ -61,6 +61,10 @@ struct StatisticsView: View {
                     QuickStatsGrid(sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
 
+                    // 🆕 PHASE 2: Wochenvergleich
+                    WeekComparisonCard(sessionEntities: completedSessions)
+                        .padding(.horizontal, 20)
+
                     // 🆕 PHASE 1: Top 5 Kraft-PRs
                     TopPRsCard()
                         .padding(.horizontal, 20)

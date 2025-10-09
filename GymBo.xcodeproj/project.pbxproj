@@ -65,6 +65,8 @@
 		AD3B0FB72E98487400015183 /* RecoveryIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3B0FB62E98487400015183 /* RecoveryIndex.swift */; };
 		AD3B0FB82E98487400015183 /* ProgressionScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3B0FB52E98487400015183 /* ProgressionScore.swift */; };
 		AD3B0FBA2E9848A400015183 /* RecoveryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3B0FB92E9848A400015183 /* RecoveryCard.swift */; };
+		AD3B0FCA2E984E3800015183 /* WeekComparison.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3B0FC92E984E3800015183 /* WeekComparison.swift */; };
+		AD3B0FCC2E984E4600015183 /* WeekComparisonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3B0FCB2E984E4600015183 /* WeekComparisonCard.swift */; };
 		AD4402CD2E906E81001FC101 /* ExerciseLastUsedMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4402CC2E906E81001FC101 /* ExerciseLastUsedMigration.swift */; };
 		AD4402CF2E906EA2001FC101 /* ExerciseLastUsedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4402CE2E906EA2001FC101 /* ExerciseLastUsedViews.swift */; };
 		AD4402D12E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */; };
@@ -191,6 +193,8 @@
 		AD3B0FB52E98487400015183 /* ProgressionScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionScore.swift; sourceTree = "<group>"; };
 		AD3B0FB62E98487400015183 /* RecoveryIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryIndex.swift; sourceTree = "<group>"; };
 		AD3B0FB92E9848A400015183 /* RecoveryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecoveryCard.swift; path = Components/RecoveryCard.swift; sourceTree = "<group>"; };
+		AD3B0FC92E984E3800015183 /* WeekComparison.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekComparison.swift; sourceTree = "<group>"; };
+		AD3B0FCB2E984E4600015183 /* WeekComparisonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekComparisonCard.swift; sourceTree = "<group>"; };
 		AD4402CC2E906E81001FC101 /* ExerciseLastUsedMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLastUsedMigration.swift; sourceTree = "<group>"; };
 		AD4402CE2E906EA2001FC101 /* ExerciseLastUsedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLastUsedViews.swift; sourceTree = "<group>"; };
 		AD4402D02E906F81001FC101 /* ExerciseHeaderWithLastUsed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseHeaderWithLastUsed.swift; sourceTree = "<group>"; };
@@ -365,6 +369,7 @@
 		11E748FD2C9E4B5F00AB1234 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				AD3B0FC92E984E3800015183 /* WeekComparison.swift */,
 				AD3B0FB52E98487400015183 /* ProgressionScore.swift */,
 				AD3B0FB62E98487400015183 /* RecoveryIndex.swift */,
 				AD87F8512E955F97001A4033 /* SessionStatistics.swift */,
@@ -443,6 +448,7 @@
 		AD2A83CA2E942EA000A6ADBE /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				AD3B0FCB2E984E4600015183 /* WeekComparisonCard.swift */,
 				AD3B0F9D2E98478D00015183 /* MuscleDistributionCard.swift */,
 				AD3B0F9E2E98478D00015183 /* ProgressionScoreCard.swift */,
 				AD3B0F9F2E98478D00015183 /* RecoveryCard.swift */,
@@ -602,6 +608,7 @@
 				AD271CBB2E852E1500FECDA1 /* AppIconGenerator.swift in Sources */,
 				AD2A83C52E942E7500A6ADBE /* TipEngine.swift in Sources */,
 				AD2A83C62E942E7500A6ADBE /* TipFeedbackManager.swift in Sources */,
+				AD3B0FCA2E984E3800015183 /* WeekComparison.swift in Sources */,
 				AD2A83C72E942E7500A6ADBE /* WorkoutAnalyzer.swift in Sources */,
 				AD363DA02E8C57020015A34D /* HealthKitSetup.swift in Sources */,
 				AD3B0FA22E98478D00015183 /* RecoveryCard.swift in Sources */,
@@ -648,6 +655,7 @@
 				ADD080512E8C790D003FAAFB /* AudioManager.swift in Sources */,
 				AD87F8522E955F97001A4033 /* SessionStatistics.swift in Sources */,
 				AD2A83CB2E942EA000A6ADBE /* SmartTipsCard.swift in Sources */,
+				AD3B0FCC2E984E4600015183 /* WeekComparisonCard.swift in Sources */,
 				AD03A7852E858BA40005AE79 /* ProfileView.swift in Sources */,
 				AD960EA02E8BF83200E91131 /* DataManager.swift in Sources */,
 				AD2A83CD2E94560200A6ADBE /* ExerciseSwapView.swift in Sources */,
