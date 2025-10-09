@@ -3,6 +3,7 @@ import SwiftUI
 /// Hero Card für den Progression Score - zeigt Gesamtfortschritt
 struct ProgressionScoreCard: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @StateObject private var cache = StatisticsCache.shared
     let sessionEntities: [WorkoutSessionEntity]
     @State private var progressionScore: ProgressionScore?
     @State private var isExpanded: Bool = false
@@ -132,7 +133,7 @@ struct ProgressionScoreCard: View {
         .onAppear {
             calculateProgressionScore()
         }
-        .onChange(of: sessionEntities.count) { _, _ in
+        .onChange(of: cache.cacheVersion) { _, _ in
             calculateProgressionScore()
         }
     }
@@ -157,14 +158,29 @@ struct ProgressionScoreCard: View {
     }
 
     private func calculateProgressionScore() {
-        let records = workoutStore.getAllExerciseRecords()
+        // Verwende gecachte Version wenn verfügbar
+        if let cached = cache.getProgressionScore() {
+            progressionScore = cached
+            return
+        }
 
-        progressionScore = ProgressionScore.calculate(
-            sessions: sessionEntities,
-            records: records,
-            weeklyGoal: workoutStore.weeklyGoal,
-            compareWeeks: 4
-        )
+        // Berechnung im Background
+        Task.detached(priority: .userInitiated) {
+            let records = await MainActor.run { workoutStore.getAllExerciseRecords() }
+            let weeklyGoal = await MainActor.run { workoutStore.weeklyGoal }
+
+            let score = ProgressionScore.calculate(
+                sessions: sessionEntities,
+                records: records,
+                weeklyGoal: weeklyGoal,
+                compareWeeks: 4
+            )
+
+            await MainActor.run {
+                self.progressionScore = score
+                cache.setProgressionScore(score)
+            }
+        }
     }
 }
 

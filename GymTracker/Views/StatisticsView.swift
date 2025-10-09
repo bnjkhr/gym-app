@@ -17,6 +17,7 @@ private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
 
 struct StatisticsView: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @StateObject private var cache = StatisticsCache.shared
     @State private var showingCalendar: Bool = false
     @State private var expandedVolumeCard: Bool = false
     @State private var expandedHealthCard: Bool = false
@@ -40,6 +41,21 @@ struct StatisticsView: View {
 
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 24) {
+                    // Cache invalidieren bei Datenänderungen
+                    Color.clear
+                        .frame(height: 0)
+                        .onAppear {
+                            cache.invalidateIfNeeded(
+                                sessionCount: completedSessions.count,
+                                recordsCount: workoutStore.getAllExerciseRecords().count
+                            )
+                        }
+                        .onChange(of: completedSessions.count) { _, newCount in
+                            cache.invalidateIfNeeded(
+                                sessionCount: newCount,
+                                recordsCount: workoutStore.getAllExerciseRecords().count
+                            )
+                        }
                     // Floating Glassmorphism Header
                     FloatingInsightsHeader(showCalendar: { showingCalendar = true })
                         .padding(.horizontal, 20)

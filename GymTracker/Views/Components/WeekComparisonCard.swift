@@ -3,6 +3,7 @@ import SwiftUI
 /// Card zeigt Vergleich: Diese Woche vs. Letzte Woche
 struct WeekComparisonCard: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
+    @StateObject private var cache = StatisticsCache.shared
     let sessionEntities: [WorkoutSessionEntity]
     @State private var comparison: WeekComparison?
     @State private var isExpanded: Bool = false
@@ -190,9 +191,9 @@ struct WeekComparisonCard: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .onAppear {
-            scheduleUpdate()
+            calculateComparison()
         }
-        .onChange(of: sessionEntities.count) { _, _ in
+        .onChange(of: cache.cacheVersion) { _, _ in
             scheduleUpdate()
         }
         .onDisappear {
@@ -225,8 +226,22 @@ struct WeekComparisonCard: View {
     }
 
     private func calculateComparison() {
-        let records = workoutStore.getAllExerciseRecords()
-        comparison = WeekComparison.calculate(sessions: sessionEntities, records: records)
+        // Verwende gecachte Version wenn verfügbar
+        if let cached = cache.getWeekComparison() {
+            comparison = cached
+            return
+        }
+
+        // Berechnung im Background
+        Task.detached(priority: .userInitiated) {
+            let records = await MainActor.run { workoutStore.getAllExerciseRecords() }
+            let comp = WeekComparison.calculate(sessions: sessionEntities, records: records)
+
+            await MainActor.run {
+                self.comparison = comp
+                cache.setWeekComparison(comp)
+            }
+        }
     }
 }
 
