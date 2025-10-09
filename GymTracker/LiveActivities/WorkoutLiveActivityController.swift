@@ -2,6 +2,7 @@
 import ActivityKit
 import Foundation
 import UIKit
+import UserNotifications
 
 @available(iOS 16.1, *)
 final class WorkoutLiveActivityController {
@@ -90,22 +91,28 @@ final class WorkoutLiveActivityController {
             return
         }
 
-        // Performance: Avoid redundant updates if state hasn't changed
+        // Performance: Da timerEndDate verwendet wird, brauchen wir nur wichtige Updates
         let normalizedRemaining = max(remainingSeconds, 0)
-        if let lastState = lastSentState,
-           lastState.remainingSeconds == normalizedRemaining,
-           lastState.heartRate == currentHeartRate {
-            // Skip update - nothing changed
+        let now = Date()
+
+        // Prüfe ob das ein wichtiger State-Change ist
+        let isImportantUpdate = lastSentState == nil || // Erstes Update
+                                lastSentState?.remainingSeconds == 0 || // Timer war aus
+                                normalizedRemaining == 0 || // Timer ist abgelaufen
+                                lastSentState?.heartRate != currentHeartRate // HR geändert
+
+        // Throttle nur unwichtige Updates
+        if !isImportantUpdate,
+           let lastUpdate = lastTimerUpdateTime,
+           now.timeIntervalSince(lastUpdate) < 10.0 {
+            // Skip - Timer aktualisiert sich selbst im Widget via Text(timerInterval:)
             return
         }
 
-        // Performance: Timer updates should come through every second
-        // but we still track to prevent duplicate calls
-        let now = Date()
         lastTimerUpdateTime = now
         lastSentState = (remainingSeconds: normalizedRemaining, heartRate: currentHeartRate)
 
-        print("[LiveActivity] 🔄 updateRest: \(remainingSeconds)s / \(totalSeconds)s, HR: \(currentHeartRate?.description ?? "nil")")
+        print("[LiveActivity] 🔄 updateRest: \(remainingSeconds)s / \(totalSeconds)s, HR: \(currentHeartRate?.description ?? "nil"), important: \(isImportantUpdate)")
 
         Task {
             await ensureActivityExists(workoutName: workoutName)
@@ -171,7 +178,23 @@ final class WorkoutLiveActivityController {
     }
 
     func showRestEnded(workoutName: String) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            print("[LiveActivity] ❌ showRestEnded: Activities not enabled")
+            return
+        }
+
+        print("[LiveActivity] 🔔 showRestEnded called - sending alert notification")
+
+        // Check notification settings
+        #if canImport(UIKit)
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
+            print("[LiveActivity] 📱 Notification settings: authStatus=\(settings.authorizationStatus.rawValue), alertStyle=\(settings.alertStyle.rawValue)")
+            print("[LiveActivity] 📱 Alerts enabled: \(settings.alertSetting.rawValue), Sounds: \(settings.soundSetting.rawValue)")
+        }
+        #endif
+
         Task {
             await ensureActivityExists(workoutName: workoutName)
             let state = WorkoutActivityAttributes.ContentState(
@@ -183,11 +206,16 @@ final class WorkoutLiveActivityController {
                 currentHeartRate: currentHeartRate,
                 timerEndDate: nil
             )
+
+            print("[LiveActivity] 🔔 Sending alert with title: 'Weiter geht's. 💪🏼'")
+
             await updateState(state: state, alertConfig: .init(
                 title: "Weiter geht's. 💪🏼",
                 body: "Die Pause ist vorbei",
                 sound: .default
             ))
+
+            print("[LiveActivity] ✅ Alert sent successfully")
         }
     }
 
@@ -383,10 +411,17 @@ final class WorkoutLiveActivityController {
         }
 
         do {
+            if let alert = alertConfig {
+                print("[LiveActivity] 🔔 Updating with alert: title='\(alert.title)', body='\(alert.body)', sound=\(alert.sound)")
+            }
             await activity.update(using: state, alertConfiguration: alertConfig)
-            print("[LiveActivity] ✅ Update erfolgreich - remaining: \(state.remainingSeconds)s, expired: \(state.isTimerExpired)")
+            print("[LiveActivity] ✅ Update erfolgreich - remaining: \(state.remainingSeconds)s, expired: \(state.isTimerExpired), hasAlert: \(alertConfig != nil)")
         } catch {
             print("[LiveActivity] ❌ Update fehlgeschlagen: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("[LiveActivity] Error domain: \(nsError.domain), code: \(nsError.code)")
+                print("[LiveActivity] User info: \(nsError.userInfo)")
+            }
         }
     }
 }
