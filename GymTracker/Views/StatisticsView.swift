@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftUI
 import Charts
 import SwiftData
 import HealthKit
@@ -46,6 +45,10 @@ struct StatisticsView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
 
+                    // 🆕 PHASE 1: Progression Score Hero Card
+                    ProgressionScoreCard(sessionEntities: completedSessions)
+                        .padding(.horizontal, 20)
+
                     // Hero-Card: Streak/Konsistenz
                     HeroStreakCard(sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
@@ -58,6 +61,18 @@ struct StatisticsView: View {
                     QuickStatsGrid(sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
 
+                    // 🆕 PHASE 1: Top 5 Kraft-PRs
+                    TopPRsCard()
+                        .padding(.horizontal, 20)
+
+                    // 🆕 PHASE 1: Muskelbalance (Volumen-Verteilung)
+                    MuscleDistributionCard(sessionEntities: completedSessions)
+                        .padding(.horizontal, 20)
+
+                    // 🆕 PHASE 1: Sets pro Muskelgruppe mit Empfehlungen
+                    WeeklySetsCard(sessionEntities: completedSessions)
+                        .padding(.horizontal, 20)
+
                     // Volumen-Chart Card (expandierbar)
                     VolumeChartCard(isExpanded: $expandedVolumeCard, sessionEntities: completedSessions)
                         .padding(.horizontal, 20)
@@ -65,6 +80,12 @@ struct StatisticsView: View {
                     // Personal Records Card (kompakt)
                     CompactPersonalRecordsCard()
                         .padding(.horizontal, 20)
+
+                    // 🆕 PHASE 1: Recovery Index (HealthKit)
+                    if workoutStore.healthKitManager.isAuthorized {
+                        RecoveryCard(sessionEntities: completedSessions)
+                            .padding(.horizontal, 20)
+                    }
 
                     // Health Cards (optional, nur wenn Daten vorhanden)
                     if workoutStore.healthKitManager.isAuthorized {

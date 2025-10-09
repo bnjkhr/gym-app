@@ -18,6 +18,7 @@ class HealthKitManager: ObservableObject {
         HKObjectType.quantityType(forIdentifier: .bodyMass)!,
         HKObjectType.quantityType(forIdentifier: .height)!,
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
+        HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
         HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
         HKObjectType.quantityType(forIdentifier: .bodyFatPercentage)!,
         HKObjectType.workoutType()
@@ -305,7 +306,50 @@ class HealthKitManager: ObservableObject {
             }
         }
     }
-    
+
+    /// Liest NUR Ruhepuls-Daten (nicht während Training)
+    /// ⚠️ Apple Watch misst den Ruhepuls automatisch im Hintergrund, meist nachts/in Ruhe
+    func readRestingHeartRate(from startDate: Date, to endDate: Date) async throws -> [HeartRateReading] {
+        guard let restingHRType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else {
+            throw HealthKitError.invalidType
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+
+        return try await withTimeout(seconds: 20) {
+            try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(
+                    sampleType: restingHRType,
+                    predicate: predicate,
+                    limit: HKObjectQueryNoLimit,
+                    sortDescriptors: [sortDescriptor]
+                ) { _, samples, error in
+                    if let error = error {
+                        print("❌ Fehler beim Lesen des Ruhepulses: \(error)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+
+                    let restingHRReadings = samples?.compactMap { sample -> HeartRateReading? in
+                        guard let quantitySample = sample as? HKQuantitySample else { return nil }
+
+                        let heartRate = quantitySample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
+                        return HeartRateReading(
+                            timestamp: quantitySample.startDate,
+                            heartRate: heartRate
+                        )
+                    } ?? []
+
+                    print("   • \(restingHRReadings.count) Ruhepuls-Messwerte geladen")
+                    continuation.resume(returning: restingHRReadings)
+                }
+
+                self.healthStore.execute(query)
+            }
+        }
+    }
+
     // MARK: - Workout Writing
     
     func saveWorkout(_ workoutSession: WorkoutSession) async throws {
