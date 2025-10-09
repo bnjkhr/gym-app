@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Card zeigt Sets pro Muskelgruppe mit wissenschaftlichen Empfehlungen
 struct WeeklySetsCard: View {
+    @StateObject private var cache = StatisticsCache.shared
     let sessionEntities: [WorkoutSessionEntity]
     @State private var isExpanded: Bool = false
     @State private var cachedSetsData: [MuscleGroupSets] = []
@@ -156,9 +157,9 @@ struct WeeklySetsCard: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .onAppear {
-            scheduleUpdate()
+            calculateWeeklySets()
         }
-        .onChange(of: sessionEntities.count) { _, _ in
+        .onChange(of: cache.cacheVersion) { _, _ in
             scheduleUpdate()
         }
         .onDisappear {
@@ -206,39 +207,53 @@ struct WeeklySetsCard: View {
     }
 
     private func calculateWeeklySets() {
-        var muscleGroupSets: [MuscleGroup: Int] = [:]
+        // Verwende gecachte Version wenn verfügbar
+        if !cache.getWeeklySets().isEmpty {
+            cachedSetsData = cache.getWeeklySets()
+            return
+        }
 
-        // Aktuelle Woche
-        let calendar = Calendar.current
-        let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
-        let weeklySessions = sessionEntities.filter { $0.date >= weekStart }
+        // Berechnung im Background
+        Task.detached(priority: .userInitiated) {
+            var muscleGroupSets: [MuscleGroup: Int] = [:]
 
-        // Sets pro Muskelgruppe zählen
-        for session in weeklySessions {
-            for exercise in session.exercises {
-                guard let exerciseEntity = exercise.exercise else { continue }
+            // Aktuelle Woche
+            let calendar = Calendar.current
+            let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+            let weeklySessions = sessionEntities.filter { $0.date >= weekStart }
 
-                let completedSets = exercise.sets.filter { $0.completed }.count
+            // Sets pro Muskelgruppe zählen
+            for session in weeklySessions {
+                for exercise in session.exercises {
+                    guard let exerciseEntity = exercise.exercise else { continue }
 
-                // Zu allen Muskelgruppen der Übung hinzufügen
-                for muscleGroupRaw in exerciseEntity.muscleGroupsRaw {
-                    if let muscleGroup = MuscleGroup(rawValue: muscleGroupRaw),
-                       muscleGroup != .cardio { // Cardio ausschließen
-                        muscleGroupSets[muscleGroup, default: 0] += completedSets
+                    let completedSets = exercise.sets.filter { $0.completed }.count
+
+                    // Zu allen Muskelgruppen der Übung hinzufügen
+                    for muscleGroupRaw in exerciseEntity.muscleGroupsRaw {
+                        if let muscleGroup = MuscleGroup(rawValue: muscleGroupRaw),
+                           muscleGroup != .cardio { // Cardio ausschließen
+                            muscleGroupSets[muscleGroup, default: 0] += completedSets
+                        }
                     }
                 }
             }
-        }
 
-        // Konvertieren in Array und sortieren
-        cachedSetsData = muscleGroupSets
-            .map { (muscleGroup, sets) in
-                MuscleGroupSets(
-                    muscleGroup: muscleGroup,
-                    sets: sets
-                )
+            // Konvertieren in Array und sortieren
+            let setsData = muscleGroupSets
+                .map { (muscleGroup, sets) in
+                    MuscleGroupSets(
+                        muscleGroup: muscleGroup,
+                        sets: sets
+                    )
+                }
+                .sorted { $0.sets > $1.sets }
+
+            await MainActor.run {
+                cachedSetsData = setsData
+                cache.setWeeklySets(setsData)
             }
-            .sorted { $0.sets > $1.sets }
+        }
     }
 }
 

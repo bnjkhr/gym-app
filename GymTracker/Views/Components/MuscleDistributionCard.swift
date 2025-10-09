@@ -3,6 +3,7 @@ import Charts
 
 /// Card zeigt die Volumen-Verteilung nach Muskelgruppen
 struct MuscleDistributionCard: View {
+    @StateObject private var cache = StatisticsCache.shared
     let sessionEntities: [WorkoutSessionEntity]
     @State private var isExpanded: Bool = false
     @State private var cachedDistribution: [MuscleGroupVolume] = []
@@ -116,9 +117,9 @@ struct MuscleDistributionCard: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .onAppear {
-            scheduleUpdate()
+            calculateDistribution()
         }
-        .onChange(of: sessionEntities.count) { _, _ in
+        .onChange(of: cache.cacheVersion) { _, _ in
             scheduleUpdate()
         }
         .onDisappear {
@@ -139,6 +140,19 @@ struct MuscleDistributionCard: View {
     }
 
     private func calculateDistribution() {
+        // Verwende gecachte Version wenn verfügbar
+        if !cache.getMuscleDistribution().isEmpty {
+            cachedDistribution = cache.getMuscleDistribution()
+            return
+        }
+
+        // Berechnung im Background
+        Task.detached(priority: .userInitiated) {
+            await calculateInBackground()
+        }
+    }
+
+    private func calculateInBackground() async {
         var muscleGroupVolumes: [MuscleGroup: Double] = [:]
 
         // Volumen pro Muskelgruppe sammeln (letzte 4 Wochen)
@@ -167,11 +181,13 @@ struct MuscleDistributionCard: View {
         // Konvertieren in Array und sortieren
         let totalVolume = muscleGroupVolumes.values.reduce(0, +)
         guard totalVolume > 0 else {
-            cachedDistribution = []
+            await MainActor.run {
+                cachedDistribution = []
+            }
             return
         }
 
-        cachedDistribution = muscleGroupVolumes
+        let distribution = muscleGroupVolumes
             .map { (muscleGroup, volume) in
                 MuscleGroupVolume(
                     muscleGroup: muscleGroup,
@@ -180,6 +196,11 @@ struct MuscleDistributionCard: View {
                 )
             }
             .sorted { $0.volume > $1.volume }
+
+        await MainActor.run {
+            cachedDistribution = distribution
+            cache.setMuscleDistribution(distribution)
+        }
     }
 }
 

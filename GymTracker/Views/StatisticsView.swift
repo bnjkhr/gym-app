@@ -515,6 +515,7 @@ private struct QuickStatCard: View, Equatable {
 
 // MARK: - Volume Chart Card (Expandable)
 private struct VolumeChartCard: View {
+    @StateObject private var cache = StatisticsCache.shared
     @Binding var isExpanded: Bool
     let sessionEntities: [WorkoutSessionEntity]
     @Environment(\.colorScheme) private var colorScheme
@@ -624,9 +625,9 @@ private struct VolumeChartCard: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.25 : 0.08), radius: 12, x: 0, y: 4)
         .onAppear {
-            scheduleUpdate()
+            calculateChartData()
         }
-        .onChange(of: sessionEntities.count) { _, _ in
+        .onChange(of: cache.cacheVersion) { _, _ in
             scheduleUpdate()
         }
         .onDisappear {
