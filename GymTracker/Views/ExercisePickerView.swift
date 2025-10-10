@@ -119,7 +119,7 @@ struct ExercisePickerView: View {
                         } label: {
                             Image(systemName: isSelected(exercise) ? "checkmark.circle.fill" : "plus.circle")
                                 .imageScale(.large)
-                                .foregroundColor(isSelected(exercise) ? .green : .accentColor)
+                                .foregroundColor(isSelected(exercise) ? Color(red: 0/255, green: 95/255, blue: 86/255) : .accentColor)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(isSelected(exercise) ? "Übung entfernen" : "Übung hinzufügen")

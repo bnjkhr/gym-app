@@ -1303,7 +1303,7 @@ struct AnimatedCheckmark: View {
     var body: some View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 20, weight: .bold))
-            .foregroundStyle(Color.green)
+            .foregroundStyle(Color(red: 0/255, green: 95/255, blue: 86/255))
             .scaleEffect(scale)
             .opacity(opacity)
             .onAppear {

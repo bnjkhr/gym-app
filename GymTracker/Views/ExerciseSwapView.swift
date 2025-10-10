@@ -309,10 +309,10 @@ struct ExerciseSimilarityCard: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(Color(red: 0/255, green: 95/255, blue: 86/255))
                     Text("Passt zu deinem Level")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(Color(red: 0/255, green: 95/255, blue: 86/255))
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -325,7 +325,7 @@ struct ExerciseSimilarityCard: View {
 
     private var scoreColor: Color {
         if similarityScore >= 70 {
-            return .green
+            return Color(red: 0/255, green: 95/255, blue: 86/255)
         } else if similarityScore >= 40 {
             return .customOrange
         } else {

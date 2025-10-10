@@ -143,7 +143,7 @@ struct HeartRateView: View {
                 title: "Minimum",
                 value: Int(minHeartRate),
                 unit: "bpm",
-                color: .green
+                color: Color(red: 0/255, green: 95/255, blue: 86/255)
             )
         }
     }

@@ -74,11 +74,12 @@ enum MuscleGroup: String, CaseIterable, Codable {
     case coordination = "Koordination"
 
     var color: Color {
+        let greenColor = Color(red: 0/255, green: 95/255, blue: 86/255)
         switch self {
         case .chest: return .red
         case .back: return .customBlue
         case .shoulders: return .customOrange
-        case .biceps: return .green
+        case .biceps: return greenColor
         case .triceps: return .purple
         case .legs: return .yellow
         case .glutes: return .pink
@@ -97,7 +98,7 @@ enum MuscleGroup: String, CaseIterable, Codable {
         case .hamstrings: return .customOrange.opacity(0.7)
         case .lats: return .cyan.opacity(0.8)
         case .grip: return .brown.opacity(0.8)
-        case .arms: return .green.opacity(0.6)
+        case .arms: return greenColor.opacity(0.6)
         case .adductors: return .yellow.opacity(0.7)
         case .obliques: return .mint.opacity(0.6)
         case .hipFlexors: return .pink.opacity(0.6)
@@ -126,7 +127,7 @@ enum DifficultyLevel: String, CaseIterable, Codable {
 
     var color: Color {
         switch self {
-        case .anfänger: return .green
+        case .anfänger: return Color(red: 0/255, green: 95/255, blue: 86/255)
         case .fortgeschritten: return .customOrange
         case .profi: return .red
         }

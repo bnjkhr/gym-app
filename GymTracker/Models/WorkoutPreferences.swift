@@ -65,7 +65,7 @@ enum FitnessGoal: String, Identifiable, Codable, CaseIterable, WizardSelectableO
         switch self {
         case .muscleBuilding: return .customOrange
         case .strength: return .purple
-        case .endurance: return .green
+        case .endurance: return Color(red: 0/255, green: 95/255, blue: 86/255)
         case .weightLoss: return .red
         case .general: return .customBlue
         }

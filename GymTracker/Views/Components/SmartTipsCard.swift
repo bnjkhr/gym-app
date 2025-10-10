@@ -161,7 +161,7 @@ struct SmartTipsCard: View {
         VStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 40))
-                .foregroundStyle(.green)
+                .foregroundStyle(Color(red: 0/255, green: 95/255, blue: 86/255))
 
             Text("Alles gut!")
                 .font(.system(size: 16, weight: .semibold))
@@ -308,12 +308,12 @@ struct TipCardView: View {
                         Text("Bewertet")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color(red: 0/255, green: 95/255, blue: 86/255))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(Color.green.opacity(0.15))
+                            .fill(Color(red: 0/255, green: 95/255, blue: 86/255).opacity(0.15))
                     )
                 }
             }

@@ -78,7 +78,7 @@ enum TipCategory: String, Codable, CaseIterable {
 
     var color: Color {
         switch self {
-        case .progression: return .green
+        case .progression: return Color(red: 0/255, green: 95/255, blue: 86/255)
         case .balance: return .customOrange
         case .recovery: return .customBlue
         case .motivation: return .red

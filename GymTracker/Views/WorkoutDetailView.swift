@@ -53,11 +53,33 @@ struct WorkoutDetailView: View {
 
     init(entity: WorkoutEntity, isActiveSession: Bool = false, onActiveSessionEnd: (() -> Void)? = nil) {
         self.entity = entity
+
+        // Map exercises from entity to avoid empty array after app restart
+        let sortedExercises = entity.exercises.sorted { $0.order < $1.order }
+        let mappedExercises: [WorkoutExercise] = sortedExercises.compactMap { we in
+            guard let exEntity = we.exercise else { return nil }
+            let groups = exEntity.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+            let equipmentType = EquipmentType(rawValue: exEntity.equipmentTypeRaw) ?? .mixed
+            let difficultyLevel = DifficultyLevel(rawValue: exEntity.difficultyLevelRaw) ?? .anfänger
+            let exercise = Exercise(
+                id: exEntity.id,
+                name: exEntity.name,
+                muscleGroups: groups,
+                equipmentType: equipmentType,
+                difficultyLevel: difficultyLevel,
+                description: exEntity.descriptionText,
+                instructions: exEntity.instructions,
+                createdAt: exEntity.createdAt
+            )
+            let sets = we.sets.map { ExerciseSet(entity: $0) }
+            return WorkoutExercise(id: we.id, exercise: exercise, sets: sets)
+        }
+
         self._workout = State(initialValue: Workout(
             id: entity.id,
             name: entity.name,
             date: entity.date,
-            exercises: [],
+            exercises: mappedExercises,
             defaultRestTime: entity.defaultRestTime,
             duration: entity.duration,
             notes: entity.notes,

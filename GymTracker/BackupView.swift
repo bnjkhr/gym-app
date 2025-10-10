@@ -84,7 +84,7 @@ struct BackupView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: "square.and.arrow.down")
-                                .foregroundColor(.green)
+                                .foregroundColor(Color(red: 0/255, green: 95/255, blue: 86/255))
                             Text("Backup importieren")
                                 .font(.headline)
                             

@@ -105,7 +105,7 @@ struct ExerciseRecordRow: View {
                         title: "Meiste Wdh.",
                         value: "\(record.maxReps)",
                         subtitle: "\(String(format: "%.0f", record.maxRepsWeight)) kg",
-                        color: .green
+                        color: Color(red: 0/255, green: 95/255, blue: 86/255)
                     )
                     
                     RecordStat(

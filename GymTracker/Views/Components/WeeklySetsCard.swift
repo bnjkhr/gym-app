@@ -95,7 +95,7 @@ struct WeeklySetsCard: View {
                     Divider()
 
                     HStack(spacing: 16) {
-                        LegendItem(color: .green, label: "Optimal")
+                        LegendItem(color: Color(red: 0/255, green: 95/255, blue: 86/255), label: "Optimal")
                         LegendItem(color: .customOrange, label: "Wenig")
                         LegendItem(color: .red, label: "Zu viel")
                     }
@@ -118,7 +118,7 @@ struct WeeklySetsCard: View {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.caption)
-                                .foregroundStyle(.green)
+                                .foregroundStyle(Color(red: 0/255, green: 95/255, blue: 86/255))
                             Text("\(optimal)/\(total) optimal")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -171,7 +171,7 @@ struct WeeklySetsCard: View {
 
     private func setsStatusColor(sets: Int) -> Color {
         if sets >= minRecommended && sets <= maxRecommended {
-            return .green
+            return Color(red: 0/255, green: 95/255, blue: 86/255)
         } else if sets < minRecommended {
             return .customOrange
         } else {
@@ -186,8 +186,9 @@ struct WeeklySetsCard: View {
     }
 
     private func progressGradient(sets: Int) -> LinearGradient {
+        let greenColor = Color(red: 0/255, green: 95/255, blue: 86/255)
         if sets >= minRecommended && sets <= maxRecommended {
-            return LinearGradient(colors: [.green.opacity(0.7), .green], startPoint: .leading, endPoint: .trailing)
+            return LinearGradient(colors: [greenColor.opacity(0.7), greenColor], startPoint: .leading, endPoint: .trailing)
         } else if sets < minRecommended {
             return LinearGradient(colors: [.customOrange.opacity(0.7), .customOrange], startPoint: .leading, endPoint: .trailing)
         } else {

@@ -25,8 +25,8 @@ enum AppTheme {
 
     /// MossGreen - Erfolgs- und Bestätigungsfarbe
     static let mossGreen = Color(
-        light: Color(red: 75/255, green: 127/255, blue: 82/255),
-        dark: Color(red: 92/255, green: 154/255, blue: 100/255)
+        light: Color(red: 0/255, green: 95/255, blue: 86/255),
+        dark: Color(red: 0/255, green: 95/255, blue: 86/255)
     )
 
     /// BrightYellow - Warnfarbe und Highlights
