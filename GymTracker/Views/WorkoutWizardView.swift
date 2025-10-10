@@ -189,7 +189,7 @@ struct WorkoutWizardView: View {
                 Text("\(frequency)x pro Woche")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.customBlue)
 
                 Stepper(value: $frequency, in: 1...7) {
                     EmptyView()
@@ -324,7 +324,7 @@ struct SelectionCard: View {
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.blue)
+                        .foregroundColor(.customBlue)
                         .font(.title3)
                 }
             }

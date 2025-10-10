@@ -38,7 +38,7 @@ struct GeneratedWorkoutPreviewView: View {
                         HStack {
                             Image(systemName: "sparkles.square.filled.on.square")
                                 .font(.title)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.customBlue)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Dein perfektes Workout")
                                     .font(.headline)
@@ -55,7 +55,7 @@ struct GeneratedWorkoutPreviewView: View {
                             HStack(alignment: .top, spacing: 10) {
                                 Image(systemName: "person.text.rectangle")
                                     .font(.headline)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.customBlue)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Erstellt mit deinem Profil")
                                         .font(.subheadline).fontWeight(.semibold)
@@ -223,7 +223,7 @@ struct StatItem: View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundColor(.blue)
+                .foregroundColor(.customBlue)
             Text(value)
                 .font(.headline)
                 .fontWeight(.semibold)
@@ -279,7 +279,7 @@ struct ExercisePreviewCard: View {
                             Button(action: onSwapTapped) {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.title3)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.customBlue)
                             }
                         }
                     }
@@ -290,13 +290,13 @@ struct ExercisePreviewCard: View {
             HStack(spacing: 8) {
                 ForEach(0..<min(workoutExercise.sets.count, 6), id: \.self) { index in
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.blue.opacity(0.3))
+                        .fill(Color.customBlue.opacity(0.3))
                         .frame(height: 8)
                         .overlay(
                             Text("\(workoutExercise.sets[index].reps)")
                                 .font(.caption2)
                                 .fontWeight(.medium)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.customBlue)
                         )
                 }
                 if workoutExercise.sets.count > 6 {

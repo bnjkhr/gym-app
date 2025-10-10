@@ -7,7 +7,7 @@ struct AppIconArtwork: View {
         ZStack {
             // Background gradient
             LinearGradient(
-                colors: [Color.blue, Color.purple],
+                colors: [Color.customBlue, Color.purple],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

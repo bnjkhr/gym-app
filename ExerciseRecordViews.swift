@@ -20,13 +20,13 @@ struct PersonalRecordBadge: View {
         .padding(.vertical, 4)
         .background(
             LinearGradient(
-                colors: [Color.orange, Color.red],
+                colors: [Color.customOrange, Color.red],
                 startPoint: .leading,
                 endPoint: .trailing
             ),
             in: Capsule()
         )
-        .shadow(color: .orange.opacity(0.3), radius: 4, x: 0, y: 2)
+        .shadow(color: .customOrange.opacity(0.3), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -98,7 +98,7 @@ struct ExerciseRecordRow: View {
                         title: "Höchstes Gewicht",
                         value: "\(String(format: "%.0f", record.maxWeight)) kg",
                         subtitle: "\(record.maxWeightReps) Wdh.",
-                        color: .blue
+                        color: .customBlue
                     )
                     
                     RecordStat(

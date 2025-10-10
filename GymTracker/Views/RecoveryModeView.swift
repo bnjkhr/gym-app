@@ -50,7 +50,7 @@ struct RecoveryModeView: View {
                             .font(.system(size: 80, weight: .medium))
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [Color.orange, Color.red],
+                                    colors: [Color.customOrange, Color.red],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )

@@ -337,15 +337,15 @@ struct WorkoutsTabView: View {
                 Spacer()
                 Image(systemName: "wand.and.stars")
                     .font(.title2)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.customBlue)
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.blue.opacity(0.1))
+                    .fill(Color.customBlue.opacity(0.1))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                            .stroke(Color.customBlue.opacity(0.3), lineWidth: 1)
                     )
             )
         }

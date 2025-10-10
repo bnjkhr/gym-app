@@ -141,7 +141,7 @@ struct FeatureRow: View {
         HStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.customBlue)
                 .frame(width: 24, alignment: .center)
             
             VStack(alignment: .leading, spacing: 4) {

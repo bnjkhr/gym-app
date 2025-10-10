@@ -19,8 +19,8 @@ enum AppTheme {
 
     /// TurquoiseBoost - Akzentfarbe für Highlights
     static let turquoiseBoost = Color(
-        light: Color(red: 6/255, green: 182/255, blue: 212/255),
-        dark: Color(red: 17/255, green: 200/255, blue: 224/255)
+        light: Color(red: 82/255, green: 167/255, blue: 204/255),
+        dark: Color(red: 82/255, green: 167/255, blue: 204/255)
     )
 
     /// MossGreen - Erfolgs- und Bestätigungsfarbe

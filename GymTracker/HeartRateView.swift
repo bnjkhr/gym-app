@@ -129,7 +129,7 @@ struct HeartRateView: View {
                 title: "Durchschnitt",
                 value: Int(averageHeartRate),
                 unit: "bpm",
-                color: .blue
+                color: .customBlue
             )
             
             StatCard(

@@ -216,7 +216,7 @@ struct FolderSectionView: View {
                             } label: {
                                 Label("Aus Ordner", systemImage: "folder.badge.minus")
                             }
-                            .tint(.orange)
+                            .tint(.customOrange)
                         }
                 }
             }

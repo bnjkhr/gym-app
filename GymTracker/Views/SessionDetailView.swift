@@ -310,7 +310,7 @@ struct SessionDetailView: View {
                     icon: "heart.fill",
                     value: "\(minHR) bpm",
                     label: "Min. HF",
-                    color: .blue
+                    color: .customBlue
                 )
             }
 
@@ -328,7 +328,7 @@ struct SessionDetailView: View {
                     icon: "heart.fill",
                     value: "\(avgHR) bpm",
                     label: "Ø HF",
-                    color: .orange
+                    color: .customOrange
                 )
             }
         }

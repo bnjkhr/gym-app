@@ -1046,7 +1046,7 @@ private struct PersonalRecordCardView: View {
                     showingAllRecords = true
                 }
                 .font(.caption)
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.customBlue)
             }
             
             if recentRecords.isEmpty {

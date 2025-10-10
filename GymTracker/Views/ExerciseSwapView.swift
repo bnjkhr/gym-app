@@ -102,7 +102,7 @@ struct ExerciseSwapView: View {
             HStack {
                 Image(systemName: "arrow.triangle.swap")
                     .font(.title2)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.customBlue)
                 Text("Aktuelle Übung")
                     .font(.headline)
                     .foregroundColor(.secondary)
@@ -161,7 +161,7 @@ struct ExerciseSwapView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(filterOption == option ? Color.blue : Color(.tertiarySystemBackground))
+                        .background(filterOption == option ? Color.customBlue : Color(.tertiarySystemBackground))
                         .foregroundColor(filterOption == option ? .white : .primary)
                         .cornerRadius(8)
                     }
@@ -297,7 +297,7 @@ struct ExerciseSimilarityCard: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.blue)
+                            .background(Color.customBlue)
                             .cornerRadius(8)
                     }
                 }
@@ -327,7 +327,7 @@ struct ExerciseSimilarityCard: View {
         if similarityScore >= 70 {
             return .green
         } else if similarityScore >= 40 {
-            return .orange
+            return .customOrange
         } else {
             return .red
         }

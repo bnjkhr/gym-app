@@ -722,7 +722,7 @@ struct WorkoutsHomeView: View {
                     .padding(.vertical, 8)
                     .background(
                         Capsule()
-                            .fill(AppTheme.deepBlue)
+                            .fill(Color.customBlue)
                     )
                 }
                 .buttonStyle(.plain)
@@ -1096,7 +1096,7 @@ struct WorkoutHighlightCard: View {
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(AppTheme.deepBlue)
+                .fill(Color.customBlue)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(Color.white.opacity(0.1), lineWidth: 1)
@@ -2118,7 +2118,7 @@ struct ErrorWorkoutView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 50))
-                .foregroundColor(.orange)
+                .foregroundColor(.customOrange)
             Text("Workout nicht verfügbar")
                 .font(.headline)
             Text("Das Workout konnte nicht geladen werden.")

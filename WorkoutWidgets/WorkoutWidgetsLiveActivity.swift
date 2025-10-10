@@ -9,6 +9,11 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
+extension Color {
+    static let customOrange = Color(red: 251/255.0, green: 127/255.0, blue: 51/255.0)
+    static let customBlue = Color(red: 82/255.0, green: 167/255.0, blue: 204/255.0)
+}
+
 struct WorkoutWidgetsLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
@@ -54,7 +59,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                     ProgressView(value: Double(context.state.totalSeconds - context.state.remainingSeconds),
                                total: Double(context.state.totalSeconds))
                         .progressViewStyle(.linear)
-                        .tint(.blue)
+                        .tint(Color.customBlue)
 
                     HStack {
                         if let exerciseName = context.state.exerciseName {
@@ -121,7 +126,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         }
                     } icon: {
                         Image(systemName: context.state.remainingSeconds > 0 ? "pause.circle.fill" : "figure.strengthtraining.traditional")
-                            .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .white)
+                            .foregroundStyle(context.state.remainingSeconds > 0 ? Color.customOrange : .white)
                     }
                     .font(.body)
                 }
@@ -157,7 +162,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
             } compactLeading: {
                 // Compact Leading UI (links in der Dynamic Island)
                 Image(systemName: context.state.remainingSeconds > 0 ? "timer" : "figure.strengthtraining.traditional")
-                    .foregroundStyle(context.state.remainingSeconds > 0 ? .orange : .white)
+                    .foregroundStyle(context.state.remainingSeconds > 0 ? Color.customOrange : .white)
             } compactTrailing: {
                 // Compact Trailing UI (rechts in der Dynamic Island)
                 Group {
@@ -165,7 +170,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         HStack(spacing: 2) {
                             Image(systemName: "pause.fill")
                                 .font(.system(size: 8))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.customOrange)
                             if let endDate = context.state.timerEndDate {
                                 Text(timerInterval: Date()...endDate, countsDown: true)
                                     .font(.caption2)
@@ -205,13 +210,13 @@ struct WorkoutWidgetsLiveActivity: Widget {
                         if let endDate = context.state.timerEndDate {
                             Text(timerInterval: Date()...endDate, countsDown: true)
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.customOrange)
                                 .monospacedDigit()
                                 .contentTransition(.numericText())
                         } else {
                             Text(formatTime(context.state.remainingSeconds))
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.customOrange)
                                 .contentTransition(.numericText())
                         }
                     } else if let heartRate = context.state.currentHeartRate {

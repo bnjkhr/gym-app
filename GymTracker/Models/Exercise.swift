@@ -76,8 +76,8 @@ enum MuscleGroup: String, CaseIterable, Codable {
     var color: Color {
         switch self {
         case .chest: return .red
-        case .back: return .blue
-        case .shoulders: return .orange
+        case .back: return .customBlue
+        case .shoulders: return .customOrange
         case .biceps: return .green
         case .triceps: return .purple
         case .legs: return .yellow
@@ -94,7 +94,7 @@ enum MuscleGroup: String, CaseIterable, Codable {
         case .hips: return .purple.opacity(0.7)
         case .core: return .mint.opacity(0.8)
         // Farben für CSV-Muskelgruppen
-        case .hamstrings: return .orange.opacity(0.7)
+        case .hamstrings: return .customOrange.opacity(0.7)
         case .lats: return .cyan.opacity(0.8)
         case .grip: return .brown.opacity(0.8)
         case .arms: return .green.opacity(0.6)
@@ -127,7 +127,7 @@ enum DifficultyLevel: String, CaseIterable, Codable {
     var color: Color {
         switch self {
         case .anfänger: return .green
-        case .fortgeschritten: return .orange
+        case .fortgeschritten: return .customOrange
         case .profi: return .red
         }
     }

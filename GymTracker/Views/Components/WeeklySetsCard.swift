@@ -96,7 +96,7 @@ struct WeeklySetsCard: View {
 
                     HStack(spacing: 16) {
                         LegendItem(color: .green, label: "Optimal")
-                        LegendItem(color: .orange, label: "Wenig")
+                        LegendItem(color: .customOrange, label: "Wenig")
                         LegendItem(color: .red, label: "Zu viel")
                     }
                     .font(.caption2)
@@ -173,7 +173,7 @@ struct WeeklySetsCard: View {
         if sets >= minRecommended && sets <= maxRecommended {
             return .green
         } else if sets < minRecommended {
-            return .orange
+            return .customOrange
         } else {
             return .red
         }
@@ -189,7 +189,7 @@ struct WeeklySetsCard: View {
         if sets >= minRecommended && sets <= maxRecommended {
             return LinearGradient(colors: [.green.opacity(0.7), .green], startPoint: .leading, endPoint: .trailing)
         } else if sets < minRecommended {
-            return LinearGradient(colors: [.orange.opacity(0.7), .orange], startPoint: .leading, endPoint: .trailing)
+            return LinearGradient(colors: [.customOrange.opacity(0.7), .customOrange], startPoint: .leading, endPoint: .trailing)
         } else {
             return LinearGradient(colors: [.red.opacity(0.7), .red], startPoint: .leading, endPoint: .trailing)
         }

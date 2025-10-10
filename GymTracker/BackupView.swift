@@ -26,7 +26,7 @@ struct BackupView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
-                                .foregroundColor(.blue)
+                                .foregroundColor(.customBlue)
                             Text("Backup exportieren")
                                 .font(.headline)
                             
@@ -144,7 +144,7 @@ struct BackupView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(.customOrange)
                             Text("Wichtige Hinweise")
                                 .font(.headline)
                         }
