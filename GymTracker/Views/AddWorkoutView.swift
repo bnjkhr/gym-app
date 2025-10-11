@@ -180,6 +180,8 @@ struct AddWorkoutView: View {
                     id: exId,
                     name: selection.exercise.name,
                     muscleGroupsRaw: selection.exercise.muscleGroups.map { $0.rawValue },
+                    equipmentTypeRaw: selection.exercise.equipmentType.rawValue,
+                    difficultyLevelRaw: selection.exercise.difficultyLevel.rawValue,
                     descriptionText: selection.exercise.description,
                     instructions: selection.exercise.instructions,
                     createdAt: selection.exercise.createdAt
@@ -190,6 +192,8 @@ struct AddWorkoutView: View {
             }()
 
             let we = WorkoutExerciseEntity(exercise: exerciseEntity, order: index)
+            modelContext.insert(we)  // Insert WorkoutExerciseEntity into context
+
             for _ in 0..<selection.setCount {
                 let set = ExerciseSetEntity(
                     id: UUID(),
@@ -198,6 +202,7 @@ struct AddWorkoutView: View {
                     restTime: restTimeSeconds,
                     completed: false
                 )
+                modelContext.insert(set)  // Insert each set into context
                 we.sets.append(set)
             }
             workoutExerciseEntities.append(we)
