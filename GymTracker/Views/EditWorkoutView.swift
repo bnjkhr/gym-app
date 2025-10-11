@@ -292,8 +292,24 @@ struct EditWorkoutView: View {
                                                 withAnimation(.spring(response: 0.3)) {
                                                     enterReorderMode()
                                                 }
+                                            },
+                                            onDelete: {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    removeExerciseById(editable.exerciseId)
+                                                    cardStates.removeValue(forKey: editable.id)
+                                                }
                                             }
                                         )
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                            Button(role: .destructive) {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    removeExerciseById(editable.exerciseId)
+                                                    cardStates.removeValue(forKey: editable.id)
+                                                }
+                                            } label: {
+                                                Label("Löschen", systemImage: "trash")
+                                            }
+                                        }
 
                                         // Quick Edit View (conditionally shown)
                                         if cardStates[editable.id]?.isQuickEditing == true {
@@ -821,6 +837,7 @@ struct CollapsedExerciseRow: View {
     let onTap: () -> Void
     let onToggleExpand: () -> Void
     let onLongPress: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -856,6 +873,14 @@ struct CollapsedExerciseRow: View {
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(0)) // Will animate
                 }
+
+                // Delete Button
+                Button(action: onDelete) {
+                    Image(systemName: "trash.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.red.opacity(0.6))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(16)
