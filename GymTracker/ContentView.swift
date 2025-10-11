@@ -180,6 +180,25 @@ struct ContentView: View {
             // Set model context in WorkoutStore immediately when view appears
             workoutStore.modelContext = modelContext
 
+            // Restore active workout state from UserDefaults (after Force Quit)
+            if let workoutIDString = UserDefaults.standard.string(forKey: "activeWorkoutID"),
+               let workoutID = UUID(uuidString: workoutIDString) {
+                // Verify workout still exists
+                let descriptor = FetchDescriptor<WorkoutEntity>(
+                    predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
+                )
+                if let _ = try? modelContext.fetch(descriptor).first {
+                    print("✅ Restoring active workout from persisted state: \(workoutID)")
+                    workoutStore.activeSessionID = workoutID
+
+                    // Restore rest timer state if exists
+                    workoutStore.restorePersistedRestState()
+                } else {
+                    print("⚠️ Persisted workout not found → clearing state")
+                    UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
+                }
+            }
+
             // Initialize AudioManager
             _ = AudioManager.shared
 
@@ -244,7 +263,7 @@ struct ContentView: View {
         
         // Navigate to the active workout using the WorkoutsHomeView selection
         // This will be handled by the child view's selectedWorkout state
-        WorkoutLiveActivityController.shared.start(workoutName: active.name)
+        WorkoutLiveActivityController.shared.start(workoutId: active.id, workoutName: active.name)
     }
     
     private func endActiveSession() {
@@ -625,7 +644,7 @@ struct WorkoutsHomeView: View {
                 if let activeID = workoutStore.activeSessionID {
                     selectedWorkout = WorkoutSelection(id: activeID)
                     if let entity = workoutEntities.first(where: { $0.id == activeID }) {
-                        WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+                        WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
                     }
                 }
             }
@@ -855,7 +874,7 @@ struct WorkoutsHomeView: View {
             // If already active: just navigate to details
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
             }
             return
         }
@@ -865,7 +884,7 @@ struct WorkoutsHomeView: View {
         if workoutStore.activeSessionID == id {
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
             }
         } else {
             // Error handled silently

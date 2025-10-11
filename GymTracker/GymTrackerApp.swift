@@ -2,6 +2,9 @@ import SwiftUI
 import SwiftData
 import Foundation
 import OSLog
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 @main
 struct GymTrackerApp: App {
@@ -298,10 +301,58 @@ struct GymTrackerApp: App {
             // Cleanup stale Live Activities (z.B. nach Force-Quit)
             WorkoutLiveActivityController.shared.cleanupStaleActivities()
 
+            // Synchronisiere App-State mit Live Activities (nach Force-Quit)
+            await synchronizeWithLiveActivities(context: context)
+
             // Live Activity Test nur im Debug-Modus
             #if DEBUG
             // WorkoutLiveActivityController.shared.testLiveActivity()
             #endif
+        }
+        #endif
+    }
+
+    // MARK: - Live Activity Synchronization
+
+    /// Synchronize app state with existing Live Activities after Force Quit
+    /// This ensures the app and Live Activities stay in sync
+    private func synchronizeWithLiveActivities(context: ModelContext) async {
+        #if canImport(ActivityKit)
+        if #available(iOS 16.1, *) {
+            let activeActivities = Activity<WorkoutActivityAttributes>.activities
+
+            guard let activity = activeActivities.first else {
+                // No Live Activity → ensure no persisted workout state
+                UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
+                AppLogger.liveActivity.info("No Live Activity found → cleared persisted workout state")
+                return
+            }
+
+            // Live Activity exists → check if workout exists in DB
+            let workoutId = activity.attributes.workoutId
+            let workoutName = activity.attributes.workoutName
+
+            AppLogger.liveActivity.info("Found active Live Activity for workout: \(workoutName) (ID: \(workoutId))")
+
+            // Verify workout exists in database
+            let descriptor = FetchDescriptor<WorkoutEntity>(
+                predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
+            )
+
+            do {
+                if let _ = try context.fetch(descriptor).first {
+                    // Workout exists → persist workout ID for WorkoutStore to restore
+                    UserDefaults.standard.set(workoutId.uuidString, forKey: "activeWorkoutID")
+                    AppLogger.liveActivity.info("✅ Persisted workout state for restoration: \(workoutId)")
+                } else {
+                    // Workout doesn't exist → remove stale Live Activity
+                    AppLogger.liveActivity.warning("⚠️ Live Activity references non-existent workout → removing")
+                    await activity.end(dismissalPolicy: .immediate)
+                    UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
+                }
+            } catch {
+                AppLogger.liveActivity.error("❌ Error fetching workout: \(error.localizedDescription)")
+            }
         }
         #endif
     }

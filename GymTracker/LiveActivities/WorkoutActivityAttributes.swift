@@ -13,6 +13,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var timerEndDate: Date? // Endzeitpunkt für nativen Timer im Widget
     }
 
+    var workoutId: UUID // UUID des aktiven Workouts für State-Wiederherstellung
     var workoutName: String
     var startDate: Date // Startzeit für Stale-Detection beim App-Neustart
 }

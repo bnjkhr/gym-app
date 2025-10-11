@@ -58,7 +58,7 @@ class WorkoutStore: ObservableObject {
 
     // Zentrale Rest-Timer-State
     // Performance: Equatable to prevent unnecessary UI updates
-    struct ActiveRestState: Equatable {
+    struct ActiveRestState: Equatable, Codable {
         let workoutId: UUID
         let workoutName: String
         let exerciseIndex: Int
@@ -235,10 +235,13 @@ class WorkoutStore: ObservableObject {
 
                 try context.save()
                 activeSessionID = workoutId
+
+                // Persistiere Workout-State für Wiederherstellung nach Force Quit
+                UserDefaults.standard.set(workoutId.uuidString, forKey: "activeWorkoutID")
                 print("✅ Session gestartet für Workout: \(workout.name)")
 
                 // Starte Herzfrequenz-Tracking
-                startHeartRateTracking(workoutName: workout.name)
+                startHeartRateTracking(workoutId: workoutId, workoutName: workout.name)
             } else {
                 print("❌ Workout mit ID \(workoutId) nicht gefunden")
             }
@@ -252,6 +255,9 @@ class WorkoutStore: ObservableObject {
             print("🔚 Session beendet für Workout-ID: \(sessionID)")
             activeSessionID = nil
             stopRest()
+
+            // Lösche persistierten Workout-State
+            UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
 
             // Stoppe Herzfrequenz-Tracking
             stopHeartRateTracking()
@@ -1126,6 +1132,10 @@ class WorkoutStore: ObservableObject {
             endDate: Date().addingTimeInterval(TimeInterval(total))
         )
         activeRestState = state
+
+        // Persistiere Rest-Timer State für Wiederherstellung nach Force Quit
+        persistRestState(state)
+
         setupRestTimer()
         updateLiveActivityRest()
         if restNotificationsEnabled {
@@ -1148,6 +1158,9 @@ class WorkoutStore: ObservableObject {
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         updateLiveActivityRest()
+
+        // Persistiere pausierter State
+        persistRestState(state)
     }
 
     func resumeRest() {
@@ -1157,6 +1170,9 @@ class WorkoutStore: ObservableObject {
         activeRestState = state
         setupRestTimer()
         updateLiveActivityRest()
+
+        // Persistiere resumed State
+        persistRestState(state)
         if restNotificationsEnabled {
             let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
                 activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
@@ -1223,9 +1239,12 @@ class WorkoutStore: ObservableObject {
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
+
+        // Lösche persistierten Rest-Timer State
+        clearPersistedRestState()
     }
 
     /// Clear rest state after user interaction (e.g. "Continue" button)
@@ -1235,9 +1254,12 @@ class WorkoutStore: ObservableObject {
         restTimer = nil
         // Note: We DON'T cancel notification here - it already fired or user dismissed it
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
+
+        // Lösche persistierten Rest-Timer State
+        clearPersistedRestState()
     }
 
     private func setupRestTimer() {
@@ -1297,7 +1319,7 @@ class WorkoutStore: ObservableObject {
                 #endif
 
                 // Live Activity zeigt "Pause beendet"
-                WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+                WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
 
                 // Timer automatisch clearen nach 2 Sekunden
                 // Memory: Use weak self to prevent retain cycle
@@ -1325,7 +1347,7 @@ class WorkoutStore: ObservableObject {
                     #endif
 
                     // Live Activity zeigt "Pause beendet"
-                    WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+                    WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
 
                     // Timer automatisch clearen nach 2 Sekunden
                     // Memory: Use weak self to prevent retain cycle
@@ -1349,6 +1371,7 @@ class WorkoutStore: ObservableObject {
             activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
         print("[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining, endDate: \(state.endDate?.description ?? "nil")")
         WorkoutLiveActivityController.shared.updateRest(
+            workoutId: state.workoutId,
             workoutName: state.workoutName,
             exerciseName: exerciseName,
             remainingSeconds: state.remainingSeconds,
@@ -1369,7 +1392,7 @@ class WorkoutStore: ObservableObject {
         if remaining <= 0 {
             // Timer ist abgelaufen während App im Background war
             // Live Activity zeigt "Pause beendet"
-            WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
 
             // Timer automatisch clearen nach 2 Sekunden
             // Notification kommt durch, da wir sie nicht canceln
@@ -2991,7 +3014,7 @@ extension WorkoutStore {
 
     // MARK: - Heart Rate Tracking
 
-    private func startHeartRateTracking(workoutName: String) {
+    private func startHeartRateTracking(workoutId: UUID, workoutName: String) {
         // Prüfe ob HealthKit verfügbar und autorisiert ist
         guard HKHealthStore.isHealthDataAvailable() else {
             AppLogger.health.info("[WorkoutStore] HealthKit nicht verfügbar - kein Herzfrequenz-Tracking")
@@ -3018,6 +3041,7 @@ extension WorkoutStore {
                 guard let self = self else { return }
                 // Update Live Activity mit neuer Herzfrequenz
                 WorkoutLiveActivityController.shared.updateHeartRate(
+                    workoutId: workoutId,
                     workoutName: workoutName,
                     heartRate: heartRate
                 )
@@ -3058,6 +3082,87 @@ extension WorkoutStore {
         }
 
         print("[Memory] ✅ WorkoutStore cleanup completed")
+    }
+
+    // MARK: - Rest State Persistence
+
+    /// Persistiert den Rest-Timer State in UserDefaults für Wiederherstellung nach Force Quit
+    private func persistRestState(_ state: ActiveRestState) {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(state)
+            UserDefaults.standard.set(data, forKey: "activeRestState")
+            print("[RestTimer] 💾 Rest state persisted: \(state.remainingSeconds)s remaining")
+        } catch {
+            print("[RestTimer] ❌ Failed to persist rest state: \(error)")
+        }
+    }
+
+    /// Löscht den persistierten Rest-Timer State aus UserDefaults
+    private func clearPersistedRestState() {
+        UserDefaults.standard.removeObject(forKey: "activeRestState")
+        print("[RestTimer] 🗑️ Persisted rest state cleared")
+    }
+
+    /// Lädt und stellt den Rest-Timer State aus UserDefaults wieder her
+    func restorePersistedRestState() {
+        guard let data = UserDefaults.standard.data(forKey: "activeRestState") else {
+            print("[RestTimer] No persisted rest state found")
+            return
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            var state = try decoder.decode(ActiveRestState.self, from: data)
+
+            // Berechne verbleibende Zeit basierend auf endDate
+            if let endDate = state.endDate {
+                let now = Date()
+                let remaining = max(0, Int(endDate.timeIntervalSince(now)))
+
+                if remaining > 0 {
+                    // Timer läuft noch
+                    state.remainingSeconds = remaining
+                    state.isRunning = true
+                    activeRestState = state
+
+                    print("[RestTimer] ✅ Rest state restored: \(remaining)s remaining")
+
+                    // Starte Timer und Update Live Activity
+                    setupRestTimer()
+                    updateLiveActivityRest()
+
+                    // Schedule notification für verbleibende Zeit
+                    if restNotificationsEnabled {
+                        let exerciseName = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ?
+                            activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+                        NotificationManager.shared.scheduleRestEndNotification(
+                            remainingSeconds: remaining,
+                            workoutName: state.workoutName,
+                            exerciseName: exerciseName,
+                            workoutId: state.workoutId
+                        )
+                    }
+                } else {
+                    // Timer ist bereits abgelaufen
+                    print("[RestTimer] ⏱️ Rest timer expired during Force Quit")
+                    clearPersistedRestState()
+
+                    // Zeige "Pause beendet" in Live Activity
+                    WorkoutLiveActivityController.shared.showRestEnded(
+                        workoutId: state.workoutId,
+                        workoutName: state.workoutName
+                    )
+                }
+            } else {
+                // Kein endDate (sollte nicht vorkommen, aber handle gracefully)
+                print("[RestTimer] ⚠️ Persisted rest state has no endDate - ignoring")
+                clearPersistedRestState()
+            }
+        } catch {
+            print("[RestTimer] ❌ Failed to restore rest state: \(error)")
+            clearPersistedRestState()
+        }
     }
 }
 

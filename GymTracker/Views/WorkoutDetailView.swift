@@ -288,7 +288,7 @@ struct WorkoutDetailView: View {
             }
             notesText = workout.notes
             if isActiveSession {
-                WorkoutLiveActivityController.shared.start(workoutName: workout.name)
+                WorkoutLiveActivityController.shared.start(workoutId: workout.id, workoutName: workout.name)
             }
         }
         .sheet(isPresented: $showingCompletionSheet) {

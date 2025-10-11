@@ -1087,7 +1087,7 @@ class HeartRateTrackingService: ObservableObject {
 
     // MARK: - Public API
 
-    func startHeartRateTracking(workoutName: String) {
+    func startHeartRateTracking(workoutId: UUID, workoutName: String) {
         guard heartRateTracker == nil else {
             print("⚠️ Herzfrequenz-Tracking läuft bereits")
             return
@@ -1096,7 +1096,7 @@ class HeartRateTrackingService: ObservableObject {
         let tracker = HealthKitWorkoutTracker()
         tracker.onHeartRateUpdate = { [weak self] heartRate in
             Task { @MainActor in
-                WorkoutLiveActivityController.shared.updateHeartRate(workoutName: workoutName, heartRate: heartRate)
+                WorkoutLiveActivityController.shared.updateHeartRate(workoutId: workoutId, workoutName: workoutName, heartRate: heartRate)
             }
         }
         tracker.startTracking()
@@ -1273,7 +1273,7 @@ class RestTimerService: ObservableObject {
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
     }
@@ -1282,7 +1282,7 @@ class RestTimerService: ObservableObject {
         restTimer?.invalidate()
         restTimer = nil
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
     }
@@ -1296,7 +1296,7 @@ class RestTimerService: ObservableObject {
         state.remainingSeconds = remaining
 
         if remaining <= 0 {
-            WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 self.clearRestState()
@@ -1358,7 +1358,7 @@ class RestTimerService: ObservableObject {
                 generator.notificationOccurred(.success)
                 #endif
 
-                WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+                WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
 
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -1380,7 +1380,7 @@ class RestTimerService: ObservableObject {
                     generator.notificationOccurred(.success)
                     #endif
 
-                    WorkoutLiveActivityController.shared.showRestEnded(workoutName: state.workoutName)
+                    WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
 
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -1401,6 +1401,7 @@ class RestTimerService: ObservableObject {
         let exerciseName = getActiveWorkoutExerciseName(at: state.exerciseIndex)
         print("[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining")
         WorkoutLiveActivityController.shared.updateRest(
+            workoutId: state.workoutId,
             workoutName: state.workoutName,
             exerciseName: exerciseName,
             remainingSeconds: state.remainingSeconds,

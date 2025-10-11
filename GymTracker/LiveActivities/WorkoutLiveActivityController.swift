@@ -76,16 +76,16 @@ final class WorkoutLiveActivityController {
         #endif
     }
 
-    func start(workoutName: String) {
+    func start(workoutId: UUID, workoutName: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             print("[LiveActivity] ❌ Activities are not enabled")
             print("[LiveActivity] 💡 Benutzer sollte zu Einstellungen > [App Name] > Live Activities gehen")
             return
         }
-        Task { await startOrUpdateGeneralState(workoutName: workoutName) }
+        Task { await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName) }
     }
 
-    func updateRest(workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int, endDate: Date?) {
+    func updateRest(workoutId: UUID, workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int, endDate: Date?) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             print("[LiveActivity] ❌ updateRest: Activities not enabled")
             return
@@ -115,7 +115,7 @@ final class WorkoutLiveActivityController {
         print("[LiveActivity] 🔄 updateRest: \(remainingSeconds)s / \(totalSeconds)s, HR: \(currentHeartRate?.description ?? "nil"), important: \(isImportantUpdate)")
 
         Task {
-            await ensureActivityExists(workoutName: workoutName)
+            await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
             await updateState(
                 remaining: normalizedRemaining,
                 total: max(totalSeconds, 1),
@@ -128,14 +128,14 @@ final class WorkoutLiveActivityController {
         }
     }
 
-    func clearRest(workoutName: String) {
+    func clearRest(workoutId: UUID, workoutName: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         // Performance: Clear cached state when rest is cleared
         lastSentState = nil
-        Task { await startOrUpdateGeneralState(workoutName: workoutName) }
+        Task { await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName) }
     }
 
-    func updateHeartRate(workoutName: String, heartRate: Int?) {
+    func updateHeartRate(workoutId: UUID, workoutName: String, heartRate: Int?) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         // Performance: Always cache, but throttle actual updates
@@ -160,7 +160,7 @@ final class WorkoutLiveActivityController {
         print("[LiveActivity] 💓 HR update: \(heartRate?.description ?? "nil")")
 
         Task {
-            await ensureActivityExists(workoutName: workoutName)
+            await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
             // Update nur die Herzfrequenz, behalte anderen State bei
             guard let activity = self.activity else { return }
             let currentState = await activity.content.state
@@ -177,7 +177,7 @@ final class WorkoutLiveActivityController {
         }
     }
 
-    func showRestEnded(workoutName: String) {
+    func showRestEnded(workoutId: UUID, workoutName: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             print("[LiveActivity] ❌ showRestEnded: Activities not enabled")
             return
@@ -196,7 +196,7 @@ final class WorkoutLiveActivityController {
         #endif
 
         Task {
-            await ensureActivityExists(workoutName: workoutName)
+            await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
             let state = WorkoutActivityAttributes.ContentState(
                 remainingSeconds: 0,
                 totalSeconds: 1,
@@ -292,7 +292,7 @@ final class WorkoutLiveActivityController {
         
         Task {
             print("[LiveActivity] Starting test activity...")
-            await startOrUpdateGeneralState(workoutName: "Test Workout")
+            await startOrUpdateGeneralState(workoutId: UUID(), workoutName: "Test Workout")
             
             // Test update after 2 seconds
             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -319,13 +319,13 @@ final class WorkoutLiveActivityController {
 
     // MARK: - Private
 
-    private func ensureActivityExists(workoutName: String) async {
+    private func ensureActivityExists(workoutId: UUID, workoutName: String) async {
         if activity == nil {
-            await startOrUpdateGeneralState(workoutName: workoutName)
+            await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName)
         }
     }
 
-    private func startOrUpdateGeneralState(workoutName: String) async {
+    private func startOrUpdateGeneralState(workoutId: UUID, workoutName: String) async {
         let baseState = WorkoutActivityAttributes.ContentState(
             remainingSeconds: 0,
             totalSeconds: 1,
@@ -346,7 +346,7 @@ final class WorkoutLiveActivityController {
             return
         }
 
-        let attributes = WorkoutActivityAttributes(workoutName: workoutName, startDate: Date())
+        let attributes = WorkoutActivityAttributes(workoutId: workoutId, workoutName: workoutName, startDate: Date())
 
         do {
             let newActivity = try Activity.request(attributes: attributes, contentState: baseState, pushType: nil)

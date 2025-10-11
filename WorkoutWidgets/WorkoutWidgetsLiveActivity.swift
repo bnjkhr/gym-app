@@ -245,7 +245,7 @@ struct WorkoutWidgetsLiveActivity: Widget {
 }
 
 // Preview für die Live Activity
-#Preview("Live Activity", as: .content, using: WorkoutActivityAttributes(workoutName: "Push Day", startDate: Date())) {
+#Preview("Live Activity", as: .content, using: WorkoutActivityAttributes(workoutId: UUID(), workoutName: "Push Day", startDate: Date())) {
     WorkoutWidgetsLiveActivity()
 } contentStates: {
     WorkoutActivityAttributes.ContentState(

@@ -490,16 +490,16 @@ struct WorkoutsTabView: View {
         if workoutStore.activeSessionID == id {
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
             }
             return
         }
-        
+
         workoutStore.startSession(for: id)
         if workoutStore.activeSessionID == id {
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
             }
         }
     }
