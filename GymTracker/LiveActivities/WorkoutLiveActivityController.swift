@@ -71,6 +71,11 @@ final class WorkoutLiveActivityController {
                 }
             } else {
                 print("[LiveActivity] ✓ Activity is fresh (age: \(ageInMinutes) minutes)")
+                // Stelle die Activity-Instanz wieder her (wichtig nach Force Quit!)
+                if self.activity == nil {
+                    self.activity = activity
+                    print("[LiveActivity] ✅ Restored activity instance after app restart")
+                }
             }
         }
         #endif

@@ -26,16 +26,12 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func scheduleRestEndNotification(remainingSeconds: Int, workoutName: String, exerciseName: String?, workoutId: UUID? = nil) {
         guard remainingSeconds > 0 else { return }
 
-        // Nur Push-Benachrichtigung wenn LiveActivity nicht verfügbar ist
-        #if canImport(ActivityKit)
-        if #available(iOS 16.1, *) {
-            let authInfo = ActivityKit.ActivityAuthorizationInfo()
-            if authInfo.areActivitiesEnabled {
-                print("[NotificationManager] LiveActivity aktiv - überspringe Push-Benachrichtigung")
-                return
-            }
-        }
-        #endif
+        // WICHTIG: Wir schicken IMMER Push-Notifications, auch wenn Live Activity läuft
+        // Die Live Activity zeigt den Timer in der Dynamic Island, aber
+        // Push-Notifications sind zusätzlich wichtig für:
+        // 1. Wenn die App im Hintergrund ist
+        // 2. Wenn das Display gesperrt ist
+        // 3. Als Backup falls Live Activity nicht funktioniert
 
         DispatchQueue.global(qos: .background).async {
             self.cancelRestEndNotification()
