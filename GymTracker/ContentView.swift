@@ -1,10 +1,11 @@
-import SwiftUI
 import Charts
-import UserNotifications
-import SwiftData
 import HealthKit
+import SwiftData
+import SwiftUI
+import UserNotifications
+
 #if canImport(ActivityKit)
-import ActivityKit
+    import ActivityKit
 #endif
 
 // Import the keyboard dismissal utilities
@@ -89,6 +90,7 @@ struct ShareItem: Identifiable {
 
 struct ContentView: View {
     @StateObject private var workoutStore = WorkoutStore()
+    @StateObject private var overlayManager = InAppOverlayManager()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
@@ -142,7 +144,8 @@ struct ContentView: View {
         }
         .overlay(alignment: .bottom) {
             // ActiveWorkoutBar wird angezeigt wenn ein aktives Workout existiert (aber nicht in WorkoutDetailView)
-            if let activeWorkout = workoutStore.activeWorkout, !workoutStore.isShowingWorkoutDetail {
+            if let activeWorkout = workoutStore.activeWorkout, !workoutStore.isShowingWorkoutDetail
+            {
                 VStack(spacing: 0) {
                     Spacer()
 
@@ -157,22 +160,42 @@ struct ContentView: View {
                     )
                     .environmentObject(workoutStore)
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 90) // Platz für die Tab-Bar (ca. 50px TabBar + 40px Spacing)
+                    .padding(.bottom, 90)  // Platz für die Tab-Bar (ca. 50px TabBar + 40px Spacing)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: workoutStore.isShowingWorkoutDetail)
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: workoutStore.activeWorkout?.id)
+                    .animation(
+                        .spring(response: 0.35, dampingFraction: 0.8),
+                        value: workoutStore.isShowingWorkoutDetail
+                    )
+                    .animation(
+                        .spring(response: 0.35, dampingFraction: 0.8),
+                        value: workoutStore.activeWorkout?.id)
                 }
                 .ignoresSafeArea(.keyboard)
             }
         }
+        .overlay {
+            // Rest Timer Expired Overlay
+            if overlayManager.isShowingOverlay, let state = overlayManager.currentState {
+                RestTimerExpiredOverlay(state: state) {
+                    overlayManager.dismissOverlay()
+                    // Acknowledge expiration in state manager
+                    workoutStore.restTimerStateManager?.acknowledgeExpired()
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                .zIndex(999)
+            }
+        }
         .animation(.easeInOut(duration: 0.2), value: selectedTab)
+        .animation(
+            .spring(response: 0.3, dampingFraction: 0.8), value: overlayManager.isShowingOverlay
+        )
         .tint(AppTheme.powerOrange)
         .environment(\.keyboardDismissalEnabled, true)
         .alert("Workout beenden?", isPresented: $showingEndWorkoutConfirmation) {
             Button("Beenden", role: .destructive) {
                 endActiveSession()
             }
-            Button("Abbrechen", role: .cancel) { }
+            Button("Abbrechen", role: .cancel) {}
         } message: {
             Text("Das aktive Workout wird beendet und gelöscht.")
         }
@@ -180,14 +203,21 @@ struct ContentView: View {
             // Set model context in WorkoutStore immediately when view appears
             workoutStore.modelContext = modelContext
 
+            // Pass overlayManager to workoutStore for rest timer integration
+            workoutStore.overlayManager = overlayManager
+
+            // Connect overlayManager to RestTimerStateManager (Phase 2)
+            workoutStore.restTimerStateManager?.overlayManager = overlayManager
+
             // Restore active workout state from UserDefaults (after Force Quit)
             if let workoutIDString = UserDefaults.standard.string(forKey: "activeWorkoutID"),
-               let workoutID = UUID(uuidString: workoutIDString) {
+                let workoutID = UUID(uuidString: workoutIDString)
+            {
                 // Verify workout still exists
                 let descriptor = FetchDescriptor<WorkoutEntity>(
                     predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
                 )
-                if let _ = try? modelContext.fetch(descriptor).first {
+                if (try? modelContext.fetch(descriptor).first) != nil {
                     print("✅ Restoring active workout from persisted state: \(workoutID)")
                     workoutStore.activeSessionID = workoutID
 
@@ -260,12 +290,12 @@ struct ContentView: View {
             workoutStore.activeSessionID = nil
             return
         }
-        
+
         // Navigate to the active workout using the WorkoutsHomeView selection
         // This will be handled by the child view's selectedWorkout state
         WorkoutLiveActivityController.shared.start(workoutId: active.id, workoutName: active.name)
     }
-    
+
     private func endActiveSession() {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
@@ -313,7 +343,7 @@ struct WorkoutsHomeView: View {
         SortDescriptor(\WorkoutEntity.date, order: SortOrder.reverse)
     ])
     private var workoutEntities: [WorkoutEntity]
-    
+
     @Query(sort: [
         SortDescriptor(\WorkoutSessionEntity.date, order: SortOrder.reverse)
     ])
@@ -342,21 +372,24 @@ struct WorkoutsHomeView: View {
     // Performance: Cache mapped entities to avoid re-mapping on every render
     @State private var cachedWorkouts: [Workout] = []
     @State private var cachedSessions: [WorkoutSession] = []
-    
+
     private func workoutCategory(for workout: Workout) -> String {
         let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
-        
+
         let machineKeywords = ["maschine", "machine", "lat", "press", "curl", "extension", "row"]
-        let freeWeightKeywords = ["hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift", "bench"]
-        
+        let freeWeightKeywords = [
+            "hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift",
+            "bench",
+        ]
+
         let hasMachine = exerciseNames.contains { name in
             machineKeywords.contains { keyword in name.contains(keyword) }
         }
-        
+
         let hasFreeWeight = exerciseNames.contains { name in
             freeWeightKeywords.contains { keyword in name.contains(keyword) }
         }
-        
+
         if hasMachine && hasFreeWeight {
             return "Mixed"
         } else if hasMachine {
@@ -380,7 +413,9 @@ struct WorkoutsHomeView: View {
 
     private var weekStart: Date {
         let calendar = Calendar.current
-        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+        return calendar.date(
+            from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date()))
+            ?? Date()
     }
 
     private var workoutsThisWeek: Int {
@@ -417,7 +452,7 @@ struct WorkoutsHomeView: View {
     private var sortedWorkouts: [Workout] {
         displayWorkouts
     }
-    
+
     private var favoritedWorkouts: [Workout] {
         displayWorkouts.filter { $0.isFavorite }
     }
@@ -488,22 +523,22 @@ struct WorkoutsHomeView: View {
         let viewWithSheets = addSheets(to: viewWithToolbars)
         let viewWithNavigationDestinations = addNavigationDestinations(to: viewWithSheets)
         let viewWithAlerts = addAlerts(to: viewWithNavigationDestinations)
-        
+
         return AnyView(viewWithAlerts)
     }
-    
+
     private func createBaseView() -> some View {
         ZStack {
             Color(.systemBackground)
                 .ignoresSafeArea()
-            
+
             mainScrollView
         }
         .onPreferenceChange(ScrollOffsetPreferenceKey.self) { newValue in
             handleScrollOffsetChange(newValue)
         }
     }
-    
+
     private func addToolbars(to view: some View) -> some View {
         view
             .toolbar(.hidden, for: .navigationBar)
@@ -511,7 +546,7 @@ struct WorkoutsHomeView: View {
                 // no SwiftData toggle toolbar item anymore
             }
     }
-    
+
     private func addSheets(to view: some View) -> some View {
         view
             .sheet(isPresented: $showingProfileEditor) {
@@ -562,7 +597,7 @@ struct WorkoutsHomeView: View {
                 Text("'\(workout.name)' wird unwiderruflich gelöscht.")
             }
     }
-    
+
     private func addNavigationDestinations(to view: some View) -> some View {
         view
             .navigationDestination(item: $selectedWorkout) { selection in
@@ -644,18 +679,22 @@ struct WorkoutsHomeView: View {
                 if let activeID = workoutStore.activeSessionID {
                     selectedWorkout = WorkoutSelection(id: activeID)
                     if let entity = workoutEntities.first(where: { $0.id == activeID }) {
-                        WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
+                        WorkoutLiveActivityController.shared.start(
+                            workoutId: entity.id, workoutName: entity.name)
                     }
                 }
             }
     }
-    
+
     private func addAlerts(to view: some View) -> some View {
         view
-            .alert("Wirklich löschen?", isPresented: Binding(
-                get: { workoutToDelete != nil },
-                set: { if !$0 { workoutToDelete = nil } }
-            )) {
+            .alert(
+                "Wirklich löschen?",
+                isPresented: Binding(
+                    get: { workoutToDelete != nil },
+                    set: { if !$0 { workoutToDelete = nil } }
+                )
+            ) {
                 Button("Löschen", role: .destructive) {
                     if let id = workoutToDelete?.id {
                         deleteWorkout(id: id)
@@ -668,15 +707,20 @@ struct WorkoutsHomeView: View {
             } message: {
                 Text("\(workoutToDelete?.name ?? "Workout") wird dauerhaft entfernt.")
             }
-            .alert("Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert, presenting: missingTemplateName) { _ in
+            .alert(
+                "Vorlage nicht gefunden", isPresented: $showingMissingTemplateAlert,
+                presenting: missingTemplateName
+            ) { _ in
                 Button("OK", role: .cancel) { missingTemplateName = nil }
             } message: { name in
                 Text("Für die Session \(name) existiert keine gespeicherte Vorlage mehr.")
             }
             .alert("Home-Favoriten voll", isPresented: $showingHomeLimitAlert) {
-                Button("Verstanden") { }
+                Button("Verstanden") {}
             } message: {
-                Text("Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen.")
+                Text(
+                    "Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen."
+                )
             }
             // Performance: Update cache only when entities change
             .onChange(of: workoutEntities) { _, newEntities in
@@ -691,14 +735,15 @@ struct WorkoutsHomeView: View {
                 updateSessionCache(sessionEntities)
             }
     }
-    
+
     @ViewBuilder
     private var headerSection: some View {
         Group {
             // Greeting header at top
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    let trimmedName = workoutStore.userProfile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let trimmedName = workoutStore.userProfile.name.trimmingCharacters(
+                        in: .whitespacesAndNewlines)
                     if !trimmedName.isEmpty {
                         Text("\(timeBasedGreeting),")
                             .font(.system(size: 32, weight: .semibold, design: .default))
@@ -730,7 +775,9 @@ struct WorkoutsHomeView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 14, weight: .semibold))
-                        if let lockerNumber = workoutStore.userProfile.lockerNumber, !lockerNumber.isEmpty {
+                        if let lockerNumber = workoutStore.userProfile.lockerNumber,
+                            !lockerNumber.isEmpty
+                        {
                             Text(lockerNumber)
                                 .font(.system(size: 14, weight: .bold))
                                 .monospacedDigit()
@@ -799,7 +846,7 @@ struct WorkoutsHomeView: View {
                 LazyVGrid(
                     columns: [
                         GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12)
+                        GridItem(.flexible(), spacing: 12),
                     ],
                     spacing: 12
                 ) {
@@ -815,7 +862,7 @@ struct WorkoutsHomeView: View {
                             onDuplicate: { duplicateWorkout(id: workout.id) },
                             onShare: { shareWorkout(id: workout.id) }
                         )
-                        .id(workout.id) // Performance: Explicit ID for optimal recycling
+                        .id(workout.id)  // Performance: Explicit ID for optimal recycling
                     }
                 }
             }
@@ -830,7 +877,7 @@ struct WorkoutsHomeView: View {
                     Text("Keine Workouts")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.primary)
-                    
+
                     Text("Erstelle dein erstes Workout im Workouts-Tab")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
@@ -842,7 +889,7 @@ struct WorkoutsHomeView: View {
                 LazyVGrid(
                     columns: [
                         GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12)
+                        GridItem(.flexible(), spacing: 12),
                     ],
                     spacing: 12
                 ) {
@@ -859,8 +906,6 @@ struct WorkoutsHomeView: View {
         }
     }
 
-
-
     private func startWorkout(with id: UUID) {
         // First, make sure the modelContext is saved and synced
         do {
@@ -868,23 +913,25 @@ struct WorkoutsHomeView: View {
         } catch {
             // Error handled silently
         }
-        
+
         // Use the WorkoutStore's startSession method which handles the reset logic
         if workoutStore.activeSessionID == id {
             // If already active: just navigate to details
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(
+                    workoutId: entity.id, workoutName: entity.name)
             }
             return
         }
-        
+
         // Start new session
         workoutStore.startSession(for: id)
         if workoutStore.activeSessionID == id {
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(
+                    workoutId: entity.id, workoutName: entity.name)
             }
         } else {
             // Error handled silently
@@ -926,8 +973,8 @@ struct WorkoutsHomeView: View {
             defaultRestTime: originalEntity.defaultRestTime,
             duration: nil,
             notes: originalEntity.notes,
-            isFavorite: false, // Nicht als Favorit markieren
-            isSampleWorkout: false // Benutzer-Workout
+            isFavorite: false,  // Nicht als Favorit markieren
+            isSampleWorkout: false  // Benutzer-Workout
         )
 
         // Kopiere alle Übungen mit Sets, sortiere nach order
@@ -1017,7 +1064,8 @@ struct WorkoutsHomeView: View {
     private func startSession(_ session: WorkoutSession) {
         viewingSession = nil
         if let templateId = session.templateId,
-           workoutEntities.contains(where: { $0.id == templateId }) {
+            workoutEntities.contains(where: { $0.id == templateId })
+        {
             missingTemplateName = nil
             startWorkout(with: templateId)
         } else {
@@ -1029,13 +1077,13 @@ struct WorkoutsHomeView: View {
     private func viewSession(_ session: WorkoutSession) {
         viewingSession = session
     }
-    
+
     private func endActiveSession() {
         workoutStore.stopRest()
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
     }
-    
+
     private func toggleHomeFavorite(workoutID: UUID) {
         let success = workoutStore.toggleHomeFavorite(workoutID: workoutID)
         if !success {
@@ -1106,7 +1154,7 @@ struct WorkoutHighlightCard: View {
                                 .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
                         )
                 )
-                
+
                 Spacer()
             }
         }
@@ -1322,7 +1370,7 @@ struct AnimatedCheckmark: View {
     var body: some View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 20, weight: .bold))
-            .foregroundStyle(Color(red: 0/255, green: 95/255, blue: 86/255))
+            .foregroundStyle(Color(red: 0 / 255, green: 95 / 255, blue: 86 / 255))
             .scaleEffect(scale)
             .opacity(opacity)
             .onAppear {
@@ -1364,7 +1412,7 @@ struct RecentActivityCard: View {
     let deleteSessionAction: (WorkoutSession) -> Void
     let enableActions: Bool
     let showHeader: Bool
-    
+
     // Performance: Use cached DateFormatter instead of creating new one on each access
     private var localizedDateFormatter: DateFormatter {
         DateFormatters.germanLong
@@ -1401,11 +1449,11 @@ struct RecentActivityCard: View {
                 .padding(.horizontal, 16)
             }
         }
-// Removed .background modifier as per instructions
-//        .background(
-//            RoundedRectangle(cornerRadius: 16)
-//                .fill(Color(.secondarySystemBackground))
-//        )
+        // Removed .background modifier as per instructions
+        //        .background(
+        //            RoundedRectangle(cornerRadius: 16)
+        //                .fill(Color(.secondarySystemBackground))
+        //        )
     }
 }
 
@@ -1418,7 +1466,9 @@ struct ActiveWorkoutBar: View {
     @EnvironmentObject private var workoutStore: WorkoutStore
 
     private var restText: String? {
-        guard let state = workoutStore.activeRestState, state.workoutId == workout.id else { return nil }
+        guard let state = workoutStore.activeRestState, state.workoutId == workout.id else {
+            return nil
+        }
         let m = state.remainingSeconds / 60
         let s = state.remainingSeconds % 60
         return String(format: "%d:%02d", m, s)
@@ -1545,7 +1595,7 @@ struct WeekCalendarStrip: View {
     }
 
     private var today: Date { Date() }
-    
+
     // Performance: Use cached weekday symbols instead of creating DateFormatter
     private func localizedWeekdayAbbreviation(for date: Date) -> String {
         let weekdaySymbols = DateFormatters.germanVeryShortWeekdaySymbols()
@@ -1559,13 +1609,23 @@ struct WeekCalendarStrip: View {
                 ForEach(days, id: \.self) { day in
                     VStack(spacing: 6) {
                         Text("\(Calendar.current.component(.day, from: day))")
-                            .font(.headline.weight(calendar.isDate(day, inSameDayAs: today) ? .bold : .regular))
-                            .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.7))
+                            .font(
+                                .headline.weight(
+                                    calendar.isDate(day, inSameDayAs: today) ? .bold : .regular)
+                            )
+                            .foregroundStyle(
+                                calendar.isDate(day, inSameDayAs: today)
+                                    ? Color.primary : Color.primary.opacity(0.7))
                         Text(localizedWeekdayAbbreviation(for: day))
                             .font(.caption2.weight(.medium))
-                            .foregroundStyle(calendar.isDate(day, inSameDayAs: today) ? Color.primary : Color.primary.opacity(0.6))
+                            .foregroundStyle(
+                                calendar.isDate(day, inSameDayAs: today)
+                                    ? Color.primary : Color.primary.opacity(0.6))
                         Circle()
-                            .fill(hasSession(on: day) ? AppTheme.mossGreen : Color.secondary.opacity(0.3))
+                            .fill(
+                                hasSession(on: day)
+                                    ? AppTheme.mossGreen : Color.secondary.opacity(0.3)
+                            )
                             .frame(width: 6, height: 6)
                             .opacity(hasSession(on: day) ? 1 : 0.8)
                     }
@@ -1595,23 +1655,23 @@ struct WeeklyProgressCard: View {
                 Text("Wochenfortschritt")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
-                
+
                 Text("\(workoutsThisWeek) von \(max(goal, 1)) Trainings")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.75))
-                
+
                 Text("abgeschlossen")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.75))
             }
-            
+
             Spacer()
-            
+
             ZStack {
                 Circle()
                     .stroke(Color.white.opacity(0.2), lineWidth: 4)
                     .frame(width: 50, height: 50)
-                
+
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
@@ -1621,7 +1681,7 @@ struct WeeklyProgressCard: View {
                     .rotationEffect(.degrees(-90))
                     .frame(width: 50, height: 50)
                     .animation(.easeInOut(duration: 1.0), value: progress)
-                
+
                 Text("\(workoutsThisWeek)")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
@@ -1643,14 +1703,14 @@ struct WeeklySnapshotCard: View {
     let workoutsThisWeek: Int
     let minutesThisWeek: Int
     let goal: Int
-    
+
     private var progress: Double {
         guard goal > 0 else { return 0 }
         return min(Double(workoutsThisWeek) / Double(goal), 1.0)
     }
-    
+
     private var progressColor: Color {
-        let hue = progress * 0.33 // 0 = rot, 0.33 = grün
+        let hue = progress * 0.33  // 0 = rot, 0.33 = grün
         return Color(hue: hue, saturation: 0.8, brightness: 0.8)
     }
 
@@ -1666,16 +1726,16 @@ struct WeeklySnapshotCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             Spacer()
-            
+
             VStack(spacing: 8) {
                 ZStack {
                     // Hintergrund-Ring
                     Circle()
                         .stroke(Color(.systemGray5), lineWidth: 6)
                         .frame(width: 60, height: 60)
-                    
+
                     // Fortschritts-Ring
                     Circle()
                         .trim(from: 0, to: progress)
@@ -1686,7 +1746,7 @@ struct WeeklySnapshotCard: View {
                         .frame(width: 60, height: 60)
                         .rotationEffect(.degrees(-90))
                         .animation(.easeInOut(duration: 0.6), value: progress)
-                    
+
                     // Zentraler Text
                     VStack(spacing: -2) {
                         Text("\(workoutsThisWeek)")
@@ -1699,7 +1759,7 @@ struct WeeklySnapshotCard: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                
+
                 Text("Ziel")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -1716,7 +1776,7 @@ struct WeeklySnapshotCard: View {
 struct WorkoutTile: View {
     let workout: Workout
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -1726,15 +1786,15 @@ struct WorkoutTile: View {
                         .fontWeight(.semibold)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    
+
                     Text("\(workout.exercises.count) Übungen")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
             }
-            
+
             // Menu dots at bottom right
             HStack {
                 Spacer()
@@ -1759,26 +1819,29 @@ struct WorkoutTile: View {
 struct WorkoutTileWithMenu: View {
     let workout: Workout
     let onStart: () -> Void
-    let onEdit: () -> Void  
+    let onEdit: () -> Void
     let onDelete: () -> Void
-    
+
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingActionSheet = false
-    
+
     private func workoutCategory(for workout: Workout) -> String {
         let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
-        
+
         let machineKeywords = ["maschine", "machine", "lat", "press", "curl", "extension", "row"]
-        let freeWeightKeywords = ["hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift", "bench"]
-        
+        let freeWeightKeywords = [
+            "hantel", "kurzhantel", "langhantel", "dumbbell", "barbell", "squat", "deadlift",
+            "bench",
+        ]
+
         let hasMachine = exerciseNames.contains { name in
             machineKeywords.contains { keyword in name.contains(keyword) }
         }
-        
+
         let hasFreeWeight = exerciseNames.contains { name in
             freeWeightKeywords.contains { keyword in name.contains(keyword) }
         }
-        
+
         if hasMachine && hasFreeWeight {
             return "Mixed"
         } else if hasMachine {
@@ -1789,7 +1852,7 @@ struct WorkoutTileWithMenu: View {
             return "Training"
         }
     }
-    
+
     var body: some View {
         Button {
             onStart()
@@ -1802,22 +1865,22 @@ struct WorkoutTileWithMenu: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    
+
                     Text(workoutCategory(for: workout))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                
+
                 Spacer()
-                
+
                 HStack {
                     Text("\(workout.exercises.count) Übungen")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
-                    
+
                     Spacer()
-                    
+
                     Button {
                         showingActionSheet = true
                     } label: {
@@ -1850,12 +1913,12 @@ struct WorkoutTileWithMenu: View {
             Button("Bearbeiten") {
                 onEdit()
             }
-            
+
             Button("Löschen", role: .destructive) {
                 onDelete()
             }
-            
-            Button("Abbrechen", role: .cancel) { }
+
+            Button("Abbrechen", role: .cancel) {}
         }
     }
 }
@@ -1867,15 +1930,17 @@ struct WorkoutRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(workout.name)
                     .font(.headline)
-                Text({
-                    let formatter = DateFormatter()
-                    formatter.locale = Locale(identifier: "de_DE")
-                    formatter.dateStyle = .medium
-                    formatter.timeStyle = .none
-                    return formatter.string(from: workout.date)
-                }())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    {
+                        let formatter = DateFormatter()
+                        formatter.locale = Locale(identifier: "de_DE")
+                        formatter.dateStyle = .medium
+                        formatter.timeStyle = .none
+                        return formatter.string(from: workout.date)
+                    }()
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
             Text("\(workout.exercises.count) Übungen")
@@ -1884,15 +1949,15 @@ struct WorkoutRow: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-// Removed .background modifier as per instructions
-//        .background(
-//            RoundedRectangle(cornerRadius: 12)
-//                .fill(Color(.systemBackground))
-//                .overlay(
-//                    RoundedRectangle(cornerRadius: 12)
-//                        .stroke(Color(.systemGray4), lineWidth: 1)
-//                )
-//        )
+        // Removed .background modifier as per instructions
+        //        .background(
+        //            RoundedRectangle(cornerRadius: 12)
+        //                .fill(Color(.systemBackground))
+        //                .overlay(
+        //                    RoundedRectangle(cornerRadius: 12)
+        //                        .stroke(Color(.systemGray4), lineWidth: 1)
+        //                )
+        //        )
     }
 }
 
@@ -1951,7 +2016,9 @@ private struct CalendarSessionsView: View {
     private var daysInMonth: [Date] {
         let cal = Calendar.current
         guard let range = cal.range(of: .day, in: .month, for: displayedMonth),
-              let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
+            let monthStart = cal.date(
+                from: cal.dateComponents([.year, .month], from: displayedMonth))
+        else { return [] }
         return range.compactMap { day -> Date? in
             cal.date(byAdding: .day, value: day - 1, to: monthStart)
         }
@@ -1959,9 +2026,12 @@ private struct CalendarSessionsView: View {
 
     private var gridDays: [Date?] {
         let cal = Calendar.current
-        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else { return [] }
-        let weekday = cal.component(.weekday, from: monthStart) // 1=Sun...
-        let leading = (weekday + 5) % 7 // convert to Monday=0 leading count
+        guard
+            let monthStart = cal.date(
+                from: cal.dateComponents([.year, .month], from: displayedMonth))
+        else { return [] }
+        let weekday = cal.component(.weekday, from: monthStart)  // 1=Sun...
+        let leading = (weekday + 5) % 7  // convert to Monday=0 leading count
         let leadingPlaceholders: [Date?] = Array(repeating: nil, count: leading)
         return leadingPlaceholders + daysInMonth.map { Optional($0) }
     }
@@ -1977,7 +2047,7 @@ private struct CalendarSessionsView: View {
         let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
         return sameDay.map { WorkoutSession(entity: $0) }.sorted { $0.date > $1.date }
     }
-    
+
     // Performance: Use cached weekday symbols
     private func localizedWeekdaySymbols() -> [String] {
         DateFormatters.germanVeryShortWeekdaySymbols()
@@ -1988,14 +2058,22 @@ private struct CalendarSessionsView: View {
             VStack(spacing: 12) {
                 // Header with month navigation
                 HStack {
-                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth } label: {
+                    Button {
+                        displayedMonth =
+                            Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth)
+                            ?? displayedMonth
+                    } label: {
                         Image(systemName: "chevron.left")
                     }
                     Spacer()
                     Text(monthTitle)
                         .font(.headline)
                     Spacer()
-                    Button { displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth } label: {
+                    Button {
+                        displayedMonth =
+                            Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth)
+                            ?? displayedMonth
+                    } label: {
                         Image(systemName: "chevron.right")
                     }
                 }
@@ -2013,18 +2091,25 @@ private struct CalendarSessionsView: View {
                 .padding(.horizontal, 20)
 
                 // Calendar grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7),
+                    spacing: 6
+                ) {
                     ForEach(gridDays.indices, id: \.self) { idx in
                         if let day = gridDays[idx] {
                             let cal = Calendar.current
                             let isToday = cal.isDateInToday(day)
-                            let isSelected = cal.isDate(cal.startOfDay(for: day), inSameDayAs: selectedDate)
+                            let isSelected = cal.isDate(
+                                cal.startOfDay(for: day), inSameDayAs: selectedDate)
                             let hasSession = sessionDays.contains(cal.startOfDay(for: day))
                             VStack(spacing: 6) {
                                 ZStack {
                                     Circle()
                                         .fill(
-                                            isSelected ? AppTheme.mossGreen.opacity(0.25) : (isToday ? Color(.systemGray4) : Color(.systemGray6))
+                                            isSelected
+                                                ? AppTheme.mossGreen.opacity(0.25)
+                                                : (isToday
+                                                    ? Color(.systemGray4) : Color(.systemGray6))
                                         )
                                         .frame(width: 36, height: 36)
                                     Text(String(cal.component(.day, from: day)))
@@ -2066,16 +2151,19 @@ private struct CalendarSessionsView: View {
                                     Text(session.name)
                                         .font(.subheadline.weight(.semibold))
                                     HStack(spacing: 8) {
-                                        Text({
-                                            let formatter = DateFormatter()
-                                            formatter.locale = Locale(identifier: "de_DE")
-                                            formatter.timeStyle = .short
-                                            formatter.dateStyle = .none
-                                            return formatter.string(from: session.date)
-                                        }())
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        let completedExercises = session.exercises.filter { exercise in
+                                        Text(
+                                            {
+                                                let formatter = DateFormatter()
+                                                formatter.locale = Locale(identifier: "de_DE")
+                                                formatter.timeStyle = .short
+                                                formatter.dateStyle = .none
+                                                return formatter.string(from: session.date)
+                                            }()
+                                        )
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        let completedExercises = session.exercises.filter {
+                                            exercise in
                                             exercise.sets.contains(where: { $0.completed })
                                         }.count
                                         Text("• \(completedExercises) Übungen abgeschlossen")
@@ -2104,14 +2192,14 @@ private struct CalendarSessionsView: View {
 }
 
 // MARK: - Date Helpers
-private extension Calendar {
-    func isDate(_ date1: Date, inSameDayAs startOfDay: Date) -> Bool {
+extension Calendar {
+    fileprivate func isDate(_ date1: Date, inSameDayAs startOfDay: Date) -> Bool {
         isDate(date1, equalTo: startOfDay, toGranularity: .day)
     }
 }
 
-private extension Array {
-    func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
+extension Array {
+    fileprivate func stablePartition(by isInFirstPartition: (Element) -> Bool) -> [Element] {
         var first: [Element] = []
         var second: [Element] = []
         for el in self {
@@ -2125,14 +2213,14 @@ private extension Array {
     }
 }
 
-private extension View {
-    func erasedToAnyView() -> AnyView { AnyView(self) }
+extension View {
+    fileprivate func erasedToAnyView() -> AnyView { AnyView(self) }
 }
 
 // MARK: - Error View
 struct ErrorWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
@@ -2237,7 +2325,9 @@ struct LockerNumberInputView: View {
                             if isFocused && !lockerNumber.isEmpty {
                                 // Auto-select all text when focused
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                    UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+                                    UIApplication.shared.sendAction(
+                                        #selector(UIResponder.selectAll(_:)), to: nil, from: nil,
+                                        for: nil)
                                 }
                             }
                         }
@@ -2290,8 +2380,8 @@ struct LockerNumberInputView: View {
     }
 
     private func saveLockerNumber() {
-        workoutStore.updateLockerNumber(lockerNumber.trimmingCharacters(in: .whitespacesAndNewlines))
+        workoutStore.updateLockerNumber(
+            lockerNumber.trimmingCharacters(in: .whitespacesAndNewlines))
         dismiss()
     }
 }
-

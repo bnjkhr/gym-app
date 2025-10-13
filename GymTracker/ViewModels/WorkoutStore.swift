@@ -1,10 +1,11 @@
-import Foundation
-import SwiftUI
-import SwiftData
-import HealthKit
 import Combine
+import Foundation
+import HealthKit
+import SwiftData
+import SwiftUI
+
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 // MARK: - Supporting Structures
@@ -16,37 +17,37 @@ struct ExerciseLastUsedMetrics {
     let setCount: Int?
     let lastUsedDate: Date?
     let restTime: TimeInterval?
-    
+
     var hasData: Bool {
         weight != nil && reps != nil
     }
-    
+
     var displayText: String {
-        guard let weight = weight, let reps = reps else { 
-            return "Keine vorherigen Daten" 
+        guard let weight = weight, let reps = reps else {
+            return "Keine vorherigen Daten"
         }
         return "Letztes Mal: \(weight.formatted())kg × \(reps) Wdh."
     }
-    
+
     var detailedDisplayText: String {
         guard hasData else { return "Keine vorherigen Daten" }
-        
+
         var parts: [String] = []
-        
+
         if let weight = weight, let reps = reps {
             parts.append("\(weight.formatted())kg × \(reps) Wdh.")
         }
-        
+
         if let setCount = setCount {
             parts.append("\(setCount) Sätze")
         }
-        
+
         if let date = lastUsedDate {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
             parts.append("am \(formatter.string(from: date))")
         }
-        
+
         return parts.joined(separator: " • ")
     }
 }
@@ -55,6 +56,14 @@ struct ExerciseLastUsedMetrics {
 class WorkoutStore: ObservableObject {
     @Published var activeSessionID: UUID?
     @Published var isShowingWorkoutDetail: Bool = false
+
+    // MARK: - Phase 2 Integration
+
+    /// Rest timer state manager (Phase 1 - New System)
+    var restTimerStateManager: RestTimerStateManager?
+
+    /// In-app overlay manager (Phase 2)
+    weak var overlayManager: InAppOverlayManager?
 
     // Zentrale Rest-Timer-State
     // Performance: Equatable to prevent unnecessary UI updates
@@ -70,11 +79,9 @@ class WorkoutStore: ObservableObject {
 
         // Performance: Only trigger updates when meaningful changes occur
         static func == (lhs: ActiveRestState, rhs: ActiveRestState) -> Bool {
-            lhs.workoutId == rhs.workoutId &&
-            lhs.exerciseIndex == rhs.exerciseIndex &&
-            lhs.setIndex == rhs.setIndex &&
-            lhs.remainingSeconds == rhs.remainingSeconds &&
-            lhs.isRunning == rhs.isRunning
+            lhs.workoutId == rhs.workoutId && lhs.exerciseIndex == rhs.exerciseIndex
+                && lhs.setIndex == rhs.setIndex && lhs.remainingSeconds == rhs.remainingSeconds
+                && lhs.isRunning == rhs.isRunning
             // Note: Deliberately ignore endDate and compare remainingSeconds instead
         }
     }
@@ -83,7 +90,7 @@ class WorkoutStore: ObservableObject {
     // Only publishes when actual state changes, not every second
     @Published private(set) var activeRestState: ActiveRestState?
 
-    @Published var profileUpdateTrigger: UUID = UUID() // Triggers UI updates when profile changes
+    @Published var profileUpdateTrigger: UUID = UUID()  // Triggers UI updates when profile changes
 
     // Herzfrequenz-Tracking
     private var heartRateTracker: HealthKitWorkoutTracker?
@@ -101,23 +108,24 @@ class WorkoutStore: ObservableObject {
             if let context = modelContext {
                 // Phase 8: Automatische Markdown-Migration beim ersten App-Start
                 checkAndPerformAutomaticMigration(context: context)
-                
+
                 // Alte automatische Übersetzung (kann eventuell entfernt werden)
                 checkAndPerformAutomaticGermanTranslation(context: context)
             }
         }
     }
-    
+
     // HealthKit integration
     @Published var healthKitManager = HealthKitManager.shared
 
     var activeWorkout: Workout? {
-        guard let activeSessionID, let context = modelContext else { 
-            return nil 
+        guard let activeSessionID, let context = modelContext else {
+            return nil
         }
-        
+
         do {
-            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate<WorkoutEntity> { $0.id == activeSessionID })
+            let descriptor = FetchDescriptor<WorkoutEntity>(
+                predicate: #Predicate<WorkoutEntity> { $0.id == activeSessionID })
             if let entity = try context.fetch(descriptor).first {
                 return mapWorkoutEntity(entity)
             } else {
@@ -132,7 +140,7 @@ class WorkoutStore: ObservableObject {
             return nil
         }
     }
-    
+
     var homeWorkouts: [Workout] {
         guard let context = modelContext else { return [] }
 
@@ -142,7 +150,7 @@ class WorkoutStore: ObservableObject {
                 predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true },
                 sortBy: [SortDescriptor(\.name)]
             )
-            descriptor.fetchLimit = 50 // Reasonable limit for home screen
+            descriptor.fetchLimit = 50  // Reasonable limit for home screen
             descriptor.includePendingChanges = false
             let entities = try context.fetch(descriptor)
             return entities.map { mapWorkoutEntity($0) }
@@ -190,35 +198,41 @@ class WorkoutStore: ObservableObject {
             print("✅ Profil aus UserDefaults-Backup wiederhergestellt")
             return backupProfile
         }
-        
+
         return UserProfile()
     }
 
     // MARK: - Active Session Management
-    
-    init() {}
-    
+
+    init() {
+        // Initialize the new rest timer state manager (Phase 1+2)
+        let manager = RestTimerStateManager()
+        self.restTimerStateManager = manager
+
+        // overlayManager will be set later by ContentView.onAppear
+    }
+
     deinit {
         // Ensure proper cleanup to prevent crashes
         restTimer?.invalidate()
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
-        
+
         // Note: Can't access @Published properties in deinit due to main actor isolation
         // The WorkoutLiveActivityController will handle cleanup when the rest state is cleared elsewhere
     }
-    
+
     func startSession(for workoutId: UUID) {
-        guard let context = modelContext else { 
+        guard let context = modelContext else {
             print("❌ WorkoutStore: ModelContext ist nil beim Starten einer Session")
-            return 
+            return
         }
-        
+
         // Verify workout exists and reset its sets
         let descriptor = FetchDescriptor<WorkoutEntity>(
             predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
         )
-        
+
         do {
             if let workout = try context.fetch(descriptor).first {
                 // Reset all sets as not completed and update the date
@@ -267,15 +281,15 @@ class WorkoutStore: ObservableObject {
     }
 
     // MARK: - Data Access Helpers
-    
+
     var exercises: [Exercise] {
         getExercises()
     }
-    
+
     var workouts: [Workout] {
         getWorkouts()
     }
-    
+
     private func getWorkouts() -> [Workout] {
         guard let context = modelContext else {
             print("⚠️ WorkoutStore: ModelContext ist nil beim Abrufen von Workouts")
@@ -298,7 +312,7 @@ class WorkoutStore: ObservableObject {
             return []
         }
     }
-    
+
     private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise {
         // Safely refetch by id from the current ModelContext to avoid invalid snapshot access
         let id = entity.id
@@ -308,7 +322,7 @@ class WorkoutStore: ObservableObject {
         let descriptionText = entity.descriptionText
         let instructions = entity.instructions
         let createdAt = entity.createdAt
-        
+
         // Try to get a fresh reference if possible
         var source: ExerciseEntity? = entity
         if let context = modelContext {
@@ -317,7 +331,7 @@ class WorkoutStore: ObservableObject {
                 source = fresh
             }
         }
-        
+
         guard let validSource = source else {
             // Return a placeholder exercise to avoid crash
             return Exercise(
@@ -331,10 +345,12 @@ class WorkoutStore: ObservableObject {
             )
         }
 
-        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap {
+            MuscleGroup(rawValue: $0)
+        }
         let equipmentType = EquipmentType(rawValue: validSource.equipmentTypeRaw) ?? .mixed
         let difficultyLevel = DifficultyLevel(rawValue: validSource.difficultyLevelRaw) ?? .anfänger
-        
+
         return Exercise(
             id: validSource.id,
             name: validSource.name,
@@ -394,21 +410,25 @@ class WorkoutStore: ObservableObject {
     ///   - count: Anzahl der zurückzugebenden ähnlichen Übungen (default: 10)
     ///   - userLevel: Optional - bevorzugt Übungen die zum User-Level passen
     /// - Returns: Array von ähnlichen Übungen, sortiert nach Similarity-Score
-    func getSimilarExercises(to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil) -> [Exercise] {
+    func getSimilarExercises(
+        to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil
+    ) -> [Exercise] {
         let allExercises = getExercises()
 
         // Filtere die aktuelle Übung aus und nur Übungen mit gemeinsamen Muskelgruppen
         let candidates = allExercises.filter { candidate in
-            candidate.id != exercise.id &&
-            exercise.hasSimilarMuscleGroups(to: candidate)
+            candidate.id != exercise.id && exercise.hasSimilarMuscleGroups(to: candidate)
         }
 
         // Berechne Similarity-Scores für alle Kandidaten
-        let scoredExercises = candidates.compactMap { candidate -> (exercise: Exercise, score: Int, matchesLevel: Bool, sharesPrimary: Bool)? in
+        let scoredExercises = candidates.compactMap {
+            candidate -> (exercise: Exercise, score: Int, matchesLevel: Bool, sharesPrimary: Bool)?
+            in
             let score = exercise.similarityScore(to: candidate)
             guard score > 0 else { return nil }
 
-            let matchesLevel = userLevel != nil ? matchesDifficultyLevel(candidate, for: userLevel!) : true
+            let matchesLevel =
+                userLevel != nil ? matchesDifficultyLevel(candidate, for: userLevel!) : true
             let sharesPrimary = exercise.sharesPrimaryMuscleGroup(with: candidate)
             return (candidate, score, matchesLevel, sharesPrimary)
         }
@@ -427,7 +447,7 @@ class WorkoutStore: ObservableObject {
             }
 
             // Wenn ein userLevel angegeben ist, bevorzuge passende Level
-            if let _ = userLevel {
+            if userLevel != nil {
                 if first.matchesLevel && !second.matchesLevel {
                     return true
                 }
@@ -454,10 +474,10 @@ class WorkoutStore: ObservableObject {
         let entities = (try? context.fetch(descriptor)) ?? []
         return entities.map { WorkoutSession(entity: $0) }
     }
-    
+
     private func getHomeFavoritesCount() -> Int {
         guard let context = modelContext else { return 0 }
-        
+
         do {
             let descriptor = FetchDescriptor<WorkoutEntity>(
                 predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true }
@@ -472,24 +492,26 @@ class WorkoutStore: ObservableObject {
 
     func addExercise(_ exercise: Exercise) {
         guard let context = modelContext else { return }
-        
+
         // Check if exercise already exists by ID first
         let idDescriptor = FetchDescriptor<ExerciseEntity>(
             predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
         )
-        
+
         if (try? context.fetch(idDescriptor).first) != nil {
-            return // Exercise already exists
+            return  // Exercise already exists
         }
-        
+
         // Check by name using case-insensitive comparison
         let nameDescriptor = FetchDescriptor<ExerciseEntity>()
         let allExercises = (try? context.fetch(nameDescriptor)) ?? []
-        
-        if allExercises.contains(where: { $0.name.localizedCaseInsensitiveCompare(exercise.name) == .orderedSame }) {
-            return // Exercise with same name already exists
+
+        if allExercises.contains(where: {
+            $0.name.localizedCaseInsensitiveCompare(exercise.name) == .orderedSame
+        }) {
+            return  // Exercise with same name already exists
         }
-        
+
         let entity = ExerciseEntity.make(from: exercise)
         context.insert(entity)
         try? context.save()
@@ -501,28 +523,28 @@ class WorkoutStore: ObservableObject {
         let descriptor = FetchDescriptor<ExerciseEntity>(
             predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
         )
-        
+
         guard let entity = try? context.fetch(descriptor).first else { return }
-        
+
         entity.name = exercise.name
         entity.muscleGroupsRaw = exercise.muscleGroups.map { $0.rawValue }
         entity.equipmentTypeRaw = exercise.equipmentType.rawValue
         entity.difficultyLevelRaw = exercise.difficultyLevel.rawValue
         entity.descriptionText = exercise.description
         entity.instructions = exercise.instructions
-        
+
         try? context.save()
-        
+
         // Invalidate cache for this exercise id
         exerciseStatsCache[exercise.id] = nil
     }
 
     func addWorkout(_ workout: Workout) {
-        guard let context = modelContext else { 
+        guard let context = modelContext else {
             print("❌ WorkoutStore: ModelContext ist nil beim Speichern eines Workouts")
-            return 
+            return
         }
-        
+
         do {
             try DataManager.shared.saveWorkout(workout, to: context)
             print("✅ Workout erfolgreich gespeichert: \(workout.name)")
@@ -532,11 +554,11 @@ class WorkoutStore: ObservableObject {
     }
 
     func updateWorkout(_ workout: Workout) {
-        guard let context = modelContext else { 
+        guard let context = modelContext else {
             print("❌ WorkoutStore: ModelContext ist nil beim Aktualisieren eines Workouts")
-            return 
+            return
         }
-        
+
         do {
             try DataManager.shared.saveWorkout(workout, to: context)
             print("✅ Workout erfolgreich aktualisiert: \(workout.name)")
@@ -549,16 +571,19 @@ class WorkoutStore: ObservableObject {
         guard let context = modelContext else {
             return Exercise(name: name, muscleGroups: [], equipmentType: .mixed, description: "")
         }
-        
+
         // Fetch all exercises and find by case-insensitive name comparison
         let descriptor = FetchDescriptor<ExerciseEntity>()
         let allExercises = (try? context.fetch(descriptor)) ?? []
-        
-        if let existing = allExercises.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+
+        if let existing = allExercises.first(where: {
+            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+        }) {
             return mapExerciseEntity(existing)
         }
 
-        let newExercise = Exercise(name: name, muscleGroups: [], equipmentType: .mixed, description: "")
+        let newExercise = Exercise(
+            name: name, muscleGroups: [], equipmentType: .mixed, description: "")
         let entity = ExerciseEntity.make(from: newExercise)
         context.insert(entity)
         try? context.save()
@@ -567,7 +592,8 @@ class WorkoutStore: ObservableObject {
 
     func previousWorkout(before workout: Workout) -> Workout? {
         let sessionHistory = getSessionHistory()
-        return sessionHistory
+        return
+            sessionHistory
             .filter { $0.templateId == workout.id }
             .sorted { $0.date > $1.date }
             .first
@@ -577,31 +603,32 @@ class WorkoutStore: ObservableObject {
     /// Vereinfachte lastMetrics Funktion - nutzt jetzt die gespeicherten Werte für bessere Performance
     func lastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
         guard let context = modelContext else { return nil }
-        
+
         let descriptor = FetchDescriptor<ExerciseEntity>(
             predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
         )
-        
+
         guard let exerciseEntity = try? context.fetch(descriptor).first,
-              let weight = exerciseEntity.lastUsedWeight,
-              let setCount = exerciseEntity.lastUsedSetCount else {
+            let weight = exerciseEntity.lastUsedWeight,
+            let setCount = exerciseEntity.lastUsedSetCount
+        else {
             // Fallback: alte Methode als Backup
             return legacyLastMetrics(for: exercise)
         }
-        
+
         return (weight, setCount)
     }
-    
+
     /// Erweiterte lastMetrics mit allen verfügbaren Infos
     func completeLastMetrics(for exercise: Exercise) -> ExerciseLastUsedMetrics? {
         guard let context = modelContext else { return nil }
-        
+
         let descriptor = FetchDescriptor<ExerciseEntity>(
             predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
         )
-        
+
         guard let exerciseEntity = try? context.fetch(descriptor).first else { return nil }
-        
+
         return ExerciseLastUsedMetrics(
             weight: exerciseEntity.lastUsedWeight,
             reps: exerciseEntity.lastUsedReps,
@@ -610,14 +637,16 @@ class WorkoutStore: ObservableObject {
             restTime: exerciseEntity.lastUsedRestTime
         )
     }
-    
+
     /// Legacy-Fallback Methode - iteriert durch Session-History (langsamer)
     private func legacyLastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
         let sessionHistory = getSessionHistory()
         let sortedSessions = sessionHistory.sorted { $0.date > $1.date }
 
         for workout in sortedSessions {
-            if let workoutExercise = workout.exercises.first(where: { $0.exercise.id == exercise.id }) {
+            if let workoutExercise = workout.exercises.first(where: {
+                $0.exercise.id == exercise.id
+            }) {
                 let setCount = max(workoutExercise.sets.count, 1)
                 let weight = workoutExercise.sets.last?.weight ?? 0
                 return (weight, setCount)
@@ -631,20 +660,20 @@ class WorkoutStore: ObservableObject {
         guard let context = modelContext else { return }
         let exercises = getExercises()
         let removedExercises = indexSet.map { exercises[$0] }
-        
+
         for exercise in removedExercises {
             let descriptor = FetchDescriptor<ExerciseEntity>(
                 predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
             )
-            
+
             if let entity = try? context.fetch(descriptor).first {
                 context.delete(entity)
             }
-            
+
             // Invalidate caches for removed exercise IDs
             exerciseStatsCache[exercise.id] = nil
         }
-        
+
         try? context.save()
     }
 
@@ -654,12 +683,12 @@ class WorkoutStore: ObservableObject {
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         let entities = (try? context.fetch(descriptor)) ?? []
-        
+
         for index in indexSet {
             guard index < entities.count else { continue }
             context.delete(entities[index])
         }
-        
+
         try? context.save()
     }
 
@@ -673,7 +702,7 @@ class WorkoutStore: ObservableObject {
             // Ensure exercises are sorted by order before recording session
             // Note: workout.exercises should already be sorted from mapWorkoutEntity,
             // but we sort again here to be absolutely certain
-            let sortedExercises = workout.exercises // Already sorted from UI
+            let sortedExercises = workout.exercises  // Already sorted from UI
 
             let session = WorkoutSession(
                 templateId: workout.id,
@@ -684,21 +713,21 @@ class WorkoutStore: ObservableObject {
                 duration: workout.duration,
                 notes: workout.notes
             )
-            
+
             let savedEntity = try DataManager.shared.recordSession(session, to: context)
-            
+
             // 🆕 NEU: Update Last-Used Metrics für alle Übungen
             updateLastUsedMetrics(from: session)
-            
+
             // Update ExerciseRecords with new personal bests
             // Memory: Capture only what's needed, not self
             Task {
                 await ExerciseRecordMigration.updateRecords(from: savedEntity, context: context)
             }
-            
-            invalidateCaches() // stats/streak may change
+
+            invalidateCaches()  // stats/streak may change
             print("✅ Workout-Session erfolgreich gespeichert: \(workout.name)")
-            
+
             // Sync to HealthKit if enabled
             if userProfile.healthKitSyncEnabled && healthKitManager.isAuthorized {
                 Task { [weak self] in
@@ -721,29 +750,29 @@ class WorkoutStore: ObservableObject {
     }
 
     // MARK: - Last-Used Metrics Management
-    
+
     /// Aktualisiert die "letzte Verwendung" Daten für alle Übungen in einem abgeschlossenen Workout
     private func updateLastUsedMetrics(from session: WorkoutSession) {
         guard let context = modelContext else { return }
-        
+
         for workoutExercise in session.exercises {
             // Hole die ExerciseEntity frisch aus dem Context
             let descriptor = FetchDescriptor<ExerciseEntity>(
                 predicate: #Predicate<ExerciseEntity> { $0.id == workoutExercise.exercise.id }
             )
-            
-            guard let exerciseEntity = try? context.fetch(descriptor).first else { 
+
+            guard let exerciseEntity = try? context.fetch(descriptor).first else {
                 print("⚠️ ExerciseEntity nicht gefunden für: \(workoutExercise.exercise.name)")
-                continue 
+                continue
             }
-            
+
             // Finde den letzten abgeschlossenen Satz
             let completedSets = workoutExercise.sets.filter { $0.completed }
-            guard let lastSet = completedSets.last else { 
+            guard let lastSet = completedSets.last else {
                 print("ℹ️ Keine abgeschlossenen Sätze für: \(workoutExercise.exercise.name)")
-                continue 
+                continue
             }
-            
+
             // Aktualisiere die Last-Used Werte nur wenn das neue Workout neuer ist
             if exerciseEntity.lastUsedDate == nil || session.date > exerciseEntity.lastUsedDate! {
                 exerciseEntity.lastUsedWeight = lastSet.weight
@@ -751,11 +780,13 @@ class WorkoutStore: ObservableObject {
                 exerciseEntity.lastUsedSetCount = completedSets.count
                 exerciseEntity.lastUsedDate = session.date
                 exerciseEntity.lastUsedRestTime = lastSet.restTime
-                
-                print("✅ Last-Used aktualisiert für \(exerciseEntity.name): \(lastSet.weight)kg × \(lastSet.reps)")
+
+                print(
+                    "✅ Last-Used aktualisiert für \(exerciseEntity.name): \(lastSet.weight)kg × \(lastSet.reps)"
+                )
             }
         }
-        
+
         do {
             try context.save()
             print("✅ Alle Last-Used Metriken gespeichert")
@@ -769,19 +800,25 @@ class WorkoutStore: ObservableObject {
         let descriptor = FetchDescriptor<WorkoutSessionEntity>(
             predicate: #Predicate<WorkoutSessionEntity> { $0.id == id }
         )
-        
+
         if let entity = try? context.fetch(descriptor).first {
             context.delete(entity)
             try? context.save()
         }
-        
+
         invalidateCaches()
     }
-    
+
     // MARK: - Profile Management
-    func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil) {
+    func updateProfile(
+        name: String, birthDate: Date?, weight: Double?, height: Double? = nil,
+        biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel,
+        equipment: EquipmentPreference, preferredDuration: WorkoutDuration,
+        healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil
+    ) {
         // Preserve existing profile image if not provided
-        let imageData = profileImageData ?? ProfilePersistenceHelper.loadFromUserDefaults().profileImageData
+        let imageData =
+            profileImageData ?? ProfilePersistenceHelper.loadFromUserDefaults().profileImageData
 
         // Create updated profile
         let updatedProfile = UserProfile(
@@ -797,14 +834,14 @@ class WorkoutStore: ObservableObject {
             preferredDuration: preferredDuration,
             healthKitSyncEnabled: healthKitSyncEnabled
         )
-        
+
         // Always save to UserDefaults as backup
         ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-        
+
         // Save to SwiftData if available
         if let context = modelContext {
             let descriptor = FetchDescriptor<UserProfileEntity>()
-            
+
             let entity: UserProfileEntity
             if let existing = try? context.fetch(descriptor).first {
                 entity = existing
@@ -812,39 +849,40 @@ class WorkoutStore: ObservableObject {
                 entity = UserProfileEntity()
                 context.insert(entity)
             }
-            
+
             entity.name = name
             entity.birthDate = birthDate
             entity.weight = weight
             entity.height = height
-            entity.biologicalSexRaw = Int16(biologicalSex?.rawValue ?? HKBiologicalSex.notSet.rawValue)
+            entity.biologicalSexRaw = Int16(
+                biologicalSex?.rawValue ?? HKBiologicalSex.notSet.rawValue)
             entity.healthKitSyncEnabled = healthKitSyncEnabled
             entity.goalRaw = goal.rawValue
             entity.experienceRaw = experience.rawValue
             entity.equipmentRaw = equipment.rawValue
             entity.preferredDurationRaw = preferredDuration.rawValue
             entity.updatedAt = Date()
-            
+
             try? context.save()
         }
-        
+
         // Trigger UI update
         profileUpdateTrigger = UUID()
         print("✅ Profil gespeichert: \(name) - \(goal.displayName)")
     }
-    
+
     func updateProfileImage(_ image: UIImage?) {
         // Create updated profile with new image
         var updatedProfile = userProfile
         updatedProfile.updateProfileImage(image)
-        
+
         // Always save to UserDefaults as backup
         ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-        
+
         // Save to SwiftData if available
         if let context = modelContext {
             let descriptor = FetchDescriptor<UserProfileEntity>()
-            
+
             let entity: UserProfileEntity
             if let existing = try? context.fetch(descriptor).first {
                 entity = existing
@@ -852,13 +890,13 @@ class WorkoutStore: ObservableObject {
                 entity = UserProfileEntity()
                 context.insert(entity)
             }
-            
+
             entity.profileImageData = image?.jpegData(compressionQuality: 0.8)
             entity.updatedAt = Date()
-            
+
             try? context.save()
         }
-        
+
         // Trigger UI update
         profileUpdateTrigger = UUID()
         print("✅ Profilbild gespeichert")
@@ -900,7 +938,10 @@ class WorkoutStore: ObservableObject {
 
     // MARK: - Onboarding Progress
 
-    func markOnboardingStep(hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil, hasSetupProfile: Bool? = nil) {
+    func markOnboardingStep(
+        hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil,
+        hasSetupProfile: Bool? = nil
+    ) {
         // Save to SwiftData if available
         if let context = modelContext {
             let descriptor = FetchDescriptor<UserProfileEntity>()
@@ -953,34 +994,34 @@ class WorkoutStore: ObservableObject {
     }
 
     // MARK: - HealthKit Integration
-    
+
     func requestHealthKitAuthorization() async throws {
         try await healthKitManager.requestAuthorization()
-        
+
         // Automatically import profile data after successful authorization
         if healthKitManager.isAuthorized {
             print("🔄 HealthKit authorized - importing profile data automatically...")
             try await importFromHealthKit()
         }
     }
-    
+
     func importFromHealthKit() async throws {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }
-        
+
         print("🏥 Starte HealthKit-Import...")
-        
+
         do {
             let data = try await healthKitManager.readProfileData()
-            
-            guard let context = modelContext else { 
+
+            guard let context = modelContext else {
                 print("❌ ModelContext nicht verfügbar")
-                return 
+                return
             }
-            
+
             let descriptor = FetchDescriptor<UserProfileEntity>()
-            
+
             let entity: UserProfileEntity
             if let existing = try? context.fetch(descriptor).first {
                 entity = existing
@@ -988,10 +1029,10 @@ class WorkoutStore: ObservableObject {
                 entity = UserProfileEntity()
                 context.insert(entity)
             }
-            
+
             // Update only if we got valid data from HealthKit
             var updatedFields: [String] = []
-            
+
             if let birthDate = data.birthDate {
                 entity.birthDate = birthDate
                 updatedFields.append("Geburtsdatum")
@@ -1001,29 +1042,28 @@ class WorkoutStore: ObservableObject {
                 updatedFields.append("Gewicht")
             }
             if let height = data.height {
-                entity.height = height  
+                entity.height = height
                 updatedFields.append("Größe")
             }
             if let sex = data.biologicalSex {
                 entity.biologicalSexRaw = Int16(sex.rawValue)
                 updatedFields.append("Geschlecht")
             }
-            
+
             entity.healthKitSyncEnabled = true
             entity.updatedAt = Date()
-            
+
             try context.save()
-            
+
             // Trigger UI update
             profileUpdateTrigger = UUID()
-            
+
             // Post notification for immediate UI updates
             NotificationCenter.default.post(name: .profileUpdatedFromHealthKit, object: nil)
-            
+
             print("✅ HealthKit-Import erfolgreich abgeschlossen")
             print("   • Aktualisierte Felder: \(updatedFields.joined(separator: ", "))")
-            
-            
+
         } catch let error as HealthKitError {
             print("❌ HealthKit-Fehler: \(error.localizedDescription)")
             throw error
@@ -1032,40 +1072,43 @@ class WorkoutStore: ObservableObject {
             throw HealthKitError.saveFailed
         }
     }
-    
+
     func saveWorkoutToHealthKit(_ workoutSession: WorkoutSession) async throws {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }
-        
+
         guard userProfile.healthKitSyncEnabled else {
-            return // User has not enabled HealthKit sync
+            return  // User has not enabled HealthKit sync
         }
-        
+
         try await healthKitManager.saveWorkout(workoutSession)
     }
-    
-    func readHeartRateData(from startDate: Date, to endDate: Date) async throws -> [HeartRateReading] {
+
+    func readHeartRateData(from startDate: Date, to endDate: Date) async throws
+        -> [HeartRateReading]
+    {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }
-        
+
         return try await healthKitManager.readHeartRate(from: startDate, to: endDate)
     }
-    
-    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading] {
+
+    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading]
+    {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }
-        
+
         return try await healthKitManager.readWeight(from: startDate, to: endDate)
     }
-    
+
     func readBodyFatData(from startDate: Date, to endDate: Date) async throws -> [BodyFatReading] {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }
-        
+
         return try await healthKitManager.readBodyFat(from: startDate, to: endDate)
     }
 
@@ -1076,12 +1119,12 @@ class WorkoutStore: ObservableObject {
         let descriptor = FetchDescriptor<WorkoutEntity>(
             predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
         )
-        
+
         guard let entity = try? context.fetch(descriptor).first else { return }
         entity.isFavorite.toggle()
         try? context.save()
     }
-    
+
     func toggleHomeFavorite(workoutID: UUID) -> Bool {
         guard let context = modelContext else { return false }
 
@@ -1120,6 +1163,28 @@ class WorkoutStore: ObservableObject {
     // MARK: - Zentrale Rest-Timer Steuerung
 
     func startRest(for workout: Workout, exerciseIndex: Int, setIndex: Int, totalSeconds: Int) {
+        // Extract exercise names for Live Activity display
+        let currentExerciseName: String? =
+            workout.exercises.indices.contains(exerciseIndex)
+            ? workout.exercises[exerciseIndex].exercise.name
+            : nil
+
+        let nextExerciseName: String? =
+            workout.exercises.indices.contains(exerciseIndex + 1)
+            ? workout.exercises[exerciseIndex + 1].exercise.name
+            : nil
+
+        // Use new RestTimerStateManager system (Phase 1+2)
+        restTimerStateManager?.startRest(
+            for: workout,
+            exercise: exerciseIndex,
+            set: setIndex,
+            duration: totalSeconds,
+            currentExerciseName: currentExerciseName,
+            nextExerciseName: nextExerciseName
+        )
+
+        // Keep old system for backward compatibility (will be removed in Phase 5)
         let total = max(totalSeconds, 0)
         var state = ActiveRestState(
             workoutId: workout.id,
@@ -1132,29 +1197,17 @@ class WorkoutStore: ObservableObject {
             endDate: Date().addingTimeInterval(TimeInterval(total))
         )
         activeRestState = state
-
-        // Persistiere Rest-Timer State für Wiederherstellung nach Force Quit
         persistRestState(state)
-
         setupRestTimer()
         updateLiveActivityRest()
-        if restNotificationsEnabled {
-            let exerciseName = (workout.exercises.indices.contains(exerciseIndex) ? workout.exercises[exerciseIndex].exercise.name : nil)
-            NotificationManager.shared.scheduleRestEndNotification(
-                remainingSeconds: total,
-                workoutName: workout.name,
-                exerciseName: exerciseName,
-                workoutId: workout.id
-            )
-        }
     }
 
     func pauseRest() {
         guard var state = activeRestState else { return }
         state.isRunning = false
-        state.endDate = nil // Wichtig: endDate zurücksetzen beim Pausieren
+        state.endDate = nil  // Wichtig: endDate zurücksetzen beim Pausieren
         activeRestState = state
-        restTimer?.invalidate() // Timer stoppen
+        restTimer?.invalidate()  // Timer stoppen
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         updateLiveActivityRest()
@@ -1174,8 +1227,9 @@ class WorkoutStore: ObservableObject {
         // Persistiere resumed State
         persistRestState(state)
         if restNotificationsEnabled {
-            let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
-                activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+            let exerciseName: String? =
+                activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
+                ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: state.remainingSeconds,
                 workoutName: state.workoutName,
@@ -1188,18 +1242,19 @@ class WorkoutStore: ObservableObject {
     func addRest(seconds: Int) {
         guard var state = activeRestState else { return }
         state.remainingSeconds = max(0, state.remainingSeconds + seconds)
-        
+
         // Nur endDate anpassen wenn Timer läuft
         if state.isRunning {
             state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
         }
-        
+
         activeRestState = state
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
         if restNotificationsEnabled {
-            let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
-                activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+            let exerciseName: String? =
+                activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
+                ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: state.remainingSeconds,
                 workoutName: state.workoutName,
@@ -1213,18 +1268,19 @@ class WorkoutStore: ObservableObject {
         guard var state = activeRestState else { return }
         state.remainingSeconds = max(0, remaining)
         if let total { state.totalSeconds = max(1, total) }
-        
+
         // Nur endDate setzen wenn Timer läuft
         if state.isRunning {
             state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
         }
-        
+
         activeRestState = state
         if state.isRunning { setupRestTimer() }
         updateLiveActivityRest()
         if restNotificationsEnabled {
-            let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ? 
-                activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+            let exerciseName: String? =
+                activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
+                ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: state.remainingSeconds,
                 workoutName: state.workoutName,
@@ -1239,7 +1295,8 @@ class WorkoutStore: ObservableObject {
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(
+                workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
 
@@ -1254,7 +1311,8 @@ class WorkoutStore: ObservableObject {
         restTimer = nil
         // Note: We DON'T cancel notification here - it already fired or user dismissed it
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(
+                workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
 
@@ -1266,7 +1324,9 @@ class WorkoutStore: ObservableObject {
         restTimer?.invalidate()
         restTimer = nil
 
-        guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else { return }
+        guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else {
+            return
+        }
 
         // FIXED: Direkter Aufruf statt Task { @MainActor } um Race Conditions zu vermeiden
         restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -1314,12 +1374,13 @@ class WorkoutStore: ObservableObject {
                 // Sound & Haptic Feedback (nur im Foreground)
                 SoundPlayer.playBoxBell()
                 #if canImport(UIKit)
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
                 #endif
 
                 // Live Activity zeigt "Pause beendet"
-                WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
+                WorkoutLiveActivityController.shared.showRestEnded(
+                    workoutId: state.workoutId, workoutName: state.workoutName)
 
                 // Timer automatisch clearen nach 2 Sekunden
                 // Memory: Use weak self to prevent retain cycle
@@ -1332,7 +1393,7 @@ class WorkoutStore: ObservableObject {
             // Fallback: decrement by one
             if state.remainingSeconds > 0 {
                 state.remainingSeconds -= 1
-                activeRestState = state // Always update since we decrement
+                activeRestState = state  // Always update since we decrement
                 updateLiveActivityRest()
                 if state.remainingSeconds <= 0 {
                     // Timer sofort stoppen
@@ -1342,12 +1403,13 @@ class WorkoutStore: ObservableObject {
                     // Sound & Haptic Feedback
                     SoundPlayer.playBoxBell()
                     #if canImport(UIKit)
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
                     #endif
 
                     // Live Activity zeigt "Pause beendet"
-                    WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
+                    WorkoutLiveActivityController.shared.showRestEnded(
+                        workoutId: state.workoutId, workoutName: state.workoutName)
 
                     // Timer automatisch clearen nach 2 Sekunden
                     // Memory: Use weak self to prevent retain cycle
@@ -1367,9 +1429,12 @@ class WorkoutStore: ObservableObject {
             print("[RestTimer] ⚠️ updateLiveActivityRest: No active rest state")
             return
         }
-        let exerciseName: String? = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ?
-            activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
-        print("[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining, endDate: \(state.endDate?.description ?? "nil")")
+        let exerciseName: String? =
+            activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
+            ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+        print(
+            "[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining, endDate: \(state.endDate?.description ?? "nil")"
+        )
         WorkoutLiveActivityController.shared.updateRest(
             workoutId: state.workoutId,
             workoutName: state.workoutName,
@@ -1392,7 +1457,8 @@ class WorkoutStore: ObservableObject {
         if remaining <= 0 {
             // Timer ist abgelaufen während App im Background war
             // Live Activity zeigt "Pause beendet"
-            WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.showRestEnded(
+                workoutId: state.workoutId, workoutName: state.workoutName)
 
             // Timer automatisch clearen nach 2 Sekunden
             // Notification kommt durch, da wir sie nicht canceln
@@ -1409,19 +1475,19 @@ class WorkoutStore: ObservableObject {
     }
 
     // MARK: - ExerciseRecord Management
-    
+
     /// Get ExerciseRecord for a specific exercise
     func getExerciseRecord(for exercise: Exercise) -> ExerciseRecord? {
         guard let context = modelContext else { return nil }
-        
+
         let descriptor = FetchDescriptor<ExerciseRecordEntity>(
             predicate: #Predicate<ExerciseRecordEntity> { record in
                 record.exerciseId == exercise.id
             }
         )
-        
+
         guard let entity = try? context.fetch(descriptor).first else { return nil }
-        
+
         return ExerciseRecord(
             id: entity.id,
             exerciseId: entity.exerciseId,
@@ -1440,17 +1506,17 @@ class WorkoutStore: ObservableObject {
             updatedAt: entity.updatedAt
         )
     }
-    
+
     /// Get all ExerciseRecords
     func getAllExerciseRecords() -> [ExerciseRecord] {
         guard let context = modelContext else { return [] }
-        
+
         let descriptor = FetchDescriptor<ExerciseRecordEntity>(
             sortBy: [SortDescriptor(\.exerciseName)]
         )
-        
+
         let entities = (try? context.fetch(descriptor)) ?? []
-        
+
         return entities.map { entity in
             ExerciseRecord(
                 id: entity.id,
@@ -1471,17 +1537,17 @@ class WorkoutStore: ObservableObject {
             )
         }
     }
-    
+
     /// Check if a set would be a new personal record
     func checkForNewRecord(exercise: Exercise, weight: Double, reps: Int) -> RecordType? {
         guard let record = getExerciseRecord(for: exercise) else {
             // If no record exists yet, any completed set is a new record
             if weight > 0 && reps > 0 {
-                return .maxWeight // Default to weight record for first achievement
+                return .maxWeight  // Default to weight record for first achievement
             }
             return nil
         }
-        
+
         return record.hasNewRecord(weight: weight, reps: reps)
     }
 
@@ -1491,7 +1557,6 @@ class WorkoutStore: ObservableObject {
         exerciseStatsCache.removeAll()
         weekStreakCache = nil
     }
-    
 
     // MARK: - Exercise Database Update
     func updateExerciseDatabase() {
@@ -1499,21 +1564,21 @@ class WorkoutStore: ObservableObject {
             print("❌ WorkoutStore: ModelContext ist nil beim Update der Übungsdatenbank")
             return
         }
-        
+
         Task { [weak self] in
             guard let self = self else { return }
-            
+
             do {
                 print("🔄 Starte sichere Übungsdatenbank-Aktualisierung...")
-                
+
                 // Get all existing exercises
                 let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
                 print("📚 Gefunden: \(existingExercises.count) bestehende Übungen")
-                
+
                 // Get all new German exercises
                 let germanExercises = ExerciseSeeder.createRealisticExercises()
                 print("🇩🇪 Erstelle Mapping für \(germanExercises.count) deutsche Übungen")
-                
+
                 // Create comprehensive mapping from English to German names
                 let nameMapping: [String: String] = [
                     // === BRUST ===
@@ -1527,7 +1592,7 @@ class WorkoutStore: ObservableObject {
                     "Negativ Schrägbankdrücken": "Negativbankdrücken",
                     "Fliegende Kurzhanteln": "Fliegende Bewegung",
                     "Kurzhantel Fliegende schräg": "Schrägbank Fliegende",
-                    
+
                     // === RÜCKEN ===
                     "Lat Pulldown breit": "Latzug breit",
                     "Lat Pulldown eng": "Latzug eng",
@@ -1540,7 +1605,7 @@ class WorkoutStore: ObservableObject {
                     "Shrugs Langhantel": "Schulterheben Langhantel",
                     "T-Bar Rudern": "T-Hantel Rudern",
                     "Hyperextensions": "Rückenstrecker",
-                    
+
                     // === BEINE ===
                     "Front Squats": "Frontkniebeugen",
                     "Goblet Squats": "Goblet Kniebeugen",
@@ -1555,7 +1620,7 @@ class WorkoutStore: ObservableObject {
                     "Leg Press 45°": "Beinpresse 45°",
                     "Smith Machine Squats": "Smith Maschine Kniebeugen",
                     "Glute Ham Raise": "Glute Ham Entwicklung",
-                    
+
                     // === SCHULTERN ===
                     "Arnold Press": "Arnold Drücken",
                     "Upright Rows": "Aufrechtes Rudern",
@@ -1564,7 +1629,7 @@ class WorkoutStore: ObservableObject {
                     "Reverse Pec Deck": "Reverse Butterfly",
                     "Front Raise Maschine": "Frontheben Maschine",
                     "Shrug Maschine": "Schulterheben Maschine",
-                    
+
                     // === BIZEPS ===
                     "Bizep Curls": "Bizeps Curls",
                     "Bizep Curls Langhantel": "Bizeps Curls Langhantel",
@@ -1574,7 +1639,7 @@ class WorkoutStore: ObservableObject {
                     "Preacher Curls": "Prediger Curls",
                     "Spider Curls": "Spinnen Curls",
                     "Bizep Curls Maschine": "Bizeps Curls Maschine",
-                    
+
                     // === TRIZEPS ===
                     "Trizep Dips": "Trizeps Dips",
                     "French Press": "Französisches Drücken",
@@ -1585,7 +1650,7 @@ class WorkoutStore: ObservableObject {
                     "Diamond Push-ups": "Diamant Liegestütze",
                     "Close Grip Bench Press": "Enges Bankdrücken",
                     "Trizeps Extension Maschine": "Trizeps Streckung Maschine",
-                    
+
                     // === BAUCH ===
                     "Plank": "Unterarmstütz",
                     "Side Plank": "Seitlicher Unterarmstütz",
@@ -1602,7 +1667,7 @@ class WorkoutStore: ObservableObject {
                     "Captain's Chair Knee Raises": "Kapitänsstuhl Knieheben",
                     "Ab Crunch Maschine": "Bauchpresse Maschine",
                     "Torso Rotation Maschine": "Rumpfdrehung Maschine",
-                    
+
                     // === FUNKTIONELLE ÜBUNGEN ===
                     "Turkish Get-up": "Türkisches Aufstehen",
                     "Kettlebell Swings": "Kettlebell Schwünge",
@@ -1618,11 +1683,11 @@ class WorkoutStore: ObservableObject {
                     "Clean and Press": "Umsetzen und Drücken",
                     "Sled Push": "Schlitten schieben",
                     "Sled Pull": "Schlitten ziehen",
-                    "Farmer's Walk": "Farmers Walk"
+                    "Farmer's Walk": "Farmers Walk",
                 ]
-                
+
                 var updatedCount = 0
-                
+
                 // Update existing exercises with German names
                 for existingExercise in existingExercises {
                     if let germanName = nameMapping[existingExercise.name] {
@@ -1631,22 +1696,29 @@ class WorkoutStore: ObservableObject {
                         updatedCount += 1
                     } else {
                         // Check if we can find a corresponding German exercise by similar name
-                        if let germanExercise = germanExercises.first(where: { $0.name == existingExercise.name }) {
+                        if let germanExercise = germanExercises.first(where: {
+                            $0.name == existingExercise.name
+                        }) {
                             // Exercise already has German name, update description etc.
-                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map { $0.rawValue }
-                            existingExercise.equipmentTypeRaw = germanExercise.equipmentType.rawValue
+                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map {
+                                $0.rawValue
+                            }
+                            existingExercise.equipmentTypeRaw =
+                                germanExercise.equipmentType.rawValue
                             existingExercise.descriptionText = germanExercise.description
                             existingExercise.instructions = germanExercise.instructions
                         }
                     }
                 }
-                
+
                 // Add any missing German exercises
                 let existingNames = Set(existingExercises.map { $0.name })
                 var addedCount = 0
-                
+
                 for germanExercise in germanExercises {
-                    if !existingNames.contains(germanExercise.name) && !nameMapping.values.contains(germanExercise.name) {
+                    if !existingNames.contains(germanExercise.name)
+                        && !nameMapping.values.contains(germanExercise.name)
+                    {
                         let entity = ExerciseEntity(
                             id: germanExercise.id,
                             name: germanExercise.name,
@@ -1661,40 +1733,42 @@ class WorkoutStore: ObservableObject {
                         print("➕ Neue Übung hinzugefügt: '\(germanExercise.name)'")
                     }
                 }
-                
+
                 // Save changes
                 try context.save()
-                
+
                 await MainActor.run {
                     print("✅ Übungsdatenbank erfolgreich aktualisiert!")
                     print("   - \(updatedCount) Übungen auf Deutsch aktualisiert")
                     print("   - \(addedCount) neue Übungen hinzugefügt")
-                    
+
                     // Trigger UI refresh
                     self.invalidateCaches()
                     self.objectWillChange.send()
                 }
-                
+
             } catch {
                 print("❌ Fehler beim Aktualisieren der Übungsdatenbank: \(error)")
             }
         }
     }
-    
+
     // MARK: - Automatic German Translation on App Start
     private func checkAndPerformAutomaticGermanTranslation(context: ModelContext) {
         // Nur ausführen, wenn noch nicht übersetzt wurde
-        guard !exercisesTranslatedToGerman else { 
-            print("✅ Deutsche Übersetzung bereits durchgeführt - überspringe automatische Aktualisierung")
-            return 
+        guard !exercisesTranslatedToGerman else {
+            print(
+                "✅ Deutsche Übersetzung bereits durchgeführt - überspringe automatische Aktualisierung"
+            )
+            return
         }
-        
+
         Task { [weak self] in
             guard let self = self else { return }
-            
+
             do {
                 print("🚀 Starte automatische einmalige Deutsche Übersetzung beim App-Start...")
-                
+
                 // Prüfe ob überhaupt Übungen vorhanden sind
                 let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
                 guard !existingExercises.isEmpty else {
@@ -1704,12 +1778,14 @@ class WorkoutStore: ObservableObject {
                     }
                     return
                 }
-                
-                print("📚 Gefunden: \(existingExercises.count) bestehende Übungen - starte Übersetzung...")
-                
+
+                print(
+                    "📚 Gefunden: \(existingExercises.count) bestehende Übungen - starte Übersetzung..."
+                )
+
                 // Get all new German exercises
                 let germanExercises = ExerciseSeeder.createRealisticExercises()
-                
+
                 // Create comprehensive mapping from English to German names
                 let nameMapping: [String: String] = [
                     // === BRUST ===
@@ -1723,7 +1799,7 @@ class WorkoutStore: ObservableObject {
                     "Negativ Schrägbankdrücken": "Negativbankdrücken",
                     "Fliegende Kurzhanteln": "Fliegende Bewegung",
                     "Kurzhantel Fliegende schräg": "Schrägbank Fliegende",
-                    
+
                     // === RÜCKEN ===
                     "Lat Pulldown breit": "Latzug breit",
                     "Lat Pulldown eng": "Latzug eng",
@@ -1736,7 +1812,7 @@ class WorkoutStore: ObservableObject {
                     "Shrugs Langhantel": "Schulterheben Langhantel",
                     "T-Bar Rudern": "T-Hantel Rudern",
                     "Hyperextensions": "Rückenstrecker",
-                    
+
                     // === BEINE ===
                     "Front Squats": "Frontkniebeugen",
                     "Goblet Squats": "Goblet Kniebeugen",
@@ -1751,7 +1827,7 @@ class WorkoutStore: ObservableObject {
                     "Leg Press 45°": "Beinpresse 45°",
                     "Smith Machine Squats": "Smith Maschine Kniebeugen",
                     "Glute Ham Raise": "Glute Ham Entwicklung",
-                    
+
                     // === SCHULTERN ===
                     "Arnold Press": "Arnold Drücken",
                     "Upright Rows": "Aufrechtes Rudern",
@@ -1760,7 +1836,7 @@ class WorkoutStore: ObservableObject {
                     "Reverse Pec Deck": "Reverse Butterfly",
                     "Front Raise Maschine": "Frontheben Maschine",
                     "Shrug Maschine": "Schulterheben Maschine",
-                    
+
                     // === BIZEPS ===
                     "Bizep Curls": "Bizeps Curls",
                     "Bizep Curls Langhantel": "Bizeps Curls Langhantel",
@@ -1770,7 +1846,7 @@ class WorkoutStore: ObservableObject {
                     "Preacher Curls": "Prediger Curls",
                     "Spider Curls": "Spinnen Curls",
                     "Bizep Curls Maschine": "Bizeps Curls Maschine",
-                    
+
                     // === TRIZEPS ===
                     "Trizep Dips": "Trizeps Dips",
                     "French Press": "Französisches Drücken",
@@ -1781,7 +1857,7 @@ class WorkoutStore: ObservableObject {
                     "Diamond Push-ups": "Diamant Liegestütze",
                     "Close Grip Bench Press": "Enges Bankdrücken",
                     "Trizeps Extension Maschine": "Trizeps Streckung Maschine",
-                    
+
                     // === BAUCH ===
                     "Plank": "Unterarmstütz",
                     "Side Plank": "Seitlicher Unterarmstütz",
@@ -1798,7 +1874,7 @@ class WorkoutStore: ObservableObject {
                     "Captain's Chair Knee Raises": "Kapitänsstuhl Knieheben",
                     "Ab Crunch Maschine": "Bauchpresse Maschine",
                     "Torso Rotation Maschine": "Rumpfdrehung Maschine",
-                    
+
                     // === FUNKTIONELLE ÜBUNGEN ===
                     "Turkish Get-up": "Türkisches Aufstehen",
                     "Kettlebell Swings": "Kettlebell Schwünge",
@@ -1814,44 +1890,58 @@ class WorkoutStore: ObservableObject {
                     "Clean and Press": "Umsetzen und Drücken",
                     "Sled Push": "Schlitten schieben",
                     "Sled Pull": "Schlitten ziehen",
-                    "Farmer's Walk": "Farmers Walk"
+                    "Farmer's Walk": "Farmers Walk",
                 ]
-                
+
                 var updatedCount = 0
-                
+
                 // Update existing exercises with German names
                 for existingExercise in existingExercises {
                     if let germanName = nameMapping[existingExercise.name] {
-                        print("🔄 Automatische Übersetzung: '\(existingExercise.name)' → '\(germanName)'")
+                        print(
+                            "🔄 Automatische Übersetzung: '\(existingExercise.name)' → '\(germanName)'"
+                        )
                         existingExercise.name = germanName
-                        
+
                         // Aktualisiere auch andere Eigenschaften wenn möglich
-                        if let germanExercise = germanExercises.first(where: { $0.name == germanName }) {
-                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map { $0.rawValue }
-                            existingExercise.equipmentTypeRaw = germanExercise.equipmentType.rawValue
+                        if let germanExercise = germanExercises.first(where: {
+                            $0.name == germanName
+                        }) {
+                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map {
+                                $0.rawValue
+                            }
+                            existingExercise.equipmentTypeRaw =
+                                germanExercise.equipmentType.rawValue
                             existingExercise.descriptionText = germanExercise.description
                             existingExercise.instructions = germanExercise.instructions
                         }
-                        
+
                         updatedCount += 1
                     } else {
                         // Check if we can find a corresponding German exercise by similar name
-                        if let germanExercise = germanExercises.first(where: { $0.name == existingExercise.name }) {
+                        if let germanExercise = germanExercises.first(where: {
+                            $0.name == existingExercise.name
+                        }) {
                             // Exercise already has German name, update description etc.
-                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map { $0.rawValue }
-                            existingExercise.equipmentTypeRaw = germanExercise.equipmentType.rawValue
+                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map {
+                                $0.rawValue
+                            }
+                            existingExercise.equipmentTypeRaw =
+                                germanExercise.equipmentType.rawValue
                             existingExercise.descriptionText = germanExercise.description
                             existingExercise.instructions = germanExercise.instructions
                         }
                     }
                 }
-                
+
                 // Add any missing German exercises
                 let existingNames = Set(existingExercises.map { $0.name })
                 var addedCount = 0
-                
+
                 for germanExercise in germanExercises {
-                    if !existingNames.contains(germanExercise.name) && !nameMapping.values.contains(germanExercise.name) {
+                    if !existingNames.contains(germanExercise.name)
+                        && !nameMapping.values.contains(germanExercise.name)
+                    {
                         let entity = ExerciseEntity(
                             id: germanExercise.id,
                             name: germanExercise.name,
@@ -1866,24 +1956,24 @@ class WorkoutStore: ObservableObject {
                         print("➕ Automatisch hinzugefügt: '\(germanExercise.name)'")
                     }
                 }
-                
+
                 // Save changes
                 try context.save()
-                
+
                 await MainActor.run {
                     // Markiere als abgeschlossen
                     self.exercisesTranslatedToGerman = true
-                    
+
                     print("✅ Automatische Deutsche Übersetzung abgeschlossen!")
                     print("   - \(updatedCount) Übungen auf Deutsch aktualisiert")
                     print("   - \(addedCount) neue Übungen hinzugefügt")
                     print("   - Translation-Flag gesetzt: Diese Aktion wird nicht wiederholt")
-                    
+
                     // Trigger UI refresh
                     self.invalidateCaches()
                     self.objectWillChange.send()
                 }
-                
+
             } catch {
                 print("❌ Fehler bei der automatischen deutschen Übersetzung: \(error)")
             }
@@ -1896,7 +1986,7 @@ class WorkoutStore: ObservableObject {
             print("❌ WorkoutStore: ModelContext ist nil beim kompletten Reset")
             return
         }
-        
+
         do {
             // Stop any active timers and sessions
             stopRest()
@@ -1908,7 +1998,7 @@ class WorkoutStore: ObservableObject {
             let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
             let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
             let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
-            
+
             // Delete all data
             for workout in workouts {
                 context.delete(workout)
@@ -1922,22 +2012,22 @@ class WorkoutStore: ObservableObject {
             for profile in profiles {
                 context.delete(profile)
             }
-            
+
             // Clear all caches
             invalidateCaches()
-            
+
             // Save the empty context
             try context.save()
-            
+
             // Reset published properties to defaults
             activeRestState = nil
             weeklyGoal = 5
             restNotificationsEnabled = true
-            exercisesTranslatedToGerman = false // Reset translation flag
+            exercisesTranslatedToGerman = false  // Reset translation flag
             profileUpdateTrigger = UUID()
-            
+
             print("✅ Alle App-Daten erfolgreich gelöscht")
-            
+
         } catch {
             print("❌ Fehler beim kompletten Reset: \(error)")
             throw error
@@ -1954,20 +2044,24 @@ class WorkoutStore: ObservableObject {
                 let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
                 let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
                 let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
-                
+
                 print("Gespeicherte Workouts: \(workouts.count)")
                 for workout in workouts.prefix(5) {
-                    print("  - \(workout.name) (ID: \(workout.id.uuidString.prefix(8)), Übungen: \(workout.exercises.count))")
+                    print(
+                        "  - \(workout.name) (ID: \(workout.id.uuidString.prefix(8)), Übungen: \(workout.exercises.count))"
+                    )
                 }
-                
+
                 print("Gespeicherte Übungen: \(exercises.count)")
                 for exercise in exercises.prefix(10) {
                     print("  - \(exercise.name) (ID: \(exercise.id.uuidString.prefix(8)))")
                 }
-                
+
                 print("Sessions: \(sessions.count)")
                 for session in sessions.prefix(3) {
-                    print("  - \(session.name) (Datum: \(session.date.formatted(.dateTime.day().month())))")
+                    print(
+                        "  - \(session.name) (Datum: \(session.date.formatted(.dateTime.day().month())))"
+                    )
                 }
             } catch {
                 print("❌ Fehler beim Abrufen der Debug-Daten: \(error)")
@@ -1975,35 +2069,35 @@ class WorkoutStore: ObservableObject {
         }
         print("========================")
     }
-    
+
     // MARK: - Markdown Parser Test (Phase 3-6)
     func testMarkdownParser() {
         print("🧪 Teste Markdown Parser...")
         ExerciseMarkdownParser.testWithSampleData()
     }
-    
+
     func testMuscleGroupMapping() {
         print("🔬 Teste Muskelgruppen-Mapping...")
         ExerciseMarkdownParser.testMuscleGroupMapping()
     }
-    
+
     func testEquipmentAndDifficultyMapping() {
         print("🔧 Teste Equipment und Schwierigkeitsgrad-Mapping...")
         ExerciseMarkdownParser.testEquipmentAndDifficultyMapping()
     }
-    
+
     func testCompleteExerciseCreation() {
         print("🎯 Teste vollständige Exercise-Erstellung...")
         ExerciseMarkdownParser.testCompleteExerciseCreation()
     }
-    
+
     func testCompleteEmbeddedExerciseList() {
         print("📖 Teste vollständige eingebettete Übungsliste...")
         ExerciseMarkdownParser.testCompleteEmbeddedList()
     }
-    
+
     // MARK: - Phase 7: Replace Exercises with Markdown Data
-    
+
     /// Ersetzt alle bestehenden Übungen durch die Übungen aus der Markdown-Datei
     /// WARNUNG: Diese Funktion löscht ALLE bestehenden Übungen!
     func replaceAllExercisesWithMarkdownData() {
@@ -2011,99 +2105,106 @@ class WorkoutStore: ObservableObject {
             print("❌ WorkoutStore: ModelContext ist nil beim Ersetzen der Übungen")
             return
         }
-        
+
         Task { [weak self] in
             guard let self = self else { return }
-            
+
             do {
                 print("🔄 Starte vollständigen Austausch der Übungsdatenbank...")
-                
+
                 // Phase 7.1: Parse neue Übungen aus Markdown
                 let newExercises = ExerciseMarkdownParser.parseCompleteExerciseList()
                 print("📊 \(newExercises.count) neue Übungen aus Markdown geparst")
-                
+
                 if newExercises.isEmpty {
                     print("⚠️ Keine Übungen aus Markdown geparst - Abbruch")
                     return
                 }
-                
+
                 // Phase 7.2: Lösche alle bestehenden Übungen
                 let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
                 print("🗑️ Lösche \(existingExercises.count) bestehende Übungen...")
-                
+
                 for exercise in existingExercises {
                     context.delete(exercise)
                 }
-                
+
                 // Phase 7.3: Speichere Löschungen
                 try context.save()
                 print("✅ Alle bestehenden Übungen gelöscht")
-                
+
                 // Phase 7.4: Füge neue Übungen hinzu
                 print("➕ Füge \(newExercises.count) neue Übungen hinzu...")
-                
+
                 for exercise in newExercises {
                     let entity = ExerciseEntity.make(from: exercise)
                     context.insert(entity)
                 }
-                
+
                 // Phase 7.5: Speichere neue Übungen
                 try context.save()
-                
+
                 await MainActor.run {
                     // Phase 7.6: Cache invalidieren und UI aktualisieren
                     self.invalidateCaches()
                     self.objectWillChange.send()
-                    
+
                     print("🎉 Übungsdatenbank-Austausch erfolgreich abgeschlossen!")
                     print("   📊 Neue Übungen: \(newExercises.count)")
-                    
+
                     // Statistiken anzeigen
                     let byEquipment = Dictionary(grouping: newExercises) { $0.equipmentType }
-                    for (equipment, exs) in byEquipment.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                    for (equipment, exs) in byEquipment.sorted(by: {
+                        $0.key.rawValue < $1.key.rawValue
+                    }) {
                         print("   🏋️ \(equipment.rawValue): \(exs.count) Übungen")
                     }
-                    
+
                     let byDifficulty = Dictionary(grouping: newExercises) { $0.difficultyLevel }
-                    for (difficulty, exs) in byDifficulty.sorted(by: { $0.key.sortOrder < $1.key.sortOrder }) {
+                    for (difficulty, exs) in byDifficulty.sorted(by: {
+                        $0.key.sortOrder < $1.key.sortOrder
+                    }) {
                         print("   📊 \(difficulty.rawValue): \(exs.count) Übungen")
                     }
                 }
-                
+
             } catch {
                 print("❌ Fehler beim Ersetzen der Übungsdatenbank: \(error)")
             }
         }
     }
-    
+
     /// Test-Funktion für den Übungsaustausch (nur zu Testzwecken)
     func testReplaceExercises() {
         print("⚠️ WARNUNG: Diese Funktion löscht ALLE bestehenden Übungen!")
         print("🧪 Starte Test des Übungsaustauschs...")
-        
+
         // Zeige aktuelle Statistiken
         let currentExercises = getExercises()
         print("📊 Aktuelle Übungen: \(currentExercises.count)")
-        
+
         if !currentExercises.isEmpty {
             let currentByEquipment = Dictionary(grouping: currentExercises) { $0.equipmentType }
             print("   Aktuelle Verteilung:")
-            for (equipment, exs) in currentByEquipment.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+            for (equipment, exs) in currentByEquipment.sorted(by: {
+                $0.key.rawValue < $1.key.rawValue
+            }) {
                 print("   - \(equipment.rawValue): \(exs.count)")
             }
         }
-        
+
         print("\n🔄 Führe Austausch aus...")
         replaceAllExercisesWithMarkdownData()
     }
-    
+
     // MARK: - Phase 8: Automatic Migration on App Start
-    
+
     /// AppStorage Flag um zu verfolgen ob die Markdown-Migration bereits durchgeführt wurde
-    @AppStorage("markdownExercisesMigrationCompleted") private var markdownExercisesMigrationCompleted: Bool = false
-    
+    @AppStorage("markdownExercisesMigrationCompleted") private
+        var markdownExercisesMigrationCompleted: Bool = false
+
     // MARK: - Phase 9: UI State for Migration
-    
+
     /// Status der automatischen Migration für UI-Feedback
     enum MigrationStatus {
         case notStarted
@@ -2113,7 +2214,7 @@ class WorkoutStore: ObservableObject {
         case saving
         case completed
         case error(String)
-        
+
         var displayText: String {
             switch self {
             case .notStarted:
@@ -2132,7 +2233,7 @@ class WorkoutStore: ObservableObject {
                 return "Fehler: \(message)"
             }
         }
-        
+
         var isCompleted: Bool {
             switch self {
             case .completed, .error:
@@ -2141,22 +2242,22 @@ class WorkoutStore: ObservableObject {
                 return false
             }
         }
-        
+
         var isError: Bool {
             if case .error = self { return true }
             return false
         }
     }
-    
+
     /// Aktueller Status der Migration für UI-Binding
     @Published var migrationStatus: MigrationStatus = .notStarted
-    
+
     /// Ob Migration aktuell läuft
     @Published var isMigrationInProgress: Bool = false
-    
+
     /// Fortschritt der Migration (0.0 - 1.0)
     @Published var migrationProgress: Double = 0.0
-    
+
     /// Prüft beim App-Start ob eine automatische Migration durchgeführt werden soll
     /// Diese Funktion wird automatisch aufgerufen wenn modelContext gesetzt wird
     private func checkAndPerformAutomaticMigration(context: ModelContext) {
@@ -2165,32 +2266,32 @@ class WorkoutStore: ObservableObject {
             print("✅ Markdown-Migration bereits durchgeführt - überspringe automatische Migration")
             return
         }
-        
+
         print("🚀 Starte automatische Markdown-Migration beim App-Start...")
-        
+
         // Phase 9: UI-Status Updates
         isMigrationInProgress = true
         migrationStatus = .parsing
         migrationProgress = 0.0
-        
+
         Task { [weak self] in
             guard let self = self else { return }
-            
+
             do {
                 // Phase 9.1: Parsing (20% Progress)
                 await MainActor.run {
                     self.migrationStatus = .parsing
                     self.migrationProgress = 0.2
                 }
-                
+
                 // Prüfe ob bereits Übungen vorhanden sind
                 let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
                 print("📊 Gefundene bestehende Übungen: \(existingExercises.count)")
-                
+
                 // Parse neue Übungen aus Markdown
                 let newExercises = ExerciseMarkdownParser.parseCompleteExerciseList()
                 print("📖 Neue Übungen aus Markdown: \(newExercises.count)")
-                
+
                 if newExercises.isEmpty {
                     print("⚠️ Keine Übungen aus Markdown geparst - setze Flag trotzdem")
                     await MainActor.run {
@@ -2200,13 +2301,13 @@ class WorkoutStore: ObservableObject {
                     }
                     return
                 }
-                
+
                 // Phase 9.2: Lösche alte Übungen (40% Progress)
                 await MainActor.run {
                     self.migrationStatus = .deletingOld
                     self.migrationProgress = 0.4
                 }
-                
+
                 if !existingExercises.isEmpty {
                     print("🗑️ Lösche \(existingExercises.count) bestehende Übungen...")
                     for exercise in existingExercises {
@@ -2215,59 +2316,61 @@ class WorkoutStore: ObservableObject {
                     try context.save()
                     print("✅ Bestehende Übungen gelöscht")
                 }
-                
+
                 // Phase 9.3: Füge neue Übungen hinzu (70% Progress)
                 await MainActor.run {
                     self.migrationStatus = .addingNew
                     self.migrationProgress = 0.7
                 }
-                
+
                 print("➕ Füge \(newExercises.count) neue Übungen hinzu...")
                 for exercise in newExercises {
                     let entity = ExerciseEntity.make(from: exercise)
                     context.insert(entity)
                 }
-                
+
                 // Phase 9.4: Speichere (90% Progress)
                 await MainActor.run {
                     self.migrationStatus = .saving
                     self.migrationProgress = 0.9
                 }
-                
+
                 try context.save()
-                
+
                 // Phase 9.5: Abgeschlossen (100% Progress)
                 await MainActor.run {
                     // Setze Migration-Flag
                     self.markdownExercisesMigrationCompleted = true
-                    
+
                     // Cache invalidieren
                     self.invalidateCaches()
                     self.objectWillChange.send()
-                    
+
                     // UI-Status Updates
                     self.migrationStatus = .completed
                     self.migrationProgress = 1.0
                     self.isMigrationInProgress = false
-                    
+
                     print("🎉 Automatische Markdown-Migration erfolgreich abgeschlossen!")
                     print("   📊 Neue Übungen: \(newExercises.count)")
                     print("   🏁 Migration-Flag gesetzt - wird nicht mehr wiederholt")
-                    
+
                     // Zeige kurze Statistik
                     let byEquipment = Dictionary(grouping: newExercises) { $0.equipmentType }
-                    for (equipment, exs) in byEquipment.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                    for (equipment, exs) in byEquipment.sorted(by: {
+                        $0.key.rawValue < $1.key.rawValue
+                    }) {
                         print("   🏋️ \(equipment.rawValue): \(exs.count)")
                     }
                 }
-                
+
             } catch {
                 print("❌ Fehler bei automatischer Migration: \(error)")
-                
+
                 await MainActor.run {
                     // Setze Flag trotzdem, um Endlosschleife zu vermeiden
                     self.markdownExercisesMigrationCompleted = true
-                    
+
                     // UI-Status Updates
                     self.migrationStatus = .error(error.localizedDescription)
                     self.isMigrationInProgress = false
@@ -2276,13 +2379,13 @@ class WorkoutStore: ObservableObject {
             }
         }
     }
-    
+
     /// Setzt das Migration-Flag zurück (nur für Debugging/Testing)
     func resetMigrationFlag() {
         print("🔄 Setze Migration-Flag zurück - Migration wird beim nächsten App-Start wiederholt")
         markdownExercisesMigrationCompleted = false
     }
-    
+
     /// Test-Funktion für automatische Migration
     func testAutomaticMigration() {
         print("🧪 Teste automatische Migration...")
@@ -2290,7 +2393,7 @@ class WorkoutStore: ObservableObject {
         print("   📈 Migration-Status: \(migrationStatus.displayText)")
         print("   🔄 Migration läuft: \(isMigrationInProgress)")
         print("   📊 Fortschritt: \(Int(migrationProgress * 100))%")
-        
+
         if markdownExercisesMigrationCompleted {
             print("   ✅ Migration bereits durchgeführt")
             print("   💡 Verwende resetMigrationFlag() zum Zurücksetzen")
@@ -2304,127 +2407,132 @@ class WorkoutStore: ObservableObject {
             }
         }
     }
-    
+
     /// Test-Funktion um Migration-UI ohne echte Migration zu simulieren
     func simulateMigrationProgress() {
         print("🎭 Simuliere Migration-Fortschritt für UI-Tests...")
-        
+
         isMigrationInProgress = true
-        
+
         Task { [weak self] in
             guard let self = self else { return }
-            
-            let steps: [MigrationStatus] = [.parsing, .deletingOld, .addingNew, .saving, .completed]
+
+            let steps: [MigrationStatus] = [
+                .parsing, .deletingOld, .addingNew, .saving, .completed,
+            ]
             let progressValues: [Double] = [0.2, 0.4, 0.7, 0.9, 1.0]
-            
+
             for (step, progress) in zip(steps, progressValues) {
                 await MainActor.run {
                     self.migrationStatus = step
                     self.migrationProgress = progress
                     print("   📊 \(step.displayText) (\(Int(progress * 100))%)")
                 }
-                
+
                 // Simuliere Verzögerung
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 Sekunde
+                try? await Task.sleep(nanoseconds: 1_000_000_000)  // 1 Sekunde
             }
-            
+
             await MainActor.run {
                 self.isMigrationInProgress = false
                 print("🎉 Migration-Simulation abgeschlossen!")
             }
         }
     }
-    
+
     // MARK: - Phase 10: Cleanup & Final Testing
-    
+
     /// Vollständiger Test aller Migration-Szenarien
     func runCompleteMigrationTests() {
         print("🧪 Starte vollständige Migration-Tests...")
         print(String(repeating: "=", count: 50))
-        
+
         // Test 1: Parser-Funktionalität
         print("\n📖 Test 1: Markdown-Parser")
         testCompleteEmbeddedExerciseList()
-        
+
         // Test 2: Migration-Status
         print("\n📊 Test 2: Migration-Status prüfen")
         print("   Migration-Flag: \(markdownExercisesMigrationCompleted)")
         print("   Migration aktiv: \(isMigrationInProgress)")
         print("   Aktueller Status: \(migrationStatus.displayText)")
-        
+
         // Test 3: Datenbank-Status
         print("\n💾 Test 3: Aktuelle Datenbank-Statistiken")
         let currentExercises = getExercises()
         print("   Übungen in DB: \(currentExercises.count)")
-        
+
         if !currentExercises.isEmpty {
             let byEquipment = Dictionary(grouping: currentExercises) { $0.equipmentType }
             print("   Verteilung nach Equipment:")
             for (equipment, exs) in byEquipment.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
                 print("     - \(equipment.rawValue): \(exs.count)")
             }
-            
+
             let byDifficulty = Dictionary(grouping: currentExercises) { $0.difficultyLevel }
             print("   Verteilung nach Schwierigkeitsgrad:")
-            for (difficulty, exs) in byDifficulty.sorted(by: { $0.key.sortOrder < $1.key.sortOrder }) {
+            for (difficulty, exs) in byDifficulty.sorted(by: { $0.key.sortOrder < $1.key.sortOrder }
+            ) {
                 print("     - \(difficulty.rawValue): \(exs.count)")
             }
         }
-        
+
         // Test 4: Validierung
         print("\n✅ Test 4: Datenvalidierung")
         validateExerciseData()
-        
+
         print("\n🎉 Vollständige Tests abgeschlossen!")
         print(String(repeating: "=", count: 50))
     }
-    
+
     /// Validiert die Qualität der aktuellen Übungsdaten
     private func validateExerciseData() {
         let exercises = getExercises()
-        
+
         var issues: [String] = []
-        
+
         // Check 1: Mindestanzahl Übungen
         if exercises.count < 100 {
             issues.append("Zu wenige Übungen: \(exercises.count) < 100")
         } else {
             print("   ✅ Übungsanzahl: \(exercises.count)")
         }
-        
+
         // Check 2: Alle Equipment-Types vertreten
         let equipmentTypes = Set(exercises.map { $0.equipmentType })
         let expectedTypes: Set<EquipmentType> = [.freeWeights, .bodyweight, .machine]
         let missingTypes = expectedTypes.subtracting(equipmentTypes)
-        
+
         if !missingTypes.isEmpty {
             issues.append("Fehlende Equipment-Types: \(missingTypes.map { $0.rawValue })")
         } else {
             print("   ✅ Equipment-Types vollständig")
         }
-        
+
         // Check 3: Alle Schwierigkeitsgrade vertreten
         let difficultyLevels = Set(exercises.map { $0.difficultyLevel })
         let expectedLevels: Set<DifficultyLevel> = [.anfänger, .fortgeschritten, .profi]
         let missingLevels = expectedLevels.subtracting(difficultyLevels)
-        
+
         if !missingLevels.isEmpty {
             issues.append("Fehlende Schwierigkeitsgrade: \(missingLevels.map { $0.rawValue })")
         } else {
             print("   ✅ Schwierigkeitsgrade vollständig")
         }
-        
+
         // Check 4: Alle Muskelgruppen vertreten
         let allMuscleGroups = Set(exercises.flatMap { $0.muscleGroups })
-        let expectedMuscles: Set<MuscleGroup> = [.chest, .back, .shoulders, .biceps, .triceps, .legs, .glutes, .abs]
+        let expectedMuscles: Set<MuscleGroup> = [
+            .chest, .back, .shoulders, .biceps, .triceps, .legs, .glutes, .abs,
+        ]
         let missingMuscles = expectedMuscles.subtracting(allMuscleGroups)
-        
+
         if !missingMuscles.isEmpty {
             issues.append("Fehlende Muskelgruppen: \(missingMuscles.map { $0.rawValue })")
         } else {
             print("   ✅ Muskelgruppen vollständig")
         }
-        
+
         // Check 5: Übungen ohne Muskelgruppen
         let exercisesWithoutMuscles = exercises.filter { $0.muscleGroups.isEmpty }
         if !exercisesWithoutMuscles.isEmpty {
@@ -2436,7 +2544,7 @@ class WorkoutStore: ObservableObject {
         } else {
             print("   ✅ Alle Übungen haben Muskelgruppen")
         }
-        
+
         // Check 6: Übungen ohne Beschreibung
         let exercisesWithoutDescription = exercises.filter { $0.description.isEmpty }
         if !exercisesWithoutDescription.isEmpty {
@@ -2444,7 +2552,7 @@ class WorkoutStore: ObservableObject {
         } else {
             print("   ✅ Alle Übungen haben Beschreibungen")
         }
-        
+
         // Zusammenfassung
         if issues.isEmpty {
             print("   🎉 Alle Validierungen bestanden!")
@@ -2455,82 +2563,83 @@ class WorkoutStore: ObservableObject {
             }
         }
     }
-    
+
     /// Edge-Case Testing für Migration
     func testMigrationEdgeCases() {
         print("🧪 Teste Migration Edge Cases...")
-        
+
         // Test 1: Was passiert wenn Markdown leer ist?
         print("\n📝 Test 1: Leerer Markdown")
         let emptyResult = ExerciseMarkdownParser.parseMarkdownTable("")
         print("   Ergebnis bei leerem Markdown: \(emptyResult.count) Übungen")
-        
+
         // Test 2: Malformed Markdown
         print("\n📝 Test 2: Fehlerhafter Markdown")
         let badMarkdown = "Das ist kein Markdown | Test | Fehler"
         let badResult = ExerciseMarkdownParser.parseMarkdownTable(badMarkdown)
         print("   Ergebnis bei fehlerhaftem Markdown: \(badResult.count) Übungen")
-        
+
         // Test 3: Migration-Status nach Fehlern
         print("\n📊 Test 3: Migration-Status Validation")
         let allStatuses: [MigrationStatus] = [
             .notStarted, .parsing, .deletingOld, .addingNew, .saving, .completed,
-            .error("Test-Fehler")
+            .error("Test-Fehler"),
         ]
-        
+
         for status in allStatuses {
             print("   Status: \(status.displayText)")
             print("     Abgeschlossen: \(status.isCompleted)")
             print("     Fehler: \(status.isError)")
         }
-        
+
         print("\n✅ Edge-Case Tests abgeschlossen")
     }
-    
+
     /// Performance-Test für große Übungsmengen
     func testPerformance() {
         print("⚡ Performance-Test...")
-        
+
         let startTime = CFAbsoluteTimeGetCurrent()
-        
+
         // Test Markdown-Parsing
         let exercises = ExerciseMarkdownParser.parseCompleteExerciseList()
-        
+
         let parseTime = CFAbsoluteTimeGetCurrent() - startTime
-        
+
         print("   📊 \(exercises.count) Übungen in \(String(format: "%.3f", parseTime))s geparst")
-        print("   📈 Performance: \(String(format: "%.1f", Double(exercises.count) / parseTime)) Übungen/s")
-        
+        print(
+            "   📈 Performance: \(String(format: "%.1f", Double(exercises.count) / parseTime)) Übungen/s"
+        )
+
         if parseTime > 2.0 {
             print("   ⚠️ Parsing dauert länger als 2 Sekunden!")
         } else {
             print("   ✅ Performance akzeptabel")
         }
     }
-    
+
     /// Finaler Integrations-Test
     func runFinalIntegrationTest() {
         print("🎯 Starte finalen Integrations-Test...")
         print(String(repeating: "=", count: 60))
-        
+
         print("\n1️⃣ Parser-Test")
         testPerformance()
-        
-        print("\n2️⃣ Edge-Case-Test")  
+
+        print("\n2️⃣ Edge-Case-Test")
         testMigrationEdgeCases()
-        
+
         print("\n3️⃣ Vollständiger System-Test")
         runCompleteMigrationTests()
-        
+
         print("\n4️⃣ Migration-Simulation")
         print("   🎭 Starte UI-Simulation...")
         simulateMigrationProgress()
-        
+
         print("\n🏁 Finaler Integrations-Test abgeschlossen!")
         print("📋 System bereit für Produktion")
         print(String(repeating: "=", count: 60))
     }
-
 
 }
 
@@ -2558,13 +2667,17 @@ extension WorkoutStore {
         let sessions = getSessionHistory()
         let importedCount = sessions.filter { $0.notes.contains("Importiert aus") }.count
         let regularCount = sessions.count - importedCount
-        print("📊 Workout-Statistik: Gesamt: \(sessions.count), Importiert: \(importedCount), Regulär: \(regularCount)")
+        print(
+            "📊 Workout-Statistik: Gesamt: \(sessions.count), Importiert: \(importedCount), Regulär: \(regularCount)"
+        )
         return sessions.count
     }
 
     var averageWorkoutsPerWeek: Double {
         let sessionHistory = getSessionHistory()
-        guard let earliestDate = sessionHistory.min(by: { $0.date < $1.date })?.date else { return 0 }
+        guard let earliestDate = sessionHistory.min(by: { $0.date < $1.date })?.date else {
+            return 0
+        }
         let span = max(Date().timeIntervalSince(earliestDate), 1)
         let weeks = max(span / (7 * 24 * 60 * 60), 1)
         return Double(sessionHistory.count) / weeks
@@ -2576,7 +2689,8 @@ extension WorkoutStore {
 
         // Cache prüfen
         if let cached = weekStreakCache,
-           calendar.isDate(cached.date, equalTo: today, toGranularity: .day) {
+            calendar.isDate(cached.date, equalTo: today, toGranularity: .day)
+        {
             return cached.value
         }
 
@@ -2586,11 +2700,17 @@ extension WorkoutStore {
             return 0
         }
 
-        let weekStarts: Set<Date> = Set(sessionHistory.compactMap { session in
-            calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: session.date))
-        })
+        let weekStarts: Set<Date> = Set(
+            sessionHistory.compactMap { session in
+                calendar.date(
+                    from: calendar.dateComponents(
+                        [.yearForWeekOfYear, .weekOfYear], from: session.date))
+            })
 
-        guard var cursor = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today)) else {
+        guard
+            var cursor = calendar.date(
+                from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))
+        else {
             weekStreakCache = (today, 0)
             return 0
         }
@@ -2598,7 +2718,9 @@ extension WorkoutStore {
         var streak = 0
         while weekStarts.contains(cursor) {
             streak += 1
-            guard let previous = calendar.date(byAdding: .weekOfYear, value: -1, to: cursor) else { break }
+            guard let previous = calendar.date(byAdding: .weekOfYear, value: -1, to: cursor) else {
+                break
+            }
             cursor = previous
         }
 
@@ -2610,16 +2732,20 @@ extension WorkoutStore {
     var averageDurationMinutes: Int {
         let sessionHistory = getSessionHistory()
         let durations = sessionHistory.compactMap { $0.duration }
-        
+
         // Debug information for imported workouts
         let importedSessions = sessionHistory.filter { $0.notes.contains("Importiert aus") }
         let importedDurations = importedSessions.compactMap { $0.duration }
-        
+
         if !importedSessions.isEmpty {
-            print("📊 Dauer-Statistik: Gesamt: \(sessionHistory.count) Sessions, Importiert: \(importedSessions.count)")
-            print("   Durationen verfügbar: Gesamt: \(durations.count), Importiert: \(importedDurations.count)")
+            print(
+                "📊 Dauer-Statistik: Gesamt: \(sessionHistory.count) Sessions, Importiert: \(importedSessions.count)"
+            )
+            print(
+                "   Durationen verfügbar: Gesamt: \(durations.count), Importiert: \(importedDurations.count)"
+            )
         }
-        
+
         guard !durations.isEmpty else { return 0 }
         let total = durations.reduce(0, +)
         return Int(total / Double(durations.count) / 60)
@@ -2631,14 +2757,16 @@ extension WorkoutStore {
 
         let sessionHistory = getSessionHistory()
         let filtered = sessionHistory.filter { $0.date >= threshold }
-        
+
         // Debug information
         let importedFiltered = filtered.filter { $0.notes.contains("Importiert aus") }
         if !importedFiltered.isEmpty {
             print("📊 Muskelvolumen-Statistik (letzte \(weeks) Wochen):")
-            print("   Gefilterte Sessions: \(filtered.count), davon importiert: \(importedFiltered.count)")
+            print(
+                "   Gefilterte Sessions: \(filtered.count), davon importiert: \(importedFiltered.count)"
+            )
         }
-        
+
         var totals: [MuscleGroup: Double] = [:]
 
         for workout in filtered {
@@ -2678,7 +2806,9 @@ extension WorkoutStore {
             let volume = sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
             let reps = sets.reduce(0) { $0 + $1.reps }
             let maxSetWeight = sets.map { $0.weight }.max() ?? 0
-            let oneRepMax = sets.map { estimateOneRepMax(weight: $0.weight, reps: $0.reps) }.max() ?? maxSetWeight
+            let oneRepMax =
+                sets.map { estimateOneRepMax(weight: $0.weight, reps: $0.reps) }.max()
+                ?? maxSetWeight
 
             totalVolume += volume
             totalReps += reps
@@ -2725,8 +2855,10 @@ extension WorkoutStore {
     func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
         let exercises = getExercises()
         let muscleGroups = selectMuscleGroups(for: preferences)
-        let selectedExercises = selectExercises(for: preferences, targeting: muscleGroups, from: exercises)
-        let workoutExercises = createWorkoutExercises(from: selectedExercises, preferences: preferences)
+        let selectedExercises = selectExercises(
+            for: preferences, targeting: muscleGroups, from: exercises)
+        let workoutExercises = createWorkoutExercises(
+            from: selectedExercises, preferences: preferences)
 
         return Workout(
             name: generateWorkoutName(for: preferences),
@@ -2753,12 +2885,16 @@ extension WorkoutStore {
         }
     }
 
-    private func selectExercises(for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup], from exercises: [Exercise]) -> [Exercise] {
+    private func selectExercises(
+        for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup],
+        from exercises: [Exercise]
+    ) -> [Exercise] {
         var selectedExercises: [Exercise] = []
 
         // Filter nach Equipment UND Difficulty-Level
         let equipmentFiltered = filterExercisesByEquipment(preferences.equipment, from: exercises)
-        let availableExercises = filterExercisesByDifficulty(equipmentFiltered, for: preferences.experience)
+        let availableExercises = filterExercisesByDifficulty(
+            equipmentFiltered, for: preferences.experience)
 
         // Grundübungen basierend auf Erfahrung
         let compoundExercises = availableExercises.filter { exercise in
@@ -2790,16 +2926,16 @@ extension WorkoutStore {
         for muscleGroup in muscleGroups.prefix(compoundCount) {
             // Versuche erst passende Difficulty zu finden
             if let exercise = compoundExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup) &&
-                !selectedExercises.contains(where: { $0.id == exercise.id }) &&
-                matchesDifficultyLevel(exercise, for: preferences.experience)
+                exercise.muscleGroups.contains(muscleGroup)
+                    && !selectedExercises.contains(where: { $0.id == exercise.id })
+                    && matchesDifficultyLevel(exercise, for: preferences.experience)
             }) {
                 selectedExercises.append(exercise)
             }
             // Fallback: Ignoriere Difficulty wenn nichts passendes gefunden
             else if let exercise = compoundExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup) &&
-                !selectedExercises.contains(where: { $0.id == exercise.id })
+                exercise.muscleGroups.contains(muscleGroup)
+                    && !selectedExercises.contains(where: { $0.id == exercise.id })
             }) {
                 selectedExercises.append(exercise)
             }
@@ -2809,23 +2945,25 @@ extension WorkoutStore {
         for muscleGroup in muscleGroups.prefix(isolationCount) {
             // Versuche erst passende Difficulty zu finden
             if let exercise = isolationExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup) &&
-                !selectedExercises.contains(where: { $0.id == exercise.id }) &&
-                matchesDifficultyLevel(exercise, for: preferences.experience)
+                exercise.muscleGroups.contains(muscleGroup)
+                    && !selectedExercises.contains(where: { $0.id == exercise.id })
+                    && matchesDifficultyLevel(exercise, for: preferences.experience)
             }) {
                 selectedExercises.append(exercise)
             }
             // Fallback: Ignoriere Difficulty wenn nichts passendes gefunden
             else if let exercise = isolationExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup) &&
-                !selectedExercises.contains(where: { $0.id == exercise.id })
+                exercise.muscleGroups.contains(muscleGroup)
+                    && !selectedExercises.contains(where: { $0.id == exercise.id })
             }) {
                 selectedExercises.append(exercise)
             }
         }
 
         // Stelle sicher, dass wir genug Übungen haben
-        while selectedExercises.count < targetExerciseCount && selectedExercises.count < availableExercises.count {
+        while selectedExercises.count < targetExerciseCount
+            && selectedExercises.count < availableExercises.count
+        {
             if let nextExercise = availableExercises.first(where: { candidate in
                 !selectedExercises.contains(where: { $0.id == candidate.id })
             }) {
@@ -2840,7 +2978,9 @@ extension WorkoutStore {
 
     /// Filtert Übungen basierend auf dem Erfahrungslevel
     /// Priorisiert passende Übungen, lässt aber andere als Fallback zu
-    private func filterExercisesByDifficulty(_ exercises: [Exercise], for level: ExperienceLevel) -> [Exercise] {
+    private func filterExercisesByDifficulty(_ exercises: [Exercise], for level: ExperienceLevel)
+        -> [Exercise]
+    {
         // Sortiere so dass passende Übungen zuerst kommen
         return exercises.sorted { first, second in
             let firstMatches = matchesDifficultyLevel(first, for: level)
@@ -2852,21 +2992,23 @@ extension WorkoutStore {
             if !firstMatches && secondMatches {
                 return false
             }
-            return false // Behalte ursprüngliche Reihenfolge bei
+            return false  // Behalte ursprüngliche Reihenfolge bei
         }
     }
 
-    private func filterExercisesByEquipment(_ equipment: EquipmentPreference, from exercises: [Exercise]) -> [Exercise] {
+    private func filterExercisesByEquipment(
+        _ equipment: EquipmentPreference, from exercises: [Exercise]
+    ) -> [Exercise] {
         switch equipment {
         case .freeWeights:
             return exercises.filter { exercise in
-                !exercise.name.lowercased().contains("maschine") &&
-                !exercise.name.lowercased().contains("machine")
+                !exercise.name.lowercased().contains("maschine")
+                    && !exercise.name.lowercased().contains("machine")
             }
         case .machines:
             return exercises.filter { exercise in
-                exercise.name.lowercased().contains("maschine") ||
-                exercise.name.lowercased().contains("machine")
+                exercise.name.lowercased().contains("maschine")
+                    || exercise.name.lowercased().contains("machine")
             }
         case .mixed:
             return exercises
@@ -2882,13 +3024,15 @@ extension WorkoutStore {
         switch level {
         case .beginner:
             // Anfänger: Hauptsächlich Anfänger-Übungen, einige Fortgeschritten
-            return exercise.difficultyLevel == .anfänger || exercise.difficultyLevel == .fortgeschritten
+            return exercise.difficultyLevel == .anfänger
+                || exercise.difficultyLevel == .fortgeschritten
         case .intermediate:
             // Fortgeschritten: Alle Levels sind ok (Mix)
             return true
         case .advanced:
             // Experte: Hauptsächlich Fortgeschritten und Profi-Übungen
-            return exercise.difficultyLevel == .fortgeschritten || exercise.difficultyLevel == .profi
+            return exercise.difficultyLevel == .fortgeschritten
+                || exercise.difficultyLevel == .profi
         }
     }
 
@@ -2912,7 +3056,9 @@ extension WorkoutStore {
         }
     }
 
-    private func createWorkoutExercises(from exercises: [Exercise], preferences: WorkoutPreferences) -> [WorkoutExercise] {
+    private func createWorkoutExercises(from exercises: [Exercise], preferences: WorkoutPreferences)
+        -> [WorkoutExercise]
+    {
         return exercises.map { exercise in
             let setCount = calculateSetCount(for: exercise, preferences: preferences)
             let reps = calculateReps(for: exercise, preferences: preferences)
@@ -3017,7 +3163,8 @@ extension WorkoutStore {
     private func startHeartRateTracking(workoutId: UUID, workoutName: String) {
         // Prüfe ob HealthKit verfügbar und autorisiert ist
         guard HKHealthStore.isHealthDataAvailable() else {
-            AppLogger.health.info("[WorkoutStore] HealthKit nicht verfügbar - kein Herzfrequenz-Tracking")
+            AppLogger.health.info(
+                "[WorkoutStore] HealthKit nicht verfügbar - kein Herzfrequenz-Tracking")
             return
         }
 
@@ -3134,8 +3281,9 @@ extension WorkoutStore {
 
                     // Schedule notification für verbleibende Zeit
                     if restNotificationsEnabled {
-                        let exerciseName = activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true ?
-                            activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
+                        let exerciseName =
+                            activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
+                            ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
                         NotificationManager.shared.scheduleRestEndNotification(
                             remainingSeconds: remaining,
                             workoutName: state.workoutName,
