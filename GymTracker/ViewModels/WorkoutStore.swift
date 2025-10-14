@@ -67,44 +67,11 @@ class WorkoutStore: ObservableObject {
 
     // MARK: - Legacy Rest Timer State (DEPRECATED - Phase 5)
 
-    /// Legacy rest timer state - DEPRECATED
-    ///
-    /// **Use `restTimerStateManager.currentState` instead.**
-    ///
-    /// This property is kept for backward compatibility during migration
-    /// and will be removed in a future version.
-    @available(*, deprecated, message: "Use restTimerStateManager.currentState instead")
-    struct ActiveRestState: Equatable, Codable {
-        let workoutId: UUID
-        let workoutName: String
-        let exerciseIndex: Int
-        let setIndex: Int
-        var remainingSeconds: Int
-        var totalSeconds: Int
-        var isRunning: Bool
-        var endDate: Date?
-
-        // Performance: Only trigger updates when meaningful changes occur
-        static func == (lhs: ActiveRestState, rhs: ActiveRestState) -> Bool {
-            lhs.workoutId == rhs.workoutId && lhs.exerciseIndex == rhs.exerciseIndex
-                && lhs.setIndex == rhs.setIndex && lhs.remainingSeconds == rhs.remainingSeconds
-                && lhs.isRunning == rhs.isRunning
-            // Note: Deliberately ignore endDate and compare remainingSeconds instead
-        }
-    }
-
-    /// Legacy rest timer state - DEPRECATED
-    ///
-    /// **Use `restTimerStateManager.currentState` instead.**
-    @available(*, deprecated, message: "Use restTimerStateManager.currentState instead")
-    @Published private(set) var activeRestState: ActiveRestState?
-
     @Published var profileUpdateTrigger: UUID = UUID()  // Triggers UI updates when profile changes
 
     // Herzfrequenz-Tracking
     private var heartRateTracker: HealthKitWorkoutTracker?
 
-    private var restTimer: Timer?
     private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
     private var weekStreakCache: (date: Date, value: Int)?
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
@@ -222,13 +189,9 @@ class WorkoutStore: ObservableObject {
     }
 
     deinit {
-        // Ensure proper cleanup to prevent crashes
-        restTimer?.invalidate()
-        restTimer = nil
-
         // Note: Can't call MainActor-isolated methods in deinit
-        // Notification cancellation will be handled by RestTimerStateManager when state is cleared
-        // The WorkoutLiveActivityController will handle cleanup when the rest state is cleared elsewhere
+        // Rest timer cleanup is handled by RestTimerStateManager
+        // WorkoutLiveActivityController will handle cleanup when the rest state is cleared elsewhere
     }
 
     func startSession(for workoutId: UUID) {
@@ -1192,101 +1155,31 @@ class WorkoutStore: ObservableObject {
             currentExerciseName: currentExerciseName,
             nextExerciseName: nextExerciseName
         )
-
-        // Legacy support: Update deprecated activeRestState for backward compatibility
-        // Views still using activeRestState will continue to work during migration
-        let total = max(totalSeconds, 0)
-        activeRestState = ActiveRestState(
-            workoutId: workout.id,
-            workoutName: workout.name,
-            exerciseIndex: exerciseIndex,
-            setIndex: setIndex,
-            remainingSeconds: total,
-            totalSeconds: total,
-            isRunning: total > 0,
-            endDate: Date().addingTimeInterval(TimeInterval(total))
-        )
     }
 
     func pauseRest() {
         // Phase 5: Delegate to RestTimerStateManager
         restTimerStateManager.pauseRest()
-
-        // Legacy support: Update deprecated activeRestState
-        guard var state = activeRestState else { return }
-        state.isRunning = false
-        state.endDate = nil
-        activeRestState = state
     }
 
     func resumeRest() {
         // Phase 5: Delegate to RestTimerStateManager
         restTimerStateManager.resumeRest()
-
-        // Legacy support: Update deprecated activeRestState
-        guard var state = activeRestState, state.remainingSeconds > 0 else { return }
-        state.isRunning = true
-        state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
-        activeRestState = state
     }
 
     func addRest(seconds: Int) {
-        guard var state = activeRestState else { return }
-        state.remainingSeconds = max(0, state.remainingSeconds + seconds)
-
-        // Nur endDate anpassen wenn Timer läuft
-        if state.isRunning {
-            state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
-        }
-
-        activeRestState = state
-        if state.isRunning { setupRestTimer() }
-        updateLiveActivityRest()
-        if restNotificationsEnabled {
-            let exerciseName: String? =
-                activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
-                ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
-            NotificationManager.shared.scheduleRestEndNotification(
-                remainingSeconds: state.remainingSeconds,
-                workoutName: state.workoutName,
-                exerciseName: exerciseName,
-                workoutId: state.workoutId
-            )
-        }
+        // Phase 5: Delegate to RestTimerStateManager
+        restTimerStateManager.addRest(seconds: seconds)
     }
 
     func setRest(remaining: Int, total: Int? = nil) {
-        guard var state = activeRestState else { return }
-        state.remainingSeconds = max(0, remaining)
-        if let total { state.totalSeconds = max(1, total) }
-
-        // Nur endDate setzen wenn Timer läuft
-        if state.isRunning {
-            state.endDate = Date().addingTimeInterval(TimeInterval(state.remainingSeconds))
-        }
-
-        activeRestState = state
-        if state.isRunning { setupRestTimer() }
-        updateLiveActivityRest()
-        if restNotificationsEnabled {
-            let exerciseName: String? =
-                activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
-                ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
-            NotificationManager.shared.scheduleRestEndNotification(
-                remainingSeconds: state.remainingSeconds,
-                workoutName: state.workoutName,
-                exerciseName: exerciseName,
-                workoutId: state.workoutId
-            )
-        }
+        // Phase 5: Delegate to RestTimerStateManager
+        restTimerStateManager.setRest(remaining: remaining, total: total)
     }
 
     func stopRest() {
         // Phase 5: Delegate to RestTimerStateManager
         restTimerStateManager.cancelRest()
-
-        // Legacy support: Clear deprecated activeRestState
-        activeRestState = nil
     }
 
     /// Clear rest state after user interaction (e.g. "Continue" button)
@@ -1294,168 +1187,6 @@ class WorkoutStore: ObservableObject {
     func clearRestState() {
         // Phase 5: Delegate to RestTimerStateManager (acknowledges expired timer)
         restTimerStateManager.acknowledgeExpired()
-
-        // Legacy support: Clear deprecated activeRestState
-        activeRestState = nil
-    }
-
-    // MARK: - DEPRECATED Timer Logic (Phase 5)
-    // These methods are no longer used - RestTimerStateManager handles all timer logic
-
-    @available(*, deprecated, message: "Timer logic moved to RestTimerStateManager")
-    private func setupRestTimer() {
-        restTimer?.invalidate()
-        restTimer = nil
-
-        guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else {
-            return
-        }
-
-        // FIXED: Direkter Aufruf statt Task { @MainActor } um Race Conditions zu vermeiden
-        restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.tickRest()
-        }
-
-        if let timer = restTimer {
-            // Toleranz für bessere Batterie-Performance
-            timer.tolerance = 0.1
-            RunLoop.main.add(timer, forMode: .common)
-        }
-    }
-
-    @available(*, deprecated, message: "Timer logic moved to RestTimerStateManager")
-    private func tickRest() {
-        // FIXED: Validiere, dass Timer noch aktiv sein sollte
-        guard restTimer != nil else {
-            print("[RestTimer] ⚠️ tickRest called but timer is nil - ghost timer detected")
-            return
-        }
-
-        guard var state = activeRestState, state.isRunning else {
-            // FIXED: Timer stoppen wenn State ungültig ist
-            print("[RestTimer] ⚠️ State invalid or not running - stopping timer")
-            restTimer?.invalidate()
-            restTimer = nil
-            return
-        }
-
-        if let end = state.endDate {
-            let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
-            let previousRemaining = state.remainingSeconds
-            state.remainingSeconds = remaining
-
-            // Performance: Only update if remainingSeconds actually changed
-            if previousRemaining != remaining {
-                activeRestState = state
-                updateLiveActivityRest()
-            }
-
-            if remaining <= 0 {
-                // Timer sofort stoppen
-                restTimer?.invalidate()
-                restTimer = nil
-
-                // Sound & Haptic Feedback (nur im Foreground)
-                SoundPlayer.playBoxBell()
-                #if canImport(UIKit)
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
-                #endif
-
-                // Live Activity zeigt "Pause beendet"
-                WorkoutLiveActivityController.shared.showRestEnded(
-                    workoutId: state.workoutId, workoutName: state.workoutName)
-
-                // Timer automatisch clearen nach 2 Sekunden
-                // Memory: Use weak self to prevent retain cycle
-                Task { @MainActor [weak self] in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    self?.clearRestState()
-                }
-            }
-        } else {
-            // Fallback: decrement by one
-            if state.remainingSeconds > 0 {
-                state.remainingSeconds -= 1
-                activeRestState = state  // Always update since we decrement
-                updateLiveActivityRest()
-                if state.remainingSeconds <= 0 {
-                    // Timer sofort stoppen
-                    restTimer?.invalidate()
-                    restTimer = nil
-
-                    // Sound & Haptic Feedback
-                    SoundPlayer.playBoxBell()
-                    #if canImport(UIKit)
-                        let generator = UINotificationFeedbackGenerator()
-                        generator.notificationOccurred(.success)
-                    #endif
-
-                    // Live Activity zeigt "Pause beendet"
-                    WorkoutLiveActivityController.shared.showRestEnded(
-                        workoutId: state.workoutId, workoutName: state.workoutName)
-
-                    // Timer automatisch clearen nach 2 Sekunden
-                    // Memory: Use weak self to prevent retain cycle
-                    Task { @MainActor [weak self] in
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        self?.clearRestState()
-                    }
-                }
-            } else {
-                stopRest()
-            }
-        }
-    }
-
-    private func updateLiveActivityRest() {
-        guard let state = activeRestState else {
-            print("[RestTimer] ⚠️ updateLiveActivityRest: No active rest state")
-            return
-        }
-        let exerciseName: String? =
-            activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
-            ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
-        print(
-            "[RestTimer] 📱 Updating LiveActivity: \(state.remainingSeconds)s remaining, endDate: \(state.endDate?.description ?? "nil")"
-        )
-        WorkoutLiveActivityController.shared.updateRest(
-            workoutId: state.workoutId,
-            workoutName: state.workoutName,
-            exerciseName: exerciseName,
-            remainingSeconds: state.remainingSeconds,
-            totalSeconds: max(state.totalSeconds, 1),
-            endDate: state.endDate
-        )
-    }
-
-    // Refresh rest timer from wall clock (for example after app resumes from background)
-    func refreshRestFromWallClock() {
-        guard var state = activeRestState, state.isRunning, let end = state.endDate else {
-            return
-        }
-
-        let remaining = max(0, Int(floor(end.timeIntervalSinceNow)))
-        state.remainingSeconds = remaining
-
-        if remaining <= 0 {
-            // Timer ist abgelaufen während App im Background war
-            // Live Activity zeigt "Pause beendet"
-            WorkoutLiveActivityController.shared.showRestEnded(
-                workoutId: state.workoutId, workoutName: state.workoutName)
-
-            // Timer automatisch clearen nach 2 Sekunden
-            // Notification kommt durch, da wir sie nicht canceln
-            // Memory: Use weak self to prevent retain cycle
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                self?.clearRestState()
-            }
-        } else {
-            // Timer läuft noch - fortsetzen
-            activeRestState = state
-            setupRestTimer()
-        }
     }
 
     // MARK: - ExerciseRecord Management
@@ -2004,7 +1735,7 @@ class WorkoutStore: ObservableObject {
             try context.save()
 
             // Reset published properties to defaults
-            activeRestState = nil
+            restTimerStateManager.cancelRest()
             weeklyGoal = 5
             restNotificationsEnabled = true
             exercisesTranslatedToGerman = false  // Reset translation flag
@@ -3205,97 +2936,14 @@ extension WorkoutStore {
         exerciseStatsCache.removeAll()
         weekStreakCache = nil
 
-        // Stop timers if no active session
+        // Stop rest timer if no active session
         if activeSessionID == nil {
-            restTimer?.invalidate()
-            restTimer = nil
-            activeRestState = nil
+            restTimerStateManager.cancelRest()
         }
 
         print("[Memory] ✅ WorkoutStore cleanup completed")
     }
 
-    // MARK: - Rest State Persistence (DEPRECATED - Phase 5)
-
-    @available(*, deprecated, message: "Persistence moved to RestTimerStateManager")
-    private func persistRestState(_ state: ActiveRestState) {
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(state)
-            UserDefaults.standard.set(data, forKey: "activeRestState")
-            print("[RestTimer] 💾 Rest state persisted: \(state.remainingSeconds)s remaining")
-        } catch {
-            print("[RestTimer] ❌ Failed to persist rest state: \(error)")
-        }
-    }
-
-    @available(*, deprecated, message: "Persistence moved to RestTimerStateManager")
-    private func clearPersistedRestState() {
-        UserDefaults.standard.removeObject(forKey: "activeRestState")
-        print("[RestTimer] 🗑️ Persisted rest state cleared")
-    }
-
-    /// Lädt und stellt den Rest-Timer State aus UserDefaults wieder her
-    func restorePersistedRestState() {
-        guard let data = UserDefaults.standard.data(forKey: "activeRestState") else {
-            print("[RestTimer] No persisted rest state found")
-            return
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            var state = try decoder.decode(ActiveRestState.self, from: data)
-
-            // Berechne verbleibende Zeit basierend auf endDate
-            if let endDate = state.endDate {
-                let now = Date()
-                let remaining = max(0, Int(endDate.timeIntervalSince(now)))
-
-                if remaining > 0 {
-                    // Timer läuft noch
-                    state.remainingSeconds = remaining
-                    state.isRunning = true
-                    activeRestState = state
-
-                    print("[RestTimer] ✅ Rest state restored: \(remaining)s remaining")
-
-                    // Starte Timer und Update Live Activity
-                    setupRestTimer()
-                    updateLiveActivityRest()
-
-                    // Schedule notification für verbleibende Zeit
-                    if restNotificationsEnabled {
-                        let exerciseName =
-                            activeWorkout?.exercises.indices.contains(state.exerciseIndex) == true
-                            ? activeWorkout?.exercises[state.exerciseIndex].exercise.name : nil
-                        NotificationManager.shared.scheduleRestEndNotification(
-                            remainingSeconds: remaining,
-                            workoutName: state.workoutName,
-                            exerciseName: exerciseName,
-                            workoutId: state.workoutId
-                        )
-                    }
-                } else {
-                    // Timer ist bereits abgelaufen
-                    print("[RestTimer] ⏱️ Rest timer expired during Force Quit")
-                    clearPersistedRestState()
-
-                    // Zeige "Pause beendet" in Live Activity
-                    WorkoutLiveActivityController.shared.showRestEnded(
-                        workoutId: state.workoutId,
-                        workoutName: state.workoutName
-                    )
-                }
-            } else {
-                // Kein endDate (sollte nicht vorkommen, aber handle gracefully)
-                print("[RestTimer] ⚠️ Persisted rest state has no endDate - ignoring")
-                clearPersistedRestState()
-            }
-        } catch {
-            print("[RestTimer] ❌ Failed to restore rest state: \(error)")
-            clearPersistedRestState()
-        }
-    }
 }
 
 // MARK: - Notification Extensions
@@ -3335,17 +2983,6 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     var restTimerStateManager: RestTimerStateManager {
         legacyStore.restTimerStateManager
-    }
-
-    // Forward the @Published property from legacyStore
-    // This allows views to use workoutStore.$activeRestState
-    var activeRestState: WorkoutStore.ActiveRestState? {
-        legacyStore.activeRestState
-    }
-
-    // Provide publisher access by forwarding to legacyStore's publisher
-    var activeRestStatePublisher: Published<WorkoutStore.ActiveRestState?>.Publisher {
-        legacyStore.$activeRestState
     }
 
     // MARK: - Computed Properties
@@ -3593,14 +3230,6 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     func clearRestState() {
         legacyStore.clearRestState()
-    }
-
-    func refreshRestFromWallClock() {
-        legacyStore.refreshRestFromWallClock()
-    }
-
-    func restorePersistedRestState() {
-        legacyStore.restorePersistedRestState()
     }
 
     func performMemoryCleanup() {

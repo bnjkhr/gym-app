@@ -107,6 +107,10 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var showingEndWorkoutConfirmation = false
 
+    private var workoutActionService: WorkoutActionService {
+        WorkoutActionService(modelContext: modelContext, workoutStore: workoutStore)
+    }
+
     var body: some View {
         // CRITICAL: Set modelContext BEFORE any view rendering
         let _ = { workoutStore.modelContext = modelContext }()
@@ -235,8 +239,7 @@ struct ContentView: View {
         // 1. There's an active rest timer
         // 2. NOT showing expired overlay (overlay has priority)
         // ✅ Positioned ABOVE ActiveWorkoutBar when both are visible
-        if workoutStore.restTimerStateManager.currentState != nil
-            || workoutStore.activeRestState != nil,
+        if workoutStore.restTimerStateManager.currentState != nil,
             !overlayManager.isShowingOverlay
         {
             VStack(spacing: 0) {
@@ -293,8 +296,7 @@ struct ContentView: View {
                 print("✅ Restoring active workout from persisted state: \(workoutID)")
                 workoutStore.activeSessionID = workoutID
 
-                // Restore rest timer state if exists
-                workoutStore.restorePersistedRestState()
+                // Note: Rest timer state is automatically restored by RestTimerStateManager
             } else {
                 print("⚠️ Persisted workout not found → clearing state")
                 UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
@@ -318,7 +320,8 @@ struct ContentView: View {
     private func handleScenePhaseChange(_ newPhase: ScenePhase) {
         switch newPhase {
         case .active:
-            workoutStore.refreshRestFromWallClock()
+            // Note: Rest timer automatically recalculates remaining time from wall clock
+            break
         case .background:
             workoutStore.performMemoryCleanup()
         default:
@@ -392,9 +395,7 @@ struct ContentView: View {
     }
 
     private func endActiveSession() {
-        workoutStore.stopRest()
-        workoutStore.activeSessionID = nil
-        WorkoutLiveActivityController.shared.end()
+        workoutActionService.endActiveSession()
     }
 
     private func importWorkout(from url: URL) {
@@ -467,6 +468,10 @@ struct WorkoutsHomeView: View {
     // Performance: Cache mapped entities to avoid re-mapping on every render
     @State private var cachedWorkouts: [Workout] = []
     @State private var cachedSessions: [WorkoutSession] = []
+
+    private var workoutActionService: WorkoutActionService {
+        WorkoutActionService(modelContext: modelContext, workoutStore: workoutStore)
+    }
 
     private func workoutCategory(for workout: Workout) -> String {
         let exerciseNames = workout.exercises.map { $0.exercise.name.lowercased() }
@@ -1043,80 +1048,31 @@ struct WorkoutsHomeView: View {
     }
 
     private func deleteWorkout(id: UUID) {
-        if let entity = workoutEntities.first(where: { $0.id == id }) {
-            modelContext.delete(entity)
-            try? modelContext.save()
+        do {
+            _ = try workoutActionService.deleteWorkout(id: id, in: Array(workoutEntities))
+        } catch {
+            print("❌ Fehler beim Löschen des Workouts: \(error)")
         }
         if selectedWorkout?.id == id { selectedWorkout = nil }
-        if workoutStore.activeSessionID == id {
-            workoutStore.activeSessionID = nil
-            WorkoutLiveActivityController.shared.end()
-        }
         if editingWorkoutSelection?.id == id {
             editingWorkoutSelection = nil
         }
     }
 
     private func duplicateWorkout(id: UUID) {
-        guard let originalEntity = workoutEntities.first(where: { $0.id == id }) else { return }
-
-        // Erstelle neue WorkoutEntity als Kopie
-        let duplicatedEntity = WorkoutEntity(
-            name: "\(originalEntity.name) (Kopie)",
-            date: Date(),
-            exercises: [],
-            defaultRestTime: originalEntity.defaultRestTime,
-            duration: nil,
-            notes: originalEntity.notes,
-            isFavorite: false,  // Nicht als Favorit markieren
-            isSampleWorkout: false  // Benutzer-Workout
-        )
-
-        // Kopiere alle Übungen mit Sets, sortiere nach order
-        let sortedExercises = originalEntity.exercises.sorted { $0.order < $1.order }
-        for (index, originalWorkoutExercise) in sortedExercises.enumerated() {
-            let copiedWorkoutExercise = WorkoutExerciseEntity(
-                exercise: originalWorkoutExercise.exercise,
-                order: index
-            )
-
-            // Kopiere alle Sets
-            for originalSet in originalWorkoutExercise.sets {
-                let copiedSet = ExerciseSetEntity(
-                    reps: originalSet.reps,
-                    weight: originalSet.weight,
-                    restTime: originalSet.restTime,
-                    completed: false
-                )
-                copiedWorkoutExercise.sets.append(copiedSet)
-                modelContext.insert(copiedSet)
-            }
-
-            duplicatedEntity.exercises.append(copiedWorkoutExercise)
-            modelContext.insert(copiedWorkoutExercise)
+        do {
+            try workoutActionService.duplicateWorkout(id: id, in: Array(workoutEntities))
+            print("✅ Workout erfolgreich dupliziert")
+        } catch {
+            print("❌ Fehler beim Duplizieren des Workouts: \(error)")
         }
-
-        // Speichere in SwiftData
-        modelContext.insert(duplicatedEntity)
-        try? modelContext.save()
-
-        print("✅ Workout '\(originalEntity.name)' erfolgreich dupliziert")
     }
 
     private func shareWorkout(id: UUID) {
-        guard let entity = workoutEntities.first(where: { $0.id == id }) else { return }
-
         do {
-            // Workout in ShareableWorkout konvertieren
-            let shareable = ShareableWorkout.from(entity: entity)
-
-            // Als JSON-Datei exportieren
-            let fileURL = try shareable.exportToFile()
-
-            // Share-Sheet öffnen
+            let fileURL = try workoutActionService.shareWorkout(id: id, in: Array(workoutEntities))
             shareItem = ShareItem(url: fileURL)
-
-            print("✅ Workout '\(entity.name)' bereit zum Teilen")
+            print("✅ Workout bereit zum Teilen")
         } catch {
             print("❌ Fehler beim Exportieren des Workouts: \(error)")
         }
@@ -1174,9 +1130,7 @@ struct WorkoutsHomeView: View {
     }
 
     private func endActiveSession() {
-        workoutStore.stopRest()
-        workoutStore.activeSessionID = nil
-        WorkoutLiveActivityController.shared.end()
+        workoutActionService.endActiveSession()
     }
 
     private func toggleHomeFavorite(workoutID: UUID) {
@@ -1561,7 +1515,9 @@ struct ActiveWorkoutBar: View {
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
 
     private var restText: String? {
-        guard let state = workoutStore.activeRestState, state.workoutId == workout.id else {
+        guard let state = workoutStore.restTimerStateManager.currentState,
+            state.workoutId == workout.id
+        else {
             return nil
         }
         let m = state.remainingSeconds / 60
@@ -1661,14 +1617,9 @@ struct ActiveTimerBar: View {
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
 
-    // Current rest timer state (from new system)
+    // Current rest timer state
     private var timerState: RestTimerState? {
         workoutStore.restTimerStateManager.currentState
-    }
-
-    // Legacy rest timer state (for backward compatibility)
-    private var legacyTimerState: WorkoutStore.ActiveRestState? {
-        workoutStore.activeRestState
     }
 
     // Formatted time string (M:SS)
@@ -1680,45 +1631,22 @@ struct ActiveTimerBar: View {
 
     // Current exercise name
     private var exerciseName: String {
-        if let state = timerState {
-            return state.currentExerciseName ?? "Übung"
-        } else if let legacy = legacyTimerState,
-            let workout = workoutStore.activeWorkout,
-            workout.exercises.indices.contains(legacy.exerciseIndex)
-        {
-            return workout.exercises[legacy.exerciseIndex].exercise.name
-        }
-        return "Übung"
+        timerState?.currentExerciseName ?? "Übung"
     }
 
     // Current set number (1-indexed)
     private var setNumber: Int {
-        if let state = timerState {
-            return state.setIndex + 1
-        } else if let legacy = legacyTimerState {
-            return legacy.setIndex + 1
-        }
-        return 1
+        (timerState?.setIndex ?? 0) + 1
     }
 
     // Remaining seconds
     private var remainingSeconds: Int {
-        if let state = timerState {
-            return state.remainingSeconds
-        } else if let legacy = legacyTimerState {
-            return legacy.remainingSeconds
-        }
-        return 0
+        timerState?.remainingSeconds ?? 0
     }
 
     // Is timer running
     private var isRunning: Bool {
-        if let state = timerState {
-            return state.phase == .running
-        } else if let legacy = legacyTimerState {
-            return legacy.isRunning
-        }
-        return false
+        timerState?.phase == .running
     }
 
     var body: some View {

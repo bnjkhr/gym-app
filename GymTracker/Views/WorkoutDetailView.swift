@@ -758,8 +758,10 @@ struct WorkoutDetailView: View {
         workout.exercises.contains { !$0.sets.isEmpty }
     }
 
-    private var activeRestForThisWorkout: WorkoutStore.ActiveRestState? {
-        guard let state = workoutStore.activeRestState, state.workoutId == workout.id else {
+    private var activeRestForThisWorkout: RestTimerState? {
+        guard let state = workoutStore.restTimerStateManager.currentState,
+            state.workoutId == workout.id
+        else {
             return nil
         }
         return state
@@ -767,7 +769,8 @@ struct WorkoutDetailView: View {
 
     private func isActiveRest(exerciseIndex: Int, setIndex: Int) -> Bool {
         guard let state = activeRestForThisWorkout else { return false }
-        return state.exerciseIndex == exerciseIndex && state.setIndex == setIndex && state.isRunning
+        return state.exerciseIndex == exerciseIndex && state.setIndex == setIndex
+            && state.phase == .running
     }
 
     private func hasActiveRestState(exerciseIndex: Int, setIndex: Int) -> Bool {
@@ -1528,7 +1531,7 @@ extension UIFont {
 private struct ActiveWorkoutNavigationView: View {
     @Binding var workout: Workout
     let workoutStore: WorkoutStoreCoordinator
-    let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
+    let activeRestForThisWorkout: RestTimerState?
     let isActiveRest: (Int, Int) -> Bool
     let hasActiveRestState: (Int, Int) -> Bool
     let toggleCompletion: (Int, Int) -> Void
@@ -1652,7 +1655,7 @@ private struct ActiveWorkoutNavigationView: View {
                 }
             )
         }
-        .onReceive(workoutStore.activeRestStatePublisher) { restState in
+        .onReceive(workoutStore.restTimerStateManager.$currentState) { restState in
             // Only auto-navigate to exercise with active rest if we're not pending an auto-advance
             if !autoAdvancePending,
                 let restState = restState,
@@ -1741,7 +1744,7 @@ private struct ActiveWorkoutExerciseView: View {
     let totalExerciseCount: Int
     @Binding var workout: Workout
     let workoutStore: WorkoutStoreCoordinator
-    let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
+    let activeRestForThisWorkout: RestTimerState?
     let isActiveRest: (Int, Int) -> Bool
     let hasActiveRestState: (Int, Int) -> Bool
     let toggleCompletion: (Int, Int) -> Void
@@ -2071,7 +2074,9 @@ private struct ActiveWorkoutSetCard: View {
                     // Timer control buttons (with more spacing)
                     HStack(spacing: 8) {
                         // Pause/Play button
-                        if let restState = workoutStore?.activeRestState, restState.isRunning {
+                        if let restState = workoutStore?.restTimerStateManager.currentState,
+                            restState.phase == .running
+                        {
                             Button {
                                 workoutStore?.pauseRest()
                             } label: {

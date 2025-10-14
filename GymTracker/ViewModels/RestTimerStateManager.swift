@@ -293,6 +293,75 @@ final class RestTimerStateManager: ObservableObject {
         clearState()
     }
 
+    /// Adds time to the current rest timer
+    ///
+    /// - Parameter seconds: Number of seconds to add (can be negative to subtract)
+    func addRest(seconds: Int) {
+        guard var state = currentState else {
+            AppLogger.workouts.warning("Cannot add rest: no active timer")
+            return
+        }
+
+        // Calculate new remaining time
+        let newRemaining = max(0, state.remainingSeconds + seconds)
+        let newTotal = max(state.totalSeconds, newRemaining)
+
+        // Update state with new times
+        var updatedState = RestTimerState(
+            id: state.id,
+            workoutId: state.workoutId,
+            workoutName: state.workoutName,
+            exerciseIndex: state.exerciseIndex,
+            setIndex: state.setIndex,
+            startDate: state.startDate,
+            endDate: Date().addingTimeInterval(TimeInterval(newRemaining)),
+            totalSeconds: newTotal,
+            phase: newRemaining > 0 ? state.phase : .expired,
+            lastUpdateDate: Date(),
+            currentExerciseName: state.currentExerciseName,
+            nextExerciseName: state.nextExerciseName,
+            currentHeartRate: state.currentHeartRate
+        )
+
+        applyStateChange(updatedState)
+        AppLogger.workouts.info("Added \(seconds)s to rest timer. New remaining: \(newRemaining)s")
+    }
+
+    /// Sets the remaining time for the current rest timer
+    ///
+    /// - Parameters:
+    ///   - remaining: New remaining seconds
+    ///   - total: Optional new total duration (defaults to remaining if not specified)
+    func setRest(remaining: Int, total: Int? = nil) {
+        guard var state = currentState else {
+            AppLogger.workouts.warning("Cannot set rest: no active timer")
+            return
+        }
+
+        let newRemaining = max(0, remaining)
+        let newTotal = total ?? max(state.totalSeconds, newRemaining)
+
+        // Update state with new times
+        var updatedState = RestTimerState(
+            id: state.id,
+            workoutId: state.workoutId,
+            workoutName: state.workoutName,
+            exerciseIndex: state.exerciseIndex,
+            setIndex: state.setIndex,
+            startDate: state.startDate,
+            endDate: Date().addingTimeInterval(TimeInterval(newRemaining)),
+            totalSeconds: newTotal,
+            phase: newRemaining > 0 ? state.phase : .expired,
+            lastUpdateDate: Date(),
+            currentExerciseName: state.currentExerciseName,
+            nextExerciseName: state.nextExerciseName,
+            currentHeartRate: state.currentHeartRate
+        )
+
+        applyStateChange(updatedState)
+        AppLogger.workouts.info("Set rest timer to \(newRemaining)s (total: \(newTotal)s)")
+    }
+
     // MARK: - State Management
 
     /// Applies a state change transactionally

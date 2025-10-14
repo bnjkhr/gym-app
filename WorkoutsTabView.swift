@@ -34,6 +34,10 @@ struct WorkoutsTabView: View {
     @State private var quickWorkoutName: String = ""
     @State private var showingHomeLimitAlert = false
 
+    private var workoutActionService: WorkoutActionService {
+        WorkoutActionService(modelContext: modelContext, workoutStore: workoutStore)
+    }
+
     private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout? {
         return Workout(entity: entity, in: modelContext)
     }
@@ -529,89 +533,39 @@ struct WorkoutsTabView: View {
     }
 
     private func deleteWorkout(id: UUID) {
-        if let entity = workoutEntities.first(where: { $0.id == id }) {
-            modelContext.delete(entity)
-            try? modelContext.save()
+        do {
+            _ = try workoutActionService.deleteWorkout(id: id, in: Array(workoutEntities))
+        } catch {
+            print("❌ Fehler beim Löschen des Workouts: \(error)")
         }
+
         if selectedWorkout?.id == id { selectedWorkout = nil }
-        if workoutStore.activeSessionID == id {
-            workoutStore.activeSessionID = nil
-            WorkoutLiveActivityController.shared.end()
-        }
         if editingWorkoutSelection?.id == id {
             editingWorkoutSelection = nil
         }
     }
 
     private func duplicateWorkout(id: UUID) {
-        guard let originalEntity = workoutEntities.first(where: { $0.id == id }) else { return }
-
-        // Erstelle neue WorkoutEntity als Kopie
-        let duplicatedEntity = WorkoutEntity(
-            name: "\(originalEntity.name) (Kopie)",
-            date: Date(),
-            exercises: [],
-            defaultRestTime: originalEntity.defaultRestTime,
-            duration: nil,
-            notes: originalEntity.notes,
-            isFavorite: false,  // Nicht als Favorit markieren
-            isSampleWorkout: false  // Benutzer-Workout
-        )
-
-        // Kopiere alle Übungen mit Sets, sortiere nach order
-        let sortedExercises = originalEntity.exercises.sorted { $0.order < $1.order }
-        for (index, originalWorkoutExercise) in sortedExercises.enumerated() {
-            let copiedWorkoutExercise = WorkoutExerciseEntity(
-                exercise: originalWorkoutExercise.exercise,
-                order: index
-            )
-
-            // Kopiere alle Sets
-            for originalSet in originalWorkoutExercise.sets {
-                let copiedSet = ExerciseSetEntity(
-                    reps: originalSet.reps,
-                    weight: originalSet.weight,
-                    restTime: originalSet.restTime,
-                    completed: false
-                )
-                copiedWorkoutExercise.sets.append(copiedSet)
-                modelContext.insert(copiedSet)
-            }
-
-            duplicatedEntity.exercises.append(copiedWorkoutExercise)
-            modelContext.insert(copiedWorkoutExercise)
+        do {
+            try workoutActionService.duplicateWorkout(id: id, in: Array(workoutEntities))
+            print("✅ Workout erfolgreich dupliziert")
+        } catch {
+            print("❌ Fehler beim Duplizieren des Workouts: \(error)")
         }
-
-        // Speichere in SwiftData
-        modelContext.insert(duplicatedEntity)
-        try? modelContext.save()
-
-        print("✅ Workout '\(originalEntity.name)' erfolgreich dupliziert")
     }
 
     private func shareWorkout(id: UUID) {
-        guard let entity = workoutEntities.first(where: { $0.id == id }) else { return }
-
         do {
-            // Workout in ShareableWorkout konvertieren
-            let shareable = ShareableWorkout.from(entity: entity)
-
-            // Als JSON-Datei exportieren
-            let fileURL = try shareable.exportToFile()
-
-            // Share-Sheet öffnen
+            let fileURL = try workoutActionService.shareWorkout(id: id, in: Array(workoutEntities))
             shareItem = ShareItem(url: fileURL)
-
-            print("✅ Workout '\(entity.name)' bereit zum Teilen")
+            print("✅ Workout bereit zum Teilen")
         } catch {
             print("❌ Fehler beim Exportieren des Workouts: \(error)")
         }
     }
 
     private func endActiveSession() {
-        workoutStore.stopRest()
-        workoutStore.activeSessionID = nil
-        WorkoutLiveActivityController.shared.end()
+        workoutActionService.endActiveSession()
     }
 
     private func toggleHomeFavorite(workoutID: UUID) {
