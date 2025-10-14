@@ -111,6 +111,8 @@
 		ADD080552E8C7A3C003FAAFB /* 591279__awchacon__go.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */; };
 		ADD080572E8C7AE6003FAAFB /* NotificationSoundSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */; };
 		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
+		ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */; };
+		ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04062E9E52E50080B745 /* DebugMenuView.swift */; };
 		ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */; };
 		ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */; };
 		ADF1AA732E931A5700DBDAFA /* ExerciseDatabaseMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */; };
@@ -261,6 +263,8 @@
 		ADD080542E8C7A3C003FAAFB /* 591279__awchacon__go.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 591279__awchacon__go.wav; sourceTree = "<group>"; };
 		ADD080562E8C7AE6003FAAFB /* NotificationSoundSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSoundSettings.swift; sourceTree = "<group>"; };
 		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
+		ADDD04062E9E52E50080B745 /* DebugMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugMenuView.swift; sourceTree = "<group>"; };
+		ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMarkdownParser.swift; sourceTree = "<group>"; };
 		ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsTabView.swift; sourceTree = "<group>"; };
 		ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDatabaseMigration.swift; sourceTree = SOURCE_ROOT; };
@@ -445,6 +449,7 @@
 		11E748FF2C9E4B6D00AB1234 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				ADDD04082E9E52E50080B745 /* Settings */,
 				ADB19F5B2E9D83E9004BE444 /* Overlays */,
 				AD3B0FB92E9848A400015183 /* RecoveryCard.swift */,
 				AD87F84D2E955F89001A4033 /* SessionDetailComponents.swift */,
@@ -554,6 +559,15 @@
 				ADB19F842E9D877C004BE444 /* TimerEngineTests.swift */,
 			);
 			path = GymTrackerTests;
+			sourceTree = "<group>";
+		};
+		ADDD04082E9E52E50080B745 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				ADDD04062E9E52E50080B745 /* DebugMenuView.swift */,
+				ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -707,6 +721,8 @@
 				AD2A83BE2E942DFE00A6ADBE /* TrainingTip.swift in Sources */,
 				11E7491A2C9E4C9E00AB1234 /* Color+Theme.swift in Sources */,
 				AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */,
+				ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */,
+				ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */,
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
 				ADB19F592E9D83D1004BE444 /* HapticManager.swift in Sources */,
 				AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */,

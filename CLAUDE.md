@@ -87,12 +87,14 @@ GymTracker/
 │   ├── Exercise.swift            # Exercise model + similarity algorithm
 │   ├── Workout.swift             # Workout, WorkoutExercise, ExerciseSet
 │   ├── WorkoutSession.swift      # Session history
+│   ├── RestTimerState.swift      # Rest timer state model (Phase 1) ✨
 │   ├── TrainingTip.swift         # AI coach tips
 │   └── WorkoutPreferences.swift  # Wizard preferences
 ├── SwiftDataEntities.swift       # @Model persistence entities (7 entities)
 ├── Workout+SwiftDataMapping.swift # Entity ↔ Domain mapping
 ├── ViewModels/
-│   ├── WorkoutStore.swift        # Central state management (⚠️ 130KB, needs refactoring)
+│   ├── WorkoutStore.swift        # Central state management (delegates to RestTimerStateManager)
+│   ├── RestTimerStateManager.swift # Rest timer single source of truth (Phase 1-4) ✨
 │   ├── Theme.swift               # App theme + colors
 │   ├── TipEngine.swift           # AI coach (15 rules)
 │   ├── WorkoutAnalyzer.swift     # Training analysis
@@ -103,14 +105,19 @@ GymTracker/
 │   ├── WorkoutDetailView.swift   # Active session + template view
 │   ├── StatisticsView.swift      # Insights with glassmorphism
 │   ├── ProfileView.swift         # User profile
+│   ├── Settings/                 # Settings views (Phase 6) ✨
+│   │   ├── NotificationSettingsView.swift # Notification preferences
+│   │   └── DebugMenuView.swift   # Debug tools (DEBUG only)
 │   └── ...
 ├── Services/                     # Business logic
+│   ├── TimerEngine.swift         # Wall-clock timer (Phase 1) ✨
 │   ├── WorkoutAnalyzer.swift     # Plateau detection, muscle balance
 │   ├── TipEngine.swift           # AI tip generation
 │   └── TipFeedbackManager.swift  # Tip scoring
 ├── Managers/                     # Infrastructure
 │   ├── HealthKitManager.swift    # HealthKit integration
-│   ├── NotificationManager.swift # Push notifications
+│   ├── NotificationManager.swift # Smart push notifications (Phase 4) ✨
+│   ├── InAppOverlayManager.swift # In-app overlay (Phase 2) ✨
 │   ├── AudioManager.swift        # Sound effects
 │   └── BackupManager.swift       # Workout export/import
 ├── LiveActivities/
@@ -256,28 +263,112 @@ struct DataVersions {
 - `SAMPLE_WORKOUT_VERSION`: When `workouts_with_ids.csv` changes
 - `FORCE_FULL_RESET_VERSION`: For breaking schema changes (deletes all data except sessions)
 
-### 7. Rest Timer System
+### 7. Rest Timer System (Phase 1-6 Complete)
 
-**Features:**
-- Wall-clock-based (survives background/app kill)
-- Push notifications when timer ends
-- Live Activity integration
-- Persistent state across app restarts
+**Architecture:**
+The rest timer system follows a **Single Source of Truth** pattern with three-layer architecture:
 
-**Implementation:**
+1. **RestTimerState** (Model) - Immutable state snapshot
+2. **RestTimerStateManager** (State Management) - Single source of truth, coordinates all subsystems
+3. **Notification Subsystems** - TimerEngine, Live Activity, Notifications, In-App Overlay
+
+**Core Components:**
+
+**RestTimerState (Models/RestTimerState.swift):**
 ```swift
-struct ActiveRestState {
+struct RestTimerState: Codable, Equatable {
+    let id: UUID
     let workoutId: UUID
-    let remainingSeconds: Int
-    let endDate: Date?  // Wall-clock time for background sync
-    var isRunning: Bool
+    let workoutName: String
+    let exerciseIndex: Int
+    let setIndex: Int
+    let startDate: Date
+    let endDate: Date
+    var totalSeconds: Int
+    var phase: Phase  // running, paused, expired, completed
+    var lastUpdateDate: Date
+    
+    // Live Activity Display Data
+    var currentExerciseName: String?
+    var nextExerciseName: String?
+    var currentHeartRate: Int?
+    
+    var remainingSeconds: Int { /* wall-clock based */ }
+    var isActive: Bool { phase == .running || phase == .paused }
+    var hasExpired: Bool { remainingSeconds <= 0 && phase != .completed }
 }
 ```
 
-**Key Methods:**
-- `startRest(for:duration:)` - Starts timer + notification
-- `stopRest()` - Cancels timer + notification
-- Timer syncs on `onAppear` using wall-clock time
+**RestTimerStateManager (ViewModels/RestTimerStateManager.swift):**
+- `@Published var currentState: RestTimerState?` - Single source of truth
+- Coordinates: TimerEngine, Live Activity, NotificationManager, InAppOverlayManager
+- Persistent state via UserDefaults (survives force quit)
+- Automatic state restoration with validation (discards states > 24h)
+
+**Public API:**
+- `startRest(for:exercise:set:duration:currentExerciseName:nextExerciseName:)` - Start rest timer
+- `pauseRest()` - Pause timer
+- `resumeRest()` - Resume timer
+- `acknowledgeExpired()` - Mark expired timer as completed
+- `cancelRest()` - Cancel timer and cleanup
+- `updateHeartRate(_:)` - Update heart rate for Live Activity
+
+**Notification Subsystems:**
+
+1. **TimerEngine (Services/TimerEngine.swift)**
+   - Wall-clock-based timer (uses `Date()` not `Timer.scheduledTimer`)
+   - Survives app backgrounding
+   - Precise expiration detection
+
+2. **Live Activity (WorkoutLiveActivityController)**
+   - Dynamic Island integration (iPhone 14 Pro+)
+   - Shows: countdown, current/next exercise, heart rate
+   - Extended alerts on expiration
+   - Throttled updates (max 2/second)
+
+3. **NotificationManager (Managers/NotificationManager.swift)**
+   - Smart notification logic: only sends push when app is background/inactive
+   - Deep link support: `gymtracker://workout/active`
+   - Automatic permission handling
+
+4. **InAppOverlayManager (Managers/InAppOverlayManager.swift)**
+   - Full-screen overlay when app is active
+   - Haptic feedback + sound effects
+   - Shows next exercise preview
+
+**WorkoutStore Integration (Phase 5):**
+- `let restTimerStateManager: RestTimerStateManager` (non-optional)
+- All rest timer methods delegate to RestTimerStateManager
+- Legacy `ActiveRestState` deprecated but maintained for backward compatibility
+- Code reduction: 83% (from ~300 to ~50 lines)
+
+**Deep Link Navigation (Phase 5):**
+```swift
+// ContentView.swift
+.onReceive(NotificationCenter.default.publisher(for: .navigateToActiveWorkout)) { _ in
+    handleNavigateToActiveWorkout()
+}
+.onOpenURL { url in
+    handleOpenURL(url)  // gymtracker://workout/active
+}
+```
+
+**User Settings (Phase 6):**
+- `NotificationSettingsView` - User preferences for all notification types
+- `DebugMenuView` - Developer testing tools (DEBUG builds only)
+- AppStorage keys: `showInAppOverlay`, `enablePushNotifications`, `enableLiveActivity`, `soundEnabled`, `hapticsEnabled`
+
+**Force Quit Recovery:**
+1. State persisted to UserDefaults on every change
+2. App checks for persisted state on launch
+3. Validates state (discards if > 24h old)
+4. Syncs with Live Activity if exists
+5. Recalculates remaining time using wall-clock
+
+**Testing:**
+- Use DebugMenuView for testing all notification types
+- Physical device required for Live Activities and proper push notifications
+- Test scenarios: force quit, background, expired timer, pause/resume
 
 ---
 

@@ -47,6 +47,11 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     /// Whether notifications are enabled (computed from system settings)
     @Published private(set) var notificationsEnabled: Bool = false
 
+    /// Computed property for backward compatibility
+    var hasNotificationPermission: Bool {
+        notificationsEnabled
+    }
+
     // MARK: - Initialization
 
     private override init() {

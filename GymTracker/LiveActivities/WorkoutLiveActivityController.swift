@@ -277,6 +277,34 @@
             }
         }
 
+        /// Ends all active Live Activities
+        ///
+        /// Useful for debugging and cleanup scenarios.
+        /// Queries all active activities and ends them.
+        func endAllActivities() async {
+            // End current tracked activity
+            if let activity = self.activity {
+                await activity.end(nil, dismissalPolicy: .immediate)
+                self.activity = nil
+                print("[LiveActivity] ✅ Current activity ended")
+            }
+
+            // Query and end all active activities of this type
+            let activities = Activity<WorkoutActivityAttributes>.activities
+            for activity in activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+                print("[LiveActivity] ✅ Activity ended: \(activity.id)")
+            }
+
+            // Clear all state
+            self.currentHeartRate = nil
+            self.lastTimerUpdateTime = nil
+            self.lastHeartRateUpdateTime = nil
+            self.lastSentState = nil
+
+            print("[LiveActivity] ✅ All activities ended (\(activities.count) total)")
+        }
+
         func testLiveActivity() {
             print("[LiveActivity] === Testing Live Activity functionality ===")
 
