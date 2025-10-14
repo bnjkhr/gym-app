@@ -108,6 +108,8 @@ struct ContentView: View {
     @State private var showingEndWorkoutConfirmation = false
 
     var body: some View {
+        // CRITICAL: Set modelContext BEFORE any view rendering
+        let _ = { workoutStore.modelContext = modelContext }()
         contentWithModifiers
     }
 
