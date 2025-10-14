@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Card zeigt die Top 5 Kraft-PRs des aktuellen Monats
 struct TopPRsCard: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @State private var topPRs: [PRHighlight] = []
     @State private var isExpanded: Bool = false
     @Environment(\.colorScheme) private var colorScheme

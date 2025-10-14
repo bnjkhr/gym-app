@@ -3,7 +3,7 @@ import SwiftUI
 /// Beispiel-View, die zeigt, wie die Last-Used Daten in der UI verwendet werden können
 struct ExerciseLastUsedDisplayView: View {
     let exercise: Exercise
-    @ObservedObject var store: WorkoutStore
+    @ObservedObject var store: WorkoutStoreCoordinator
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -38,7 +38,7 @@ struct ExerciseLastUsedDisplayView: View {
 /// Erweiterte View mit allen Last-Used Details
 struct DetailedExerciseLastUsedView: View {
     let exercise: Exercise
-    @ObservedObject var store: WorkoutStore
+    @ObservedObject var store: WorkoutStoreCoordinator
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -143,7 +143,7 @@ struct MetricCard: View {
 /// Beispiel für Quick-Fill Buttons in einem Workout
 struct QuickFillFromLastUsedView: View {
     let exercise: Exercise
-    @ObservedObject var store: WorkoutStore
+    @ObservedObject var store: WorkoutStoreCoordinator
     @Binding var targetWeight: Double
     @Binding var targetReps: Int
     
@@ -175,7 +175,7 @@ struct QuickFillFromLastUsedView: View {
 
 // MARK: - Preview
 #Preview {
-    let store = WorkoutStore()
+    let store = WorkoutStoreCoordinator()
     let exercise = Exercise(
         name: "Bankdrücken",
         muscleGroups: [.chest],

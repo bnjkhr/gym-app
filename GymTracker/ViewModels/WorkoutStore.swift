@@ -3305,6 +3305,10 @@ extension Notification.Name {
 
 // MARK: - WorkoutStoreCoordinator (Phase 2 Migration)
 
+/// Type alias for backward compatibility during migration
+/// All views can use either WorkoutStore or WorkoutStoreCoordinator
+typealias WorkoutStoreProtocol = WorkoutStoreCoordinator
+
 /// Koordinator der alle WorkoutStore-Services zusammenführt und als zentrale Schnittstelle dient.
 /// In Phase 2: Einfacher Wrapper um WorkoutStore für schrittweise Migration
 @MainActor
@@ -3314,16 +3318,18 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     private let legacyStore: WorkoutStore
 
-    // MARK: - Published Properties (Delegated)
+    // MARK: - Published Properties (Synced with legacyStore)
 
-    var activeSessionID: UUID? {
-        get { legacyStore.activeSessionID }
-        set { legacyStore.activeSessionID = newValue }
+    @Published var activeSessionID: UUID? {
+        didSet {
+            legacyStore.activeSessionID = activeSessionID
+        }
     }
 
-    var isShowingWorkoutDetail: Bool {
-        get { legacyStore.isShowingWorkoutDetail }
-        set { legacyStore.isShowingWorkoutDetail = newValue }
+    @Published var isShowingWorkoutDetail: Bool = false {
+        didSet {
+            legacyStore.isShowingWorkoutDetail = isShowingWorkoutDetail
+        }
     }
 
     var modelContext: ModelContext? {
@@ -3340,8 +3346,15 @@ class WorkoutStoreCoordinator: ObservableObject {
         legacyStore.restTimerStateManager
     }
 
+    // Forward the @Published property from legacyStore
+    // This allows views to use workoutStore.$activeRestState
     var activeRestState: WorkoutStore.ActiveRestState? {
         legacyStore.activeRestState
+    }
+
+    // Provide publisher access by forwarding to legacyStore's publisher
+    var activeRestStatePublisher: Published<WorkoutStore.ActiveRestState?>.Publisher {
+        legacyStore.$activeRestState
     }
 
     // MARK: - Computed Properties
@@ -3367,7 +3380,8 @@ class WorkoutStoreCoordinator: ObservableObject {
     }
 
     var profileUpdateTrigger: UUID {
-        legacyStore.profileUpdateTrigger
+        get { legacyStore.profileUpdateTrigger }
+        set { legacyStore.profileUpdateTrigger = newValue }
     }
 
     var healthKitManager: HealthKitManager {
@@ -3388,6 +3402,12 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     var averageDurationMinutes: Int {
         legacyStore.averageDurationMinutes
+    }
+
+    // AppStorage properties - forward to legacyStore
+    var weeklyGoal: Int {
+        get { legacyStore.weeklyGoal }
+        set { legacyStore.weeklyGoal = newValue }
     }
 
     // MARK: - Initialization
@@ -3518,6 +3538,21 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     func importFromHealthKit() async throws {
         try await legacyStore.importFromHealthKit()
+    }
+
+    func readHeartRateData(from startDate: Date, to endDate: Date) async throws
+        -> [HeartRateReading]
+    {
+        try await legacyStore.readHeartRateData(from: startDate, to: endDate)
+    }
+
+    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading]
+    {
+        try await legacyStore.readWeightData(from: startDate, to: endDate)
+    }
+
+    func readBodyFatData(from startDate: Date, to endDate: Date) async throws -> [BodyFatReading] {
+        try await legacyStore.readBodyFatData(from: startDate, to: endDate)
     }
 
     // MARK: - Rest Timer Methods

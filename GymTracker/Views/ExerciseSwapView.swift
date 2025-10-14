@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ExerciseSwapView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
 
     let currentExercise: Exercise

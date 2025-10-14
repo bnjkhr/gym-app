@@ -3,7 +3,7 @@ import PhotosUI
 import HealthKit
 
 struct ProfileEditView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     

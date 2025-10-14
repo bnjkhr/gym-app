@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Phase 6: Erweiterte Notification-Einstellungen für das neue Rest-Timer-System
 struct NotificationSettingsView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 

@@ -3,7 +3,7 @@ import SwiftData
 import Combine
 
 struct ExercisesView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingAddExercise = false
     @State private var searchText = ""

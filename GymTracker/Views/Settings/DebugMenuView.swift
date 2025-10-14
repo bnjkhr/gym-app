@@ -3,7 +3,7 @@ import SwiftUI
 /// Phase 6: Debug Menu für Entwickler - nur in Debug Builds verfügbar
 #if DEBUG
     struct DebugMenuView: View {
-        @EnvironmentObject var workoutStore: WorkoutStore
+        @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
         @Environment(\.dismiss) private var dismiss
         @Environment(\.colorScheme) private var colorScheme
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Hero Card für den Progression Score - zeigt Gesamtfortschritt
 struct ProgressionScoreCard: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @StateObject private var cache = StatisticsCache.shared
     let sessionEntities: [WorkoutSessionEntity]
     @State private var progressionScore: ProgressionScore?

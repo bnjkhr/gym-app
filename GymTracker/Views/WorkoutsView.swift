@@ -15,7 +15,7 @@ struct WorkoutsView: View {
     ])
     private var folders: [WorkoutFolderEntity]
 
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingAddWorkout = false
     @State private var showingAddFolder = false

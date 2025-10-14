@@ -64,7 +64,7 @@ struct ExerciseCardState {
 }
 
 struct EditWorkoutView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 

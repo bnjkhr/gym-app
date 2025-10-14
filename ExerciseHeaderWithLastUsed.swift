@@ -3,13 +3,13 @@ import SwiftUI
 /// Übungs-Header mit Last-Used Informationen für die Workout-Detail-View
 struct ExerciseHeaderWithLastUsed: View {
     let exercise: Exercise
-    let workoutStore: WorkoutStore
+    let workoutStore: WorkoutStoreCoordinator
     let isActiveSession: Bool
     let onQuickFill: ((Double, Int) -> Void)?
     let onLongPress: (() -> Void)?
-    
+
     @State private var showingLastUsedDetails = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Übungsname mit Long Press für Reorder
@@ -17,9 +17,9 @@ struct ExerciseHeaderWithLastUsed: View {
                 Text(exercise.name)
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 if isActiveSession && lastUsedMetrics.hasData {
                     Button(action: {
                         showingLastUsedDetails.toggle()
@@ -34,7 +34,7 @@ struct ExerciseHeaderWithLastUsed: View {
             .onLongPressGesture {
                 onLongPress?()
             }
-            
+
             // Last-Used Informationen
             if lastUsedMetrics.hasData {
                 lastUsedSection
@@ -52,13 +52,14 @@ struct ExerciseHeaderWithLastUsed: View {
             )
         }
     }
-    
+
     private var lastUsedMetrics: ExerciseLastUsedMetrics {
-        workoutStore.completeLastMetrics(for: exercise) ?? ExerciseLastUsedMetrics(
-            weight: nil, reps: nil, setCount: nil, lastUsedDate: nil, restTime: nil
-        )
+        workoutStore.completeLastMetrics(for: exercise)
+            ?? ExerciseLastUsedMetrics(
+                weight: nil, reps: nil, setCount: nil, lastUsedDate: nil, restTime: nil
+            )
     }
-    
+
     private var lastUsedSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Kompakte Anzeige der wichtigsten Daten
@@ -67,25 +68,27 @@ struct ExerciseHeaderWithLastUsed: View {
                     Label("\(weight.formatted())kg", systemImage: "scalemass")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Label("\(reps) Wdh.", systemImage: "repeat")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 if let setCount = lastUsedMetrics.setCount {
                     Label("\(setCount) Sätze", systemImage: "list.number")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Quick Fill Button für aktive Sessions
-                if isActiveSession, let weight = lastUsedMetrics.weight, let reps = lastUsedMetrics.reps {
+                if isActiveSession, let weight = lastUsedMetrics.weight,
+                    let reps = lastUsedMetrics.reps
+                {
                     Button(action: {
                         onQuickFill?(weight, reps)
-                        
+
                         // Haptic Feedback
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
@@ -105,7 +108,7 @@ struct ExerciseHeaderWithLastUsed: View {
                     .buttonStyle(.plain)
                 }
             }
-            
+
             // Datum der letzten Verwendung
             if let date = lastUsedMetrics.lastUsedDate {
                 Text("Zuletzt am \(date.formatted(.dateTime.day().month().year()))")
@@ -119,11 +122,11 @@ struct ExerciseHeaderWithLastUsed: View {
 /// Detail-Sheet für ausführliche Last-Used Informationen
 struct LastUsedDetailsSheet: View {
     let exercise: Exercise
-    let workoutStore: WorkoutStore
+    let workoutStore: WorkoutStoreCoordinator
     let onQuickFill: ((Double, Int) -> Void)?
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -133,26 +136,27 @@ struct LastUsedDetailsSheet: View {
                         Text(exercise.name)
                             .font(.title2)
                             .fontWeight(.bold)
-                        
+
                         Text("Letzte Verwendung")
                             .font(.headline)
                             .foregroundColor(.secondary)
                     }
-                    
+
                     // Detaillierte Last-Used Metriken
                     if let metrics = workoutStore.completeLastMetrics(for: exercise) {
                         DetailedExerciseLastUsedView(exercise: exercise, store: workoutStore)
                     }
-                    
+
                     // Quick Actions
                     if let metrics = workoutStore.completeLastMetrics(for: exercise),
-                       let weight = metrics.weight,
-                       let reps = metrics.reps {
-                        
+                        let weight = metrics.weight,
+                        let reps = metrics.reps
+                    {
+
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Schnellaktionen")
                                 .font(.headline)
-                            
+
                             VStack(spacing: 8) {
                                 // Exakt wie letztes Mal
                                 Button(action: {
@@ -171,13 +175,13 @@ struct LastUsedDetailsSheet: View {
                                     .cornerRadius(8)
                                 }
                                 .buttonStyle(.plain)
-                                
+
                                 // Progressive Overload Suggestions
                                 progressiveOverloadButtons(baseWeight: weight, baseReps: reps)
                             }
                         }
                     }
-                    
+
                     Spacer()
                 }
                 .padding()
@@ -193,13 +197,13 @@ struct LastUsedDetailsSheet: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private func progressiveOverloadButtons(baseWeight: Double, baseReps: Int) -> some View {
         VStack(spacing: 8) {
             // Gewicht steigern
             Button(action: {
-                let newWeight = baseWeight + (baseWeight < 20 ? 1.25 : 2.5) // Kleinere Sprünge für leichte Gewichte
+                let newWeight = baseWeight + (baseWeight < 20 ? 1.25 : 2.5)  // Kleinere Sprünge für leichte Gewichte
                 onQuickFill?(newWeight, baseReps)
                 dismiss()
             }) {
@@ -216,9 +220,9 @@ struct LastUsedDetailsSheet: View {
                 .cornerRadius(8)
             }
             .buttonStyle(.plain)
-            
+
             // Wiederholungen steigern
-            if baseReps < 15 { // Nur bis zu einem sinnvollen Maximum
+            if baseReps < 15 {  // Nur bis zu einem sinnvollen Maximum
                 Button(action: {
                     onQuickFill?(baseWeight, baseReps + 1)
                     dismiss()
@@ -242,14 +246,14 @@ struct LastUsedDetailsSheet: View {
 
 // MARK: - Preview
 #Preview {
-    let store = WorkoutStore()
+    let store = WorkoutStoreCoordinator()
     let exercise = Exercise(
         name: "Bankdrücken",
         muscleGroups: [.chest],
         equipmentType: .freeWeights,
         description: "Klassische Brustübung"
     )
-    
+
     VStack {
         ExerciseHeaderWithLastUsed(
             exercise: exercise,
@@ -263,7 +267,7 @@ struct LastUsedDetailsSheet: View {
             }
         )
         .padding()
-        
+
         Spacer()
     }
 }

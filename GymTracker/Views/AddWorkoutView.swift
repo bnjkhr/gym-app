@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct AddWorkoutView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 

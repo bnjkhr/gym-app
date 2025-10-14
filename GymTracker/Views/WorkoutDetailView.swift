@@ -37,7 +37,7 @@ extension MuscleGroup {
 }
 
 struct WorkoutDetailView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -1220,7 +1220,7 @@ private struct WorkoutSetCard: View {
     var previousReps: Int?
     var previousWeight: Double?
     var currentExercise: Exercise?  // New parameter to check for records
-    var workoutStore: WorkoutStore?  // New parameter to check for records
+    var workoutStore: WorkoutStoreCoordinator?  // New parameter to check for records
     var onRestTimeUpdated: (Double) -> Void
     var onToggleCompletion: () -> Void
 
@@ -1527,7 +1527,7 @@ extension UIFont {
 
 private struct ActiveWorkoutNavigationView: View {
     @Binding var workout: Workout
-    let workoutStore: WorkoutStore
+    let workoutStore: WorkoutStoreCoordinator
     let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
     let isActiveRest: (Int, Int) -> Bool
     let hasActiveRestState: (Int, Int) -> Bool
@@ -1652,7 +1652,7 @@ private struct ActiveWorkoutNavigationView: View {
                 }
             )
         }
-        .onReceive(workoutStore.$activeRestState) { restState in
+        .onReceive(workoutStore.activeRestStatePublisher) { restState in
             // Only auto-navigate to exercise with active rest if we're not pending an auto-advance
             if !autoAdvancePending,
                 let restState = restState,
@@ -1740,7 +1740,7 @@ private struct ActiveWorkoutExerciseView: View {
     let currentExerciseIndex: Int
     let totalExerciseCount: Int
     @Binding var workout: Workout
-    let workoutStore: WorkoutStore
+    let workoutStore: WorkoutStoreCoordinator
     let activeRestForThisWorkout: WorkoutStore.ActiveRestState?
     let isActiveRest: (Int, Int) -> Bool
     let hasActiveRestState: (Int, Int) -> Bool
@@ -1953,7 +1953,7 @@ private struct ActiveWorkoutSetCard: View {
     var previousWeight: Double?
     let isLastSet: Bool
     var currentExercise: Exercise?  // New parameter to check for records
-    var workoutStore: WorkoutStore?  // New parameter to check for records
+    var workoutStore: WorkoutStoreCoordinator?  // New parameter to check for records
     var onRestTimeUpdated: (Double) -> Void
     var onToggleCompletion: () -> Void
     var onDeleteSet: () -> Void

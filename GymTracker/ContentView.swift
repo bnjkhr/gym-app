@@ -430,7 +430,7 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
 // MARK: - Workouts Tab
 
 struct WorkoutsHomeView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
 
     @Environment(\.modelContext) private var modelContext
@@ -1272,7 +1272,7 @@ struct WorkoutHighlightCard: View {
 struct OnboardingCard: View {
     let onNavigateToWorkouts: () -> Void
     let onShowProfile: () -> Void
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
 
     @State private var showCheckmark1 = false
     @State private var showCheckmark2 = false
@@ -1558,7 +1558,7 @@ struct ActiveWorkoutBar: View {
     let resumeAction: () -> Void
     let endAction: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
 
     private var restText: String? {
         guard let state = workoutStore.activeRestState, state.workoutId == workout.id else {
@@ -1658,7 +1658,7 @@ struct ActiveWorkoutBar: View {
 /// - Only this bar re-renders every second, not entire view hierarchy
 /// - ~95% performance improvement over inline timer display
 struct ActiveTimerBar: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
 
     // Current rest timer state (from new system)
@@ -2608,7 +2608,7 @@ struct ScaleButtonStyle: ButtonStyle {
 // MARK: - Locker Number Input View
 struct LockerNumberInputView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @State private var lockerNumber: String = ""
     @FocusState private var isTextFieldFocused: Bool
 

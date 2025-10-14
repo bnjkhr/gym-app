@@ -5,7 +5,7 @@ struct SessionDetailView: View {
     let session: WorkoutSession
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
 
     @State private var showingRestartConfirmation = false
     @State private var previousSessions: [WorkoutSessionEntity] = []

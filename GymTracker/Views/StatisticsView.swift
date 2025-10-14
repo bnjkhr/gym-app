@@ -16,7 +16,7 @@ private struct StatisticsScrollOffsetPreferenceKey: PreferenceKey {
 }
 
 struct StatisticsView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @StateObject private var cache = StatisticsCache.shared
     @State private var showingCalendar: Bool = false
     @State private var expandedVolumeCard: Bool = false
@@ -173,7 +173,7 @@ private struct FloatingInsightsHeader: View {
 // MARK: - Hero Streak Card
 private struct HeroStreakCard: View {
     let sessionEntities: [WorkoutSessionEntity]
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
 
     @State private var cachedConsistencyWeeks: Int = 0
     @State private var cachedWorkoutsThisWeek: Int = 0
@@ -318,7 +318,7 @@ private struct HeroStreakCard: View {
 // MARK: - Quick Stats Grid
 private struct QuickStatsGrid: View {
     let sessionEntities: [WorkoutSessionEntity]
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var cachedTrainingsThisMonth: Int = 0
@@ -650,7 +650,7 @@ private struct VolumeChartCard: View {
 
 // MARK: - Compact Personal Records Card
 private struct CompactPersonalRecordsCard: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @State private var showingAllRecords = false
     @Environment(\.colorScheme) private var colorScheme
 
@@ -771,7 +771,7 @@ private struct CompactPersonalRecordsCard: View {
 private struct CompactHealthCard: View {
     @Binding var isExpanded: Bool
     let sessionEntities: [WorkoutSessionEntity]
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @State private var heartRateReadings: [HeartRateReading] = []
     @State private var weightReadings: [BodyWeightReading] = []
     @State private var isLoading = false
@@ -1012,7 +1012,7 @@ private struct ConsistencyCardView: View {
 
 // 2. Personal Records
 private struct PersonalRecordCardView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingAllRecords = false
     
@@ -2247,7 +2247,7 @@ private extension Calendar {
 
 // 0. Last Workout Summary
 private struct LastWorkoutCardView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntity]
@@ -2464,7 +2464,7 @@ private struct LastWorkoutCardView: View {
 
 // MARK: - Heart Rate Insights
 struct HeartRateInsightsView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @State private var heartRateReadings: [HeartRateReading] = []
     @State private var isLoading = false
@@ -2721,7 +2721,7 @@ struct HeartRateInsightsView: View {
 
 // MARK: - Body Metrics Insights
 struct BodyMetricsInsightsView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @State private var weightReadings: [BodyWeightReading] = []
     @State private var bodyFatReadings: [BodyFatReading] = []

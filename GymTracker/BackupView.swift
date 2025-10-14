@@ -3,7 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 struct BackupView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @StateObject private var backupManager = BackupManager.shared
     @State private var isCreatingBackup = false
     @State private var isRestoringBackup = false

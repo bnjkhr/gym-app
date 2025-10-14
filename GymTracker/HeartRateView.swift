@@ -3,7 +3,7 @@ import HealthKit
 import Charts
 
 struct HeartRateView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @State private var heartRateReadings: [HeartRateReading] = []
     @State private var isLoading = false
     @State private var error: HealthKitError?

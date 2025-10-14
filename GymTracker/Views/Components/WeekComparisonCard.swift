@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Card zeigt Vergleich: Diese Woche vs. Letzte Woche
 struct WeekComparisonCard: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @StateObject private var cache = StatisticsCache.shared
     let sessionEntities: [WorkoutSessionEntity]
     @State private var comparison: WeekComparison?

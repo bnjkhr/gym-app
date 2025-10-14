@@ -29,7 +29,7 @@ enum ImportFormat: String, CaseIterable {
 }
 
 struct SettingsView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingImporter = false
     @State private var showingHealthKitSetup = false

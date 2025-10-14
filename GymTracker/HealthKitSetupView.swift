@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HealthKitSetupView: View {
-    @EnvironmentObject private var workoutStore: WorkoutStore
+    @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
     @State private var isRequestingPermission = false
     @State private var showingError = false

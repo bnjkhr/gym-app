@@ -7,7 +7,7 @@ struct ExerciseSwapSelection: Identifiable {
 }
 
 struct GeneratedWorkoutPreviewView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.dismiss) private var dismiss
 
     @State private var workout: Workout
