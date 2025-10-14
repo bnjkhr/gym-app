@@ -1,445 +1,682 @@
 #if canImport(ActivityKit)
-import ActivityKit
-import Foundation
-import UIKit
-import UserNotifications
+    import ActivityKit
+    import Foundation
+    import UIKit
+    import UserNotifications
 
-@available(iOS 16.1, *)
-final class WorkoutLiveActivityController {
-    static let shared = WorkoutLiveActivityController()
+    @available(iOS 16.1, *)
+    final class WorkoutLiveActivityController {
+        static let shared = WorkoutLiveActivityController()
 
-    private var activity: Activity<WorkoutActivityAttributes>?
+        private var activity: Activity<WorkoutActivityAttributes>?
 
-    // Performance: Separate throttling for different update types
-    private var lastTimerUpdateTime: Date?
-    private var lastHeartRateUpdateTime: Date?
-    private let timerUpdateInterval: TimeInterval = 1.0 // Timer updates every 1 second (must match)
-    private let heartRateUpdateInterval: TimeInterval = 2.0 // Heart rate can be throttled more
+        // Performance: Separate throttling for different update types
+        private var lastTimerUpdateTime: Date?
+        private var lastHeartRateUpdateTime: Date?
+        private let timerUpdateInterval: TimeInterval = 1.0  // Timer updates every 1 second (must match)
+        private let heartRateUpdateInterval: TimeInterval = 2.0  // Heart rate can be throttled more
 
-    private var currentHeartRate: Int? // Cache für aktuelle Herzfrequenz
+        private var currentHeartRate: Int?  // Cache für aktuelle Herzfrequenz
 
-    // Performance: Track last state to avoid redundant updates
-    private var lastSentState: (remainingSeconds: Int, heartRate: Int?)?
+        // Performance: Track last state to avoid redundant updates
+        private var lastSentState: (remainingSeconds: Int, heartRate: Int?)?
 
-    private init() {}
+        private init() {}
 
-    deinit {
-        // Memory: Cleanup on dealloc (should never happen for singleton, but good practice)
-        print("[LiveActivity] 🧹 Deinit called - cleaning up")
-        lastTimerUpdateTime = nil
-        lastHeartRateUpdateTime = nil
-        currentHeartRate = nil
-        lastSentState = nil
-        // Note: Can't end activity in deinit due to async nature
-    }
-    
-    func requestPermissionIfNeeded() {
-        #if canImport(ActivityKit)
-        Task {
-            let authInfo = ActivityAuthorizationInfo()
-            print("[LiveActivity] Auth Status - Activities Enabled: \(authInfo.areActivitiesEnabled)")
-            print("[LiveActivity] Auth Status - Frequent Push Enabled: \(authInfo.areActivitiesEnabled)")
-
-            if !authInfo.areActivitiesEnabled {
-                print("[LiveActivity] ⚠️ Live Activities sind nicht aktiviert")
-                print("[LiveActivity] 💡 Benutzer muss Live Activities in den Einstellungen aktivieren")
-                print("[LiveActivity] 📱 Pfad: Einstellungen > [App Name] > Live Activities")
-            } else {
-                print("[LiveActivity] ✅ Live Activities sind aktiviert")
-            }
+        deinit {
+            // Memory: Cleanup on dealloc (should never happen for singleton, but good practice)
+            print("[LiveActivity] 🧹 Deinit called - cleaning up")
+            lastTimerUpdateTime = nil
+            lastHeartRateUpdateTime = nil
+            currentHeartRate = nil
+            lastSentState = nil
+            // Note: Can't end activity in deinit due to async nature
         }
-        #endif
-    }
 
-    func cleanupStaleActivities() {
-        #if canImport(ActivityKit)
-        let activities = Activity<WorkoutActivityAttributes>.activities
-        guard !activities.isEmpty else { return }
-
-        print("[LiveActivity] 🔍 Checking \(activities.count) active Live Activities for cleanup")
-
-        for activity in activities {
-            let age = Date().timeIntervalSince(activity.attributes.startDate)
-            let ageInMinutes = Int(age / 60)
-
-            // Wenn älter als 4 Stunden -> beenden (wahrscheinlich durch Force-Quit verwaist)
-            if age > 4 * 3600 {
-                print("[LiveActivity] 🗑️ Removing stale activity (age: \(ageInMinutes) minutes)")
+        func requestPermissionIfNeeded() {
+            #if canImport(ActivityKit)
                 Task {
-                    await activity.end(dismissalPolicy: .immediate)
-                    print("[LiveActivity] ✅ Stale activity removed")
+                    let authInfo = ActivityAuthorizationInfo()
+                    print(
+                        "[LiveActivity] Auth Status - Activities Enabled: \(authInfo.areActivitiesEnabled)"
+                    )
+                    print(
+                        "[LiveActivity] Auth Status - Frequent Push Enabled: \(authInfo.areActivitiesEnabled)"
+                    )
+
+                    if !authInfo.areActivitiesEnabled {
+                        print("[LiveActivity] ⚠️ Live Activities sind nicht aktiviert")
+                        print(
+                            "[LiveActivity] 💡 Benutzer muss Live Activities in den Einstellungen aktivieren"
+                        )
+                        print("[LiveActivity] 📱 Pfad: Einstellungen > [App Name] > Live Activities")
+                    } else {
+                        print("[LiveActivity] ✅ Live Activities sind aktiviert")
+                    }
                 }
-            } else {
-                print("[LiveActivity] ✓ Activity is fresh (age: \(ageInMinutes) minutes)")
-                // Stelle die Activity-Instanz wieder her (wichtig nach Force Quit!)
-                if self.activity == nil {
-                    self.activity = activity
-                    print("[LiveActivity] ✅ Restored activity instance after app restart")
+            #endif
+        }
+
+        func cleanupStaleActivities() {
+            #if canImport(ActivityKit)
+                let activities = Activity<WorkoutActivityAttributes>.activities
+                guard !activities.isEmpty else { return }
+
+                print(
+                    "[LiveActivity] 🔍 Checking \(activities.count) active Live Activities for cleanup"
+                )
+
+                for activity in activities {
+                    let age = Date().timeIntervalSince(activity.attributes.startDate)
+                    let ageInMinutes = Int(age / 60)
+
+                    // Wenn älter als 4 Stunden -> beenden (wahrscheinlich durch Force-Quit verwaist)
+                    if age > 4 * 3600 {
+                        print(
+                            "[LiveActivity] 🗑️ Removing stale activity (age: \(ageInMinutes) minutes)"
+                        )
+                        Task {
+                            await activity.end(dismissalPolicy: .immediate)
+                            print("[LiveActivity] ✅ Stale activity removed")
+                        }
+                    } else {
+                        print("[LiveActivity] ✓ Activity is fresh (age: \(ageInMinutes) minutes)")
+                        // Stelle die Activity-Instanz wieder her (wichtig nach Force Quit!)
+                        if self.activity == nil {
+                            self.activity = activity
+                            print("[LiveActivity] ✅ Restored activity instance after app restart")
+                        }
+                    }
                 }
+            #endif
+        }
+
+        func start(workoutId: UUID, workoutName: String) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                print("[LiveActivity] ❌ Activities are not enabled")
+                print(
+                    "[LiveActivity] 💡 Benutzer sollte zu Einstellungen > [App Name] > Live Activities gehen"
+                )
+                return
+            }
+            Task { await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName) }
+        }
+
+        func updateRest(
+            workoutId: UUID, workoutName: String, exerciseName: String?, remainingSeconds: Int,
+            totalSeconds: Int, endDate: Date?
+        ) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                print("[LiveActivity] ❌ updateRest: Activities not enabled")
+                return
+            }
+
+            // Performance: Da timerEndDate verwendet wird, brauchen wir nur wichtige Updates
+            let normalizedRemaining = max(remainingSeconds, 0)
+            let now = Date()
+
+            // Prüfe ob das ein wichtiger State-Change ist
+            let isImportantUpdate =
+                lastSentState == nil  // Erstes Update
+                || lastSentState?.remainingSeconds == 0  // Timer war aus
+                || normalizedRemaining == 0  // Timer ist abgelaufen
+                || lastSentState?.heartRate != currentHeartRate  // HR geändert
+
+            // Throttle nur unwichtige Updates
+            if !isImportantUpdate,
+                let lastUpdate = lastTimerUpdateTime,
+                now.timeIntervalSince(lastUpdate) < 10.0
+            {
+                // Skip - Timer aktualisiert sich selbst im Widget via Text(timerInterval:)
+                return
+            }
+
+            lastTimerUpdateTime = now
+            lastSentState = (remainingSeconds: normalizedRemaining, heartRate: currentHeartRate)
+
+            print(
+                "[LiveActivity] 🔄 updateRest: \(remainingSeconds)s / \(totalSeconds)s, HR: \(currentHeartRate?.description ?? "nil"), important: \(isImportantUpdate)"
+            )
+
+            Task {
+                await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
+                await updateState(
+                    remaining: normalizedRemaining,
+                    total: max(totalSeconds, 1),
+                    title: "Pause",
+                    exerciseName: exerciseName,
+                    isTimerExpired: false,
+                    heartRate: currentHeartRate,
+                    timerEndDate: endDate
+                )
             }
         }
-        #endif
-    }
 
-    func start(workoutId: UUID, workoutName: String) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            print("[LiveActivity] ❌ Activities are not enabled")
-            print("[LiveActivity] 💡 Benutzer sollte zu Einstellungen > [App Name] > Live Activities gehen")
-            return
-        }
-        Task { await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName) }
-    }
-
-    func updateRest(workoutId: UUID, workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int, endDate: Date?) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            print("[LiveActivity] ❌ updateRest: Activities not enabled")
-            return
+        func clearRest(workoutId: UUID, workoutName: String) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+            // Performance: Clear cached state when rest is cleared
+            lastSentState = nil
+            Task { await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName) }
         }
 
-        // Performance: Da timerEndDate verwendet wird, brauchen wir nur wichtige Updates
-        let normalizedRemaining = max(remainingSeconds, 0)
-        let now = Date()
+        func updateHeartRate(workoutId: UUID, workoutName: String, heartRate: Int?) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-        // Prüfe ob das ein wichtiger State-Change ist
-        let isImportantUpdate = lastSentState == nil || // Erstes Update
-                                lastSentState?.remainingSeconds == 0 || // Timer war aus
-                                normalizedRemaining == 0 || // Timer ist abgelaufen
-                                lastSentState?.heartRate != currentHeartRate // HR geändert
+            // Performance: Always cache, but throttle actual updates
+            let previousHeartRate = currentHeartRate
+            currentHeartRate = heartRate
 
-        // Throttle nur unwichtige Updates
-        if !isImportantUpdate,
-           let lastUpdate = lastTimerUpdateTime,
-           now.timeIntervalSince(lastUpdate) < 10.0 {
-            // Skip - Timer aktualisiert sich selbst im Widget via Text(timerInterval:)
-            return
+            // Performance: Skip if heart rate hasn't changed
+            if previousHeartRate == heartRate {
+                return
+            }
+
+            // Performance: Throttle heart rate updates more aggressively (2s interval)
+            let now = Date()
+            if let lastUpdate = lastHeartRateUpdateTime,
+                now.timeIntervalSince(lastUpdate) < heartRateUpdateInterval
+            {
+                // Skip update but keep cached value for next timer update
+                print("[LiveActivity] ⏭️ HR update throttled, cached for next update")
+                return
+            }
+            lastHeartRateUpdateTime = now
+
+            print("[LiveActivity] 💓 HR update: \(heartRate?.description ?? "nil")")
+
+            Task {
+                await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
+                // Update nur die Herzfrequenz, behalte anderen State bei
+                guard let activity = self.activity else { return }
+                let currentState = await activity.content.state
+                let newState = WorkoutActivityAttributes.ContentState(
+                    remainingSeconds: currentState.remainingSeconds,
+                    totalSeconds: currentState.totalSeconds,
+                    title: currentState.title,
+                    exerciseName: currentState.exerciseName,
+                    isTimerExpired: currentState.isTimerExpired,
+                    currentHeartRate: heartRate,
+                    timerEndDate: currentState.timerEndDate
+                )
+                await updateState(state: newState)
+            }
         }
 
-        lastTimerUpdateTime = now
-        lastSentState = (remainingSeconds: normalizedRemaining, heartRate: currentHeartRate)
+        func showRestEnded(workoutId: UUID, workoutName: String) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                print("[LiveActivity] ❌ showRestEnded: Activities not enabled")
+                return
+            }
 
-        print("[LiveActivity] 🔄 updateRest: \(remainingSeconds)s / \(totalSeconds)s, HR: \(currentHeartRate?.description ?? "nil"), important: \(isImportantUpdate)")
+            print("[LiveActivity] 🔔 showRestEnded called - sending alert notification")
 
-        Task {
-            await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
-            await updateState(
-                remaining: normalizedRemaining,
-                total: max(totalSeconds, 1),
-                title: "Pause",
-                exerciseName: exerciseName,
-                isTimerExpired: false,
-                heartRate: currentHeartRate,
-                timerEndDate: endDate
-            )
-        }
-    }
+            // Check notification settings
+            #if canImport(UIKit)
+                Task {
+                    let center = UNUserNotificationCenter.current()
+                    let settings = await center.notificationSettings()
+                    print(
+                        "[LiveActivity] 📱 Notification settings: authStatus=\(settings.authorizationStatus.rawValue), alertStyle=\(settings.alertStyle.rawValue)"
+                    )
+                    print(
+                        "[LiveActivity] 📱 Alerts enabled: \(settings.alertSetting.rawValue), Sounds: \(settings.soundSetting.rawValue)"
+                    )
+                }
+            #endif
 
-    func clearRest(workoutId: UUID, workoutName: String) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        // Performance: Clear cached state when rest is cleared
-        lastSentState = nil
-        Task { await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName) }
-    }
+            Task {
+                await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
+                let state = WorkoutActivityAttributes.ContentState(
+                    remainingSeconds: 0,
+                    totalSeconds: 1,
+                    title: "Pause beendet",
+                    exerciseName: nil,
+                    isTimerExpired: true,
+                    currentHeartRate: currentHeartRate,
+                    timerEndDate: nil
+                )
 
-    func updateHeartRate(workoutId: UUID, workoutName: String, heartRate: Int?) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+                print("[LiveActivity] 🔔 Sending alert with title: 'Weiter geht's. 💪🏼'")
 
-        // Performance: Always cache, but throttle actual updates
-        let previousHeartRate = currentHeartRate
-        currentHeartRate = heartRate
+                await updateState(
+                    state: state,
+                    alertConfig: .init(
+                        title: "Weiter geht's. 💪🏼",
+                        body: "Die Pause ist vorbei",
+                        sound: .default
+                    ))
 
-        // Performance: Skip if heart rate hasn't changed
-        if previousHeartRate == heartRate {
-            return
-        }
-
-        // Performance: Throttle heart rate updates more aggressively (2s interval)
-        let now = Date()
-        if let lastUpdate = lastHeartRateUpdateTime,
-           now.timeIntervalSince(lastUpdate) < heartRateUpdateInterval {
-            // Skip update but keep cached value for next timer update
-            print("[LiveActivity] ⏭️ HR update throttled, cached for next update")
-            return
-        }
-        lastHeartRateUpdateTime = now
-
-        print("[LiveActivity] 💓 HR update: \(heartRate?.description ?? "nil")")
-
-        Task {
-            await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
-            // Update nur die Herzfrequenz, behalte anderen State bei
-            guard let activity = self.activity else { return }
-            let currentState = await activity.content.state
-            let newState = WorkoutActivityAttributes.ContentState(
-                remainingSeconds: currentState.remainingSeconds,
-                totalSeconds: currentState.totalSeconds,
-                title: currentState.title,
-                exerciseName: currentState.exerciseName,
-                isTimerExpired: currentState.isTimerExpired,
-                currentHeartRate: heartRate,
-                timerEndDate: currentState.timerEndDate
-            )
-            await updateState(state: newState)
-        }
-    }
-
-    func showRestEnded(workoutId: UUID, workoutName: String) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            print("[LiveActivity] ❌ showRestEnded: Activities not enabled")
-            return
+                print("[LiveActivity] ✅ Alert sent successfully")
+            }
         }
 
-        print("[LiveActivity] 🔔 showRestEnded called - sending alert notification")
+        func end() {
+            guard let activity else { return }
 
-        // Check notification settings
-        #if canImport(UIKit)
-        Task {
-            let center = UNUserNotificationCenter.current()
-            let settings = await center.notificationSettings()
-            print("[LiveActivity] 📱 Notification settings: authStatus=\(settings.authorizationStatus.rawValue), alertStyle=\(settings.alertStyle.rawValue)")
-            print("[LiveActivity] 📱 Alerts enabled: \(settings.alertSetting.rawValue), Sounds: \(settings.soundSetting.rawValue)")
+            // Performance: Clear all state to prevent further updates
+            let activityToEnd = activity
+            self.activity = nil
+            self.currentHeartRate = nil
+            self.lastTimerUpdateTime = nil
+            self.lastHeartRateUpdateTime = nil
+            self.lastSentState = nil
+
+            Task {
+                let closingState = WorkoutActivityAttributes.ContentState(
+                    remainingSeconds: 0,
+                    totalSeconds: 1,
+                    title: "Workout beendet",
+                    exerciseName: nil,
+                    isTimerExpired: false,
+                    currentHeartRate: nil,
+                    timerEndDate: nil
+                )
+
+                await activityToEnd.end(using: closingState, dismissalPolicy: .immediate)
+                print("[LiveActivity] ✅ Activity beendet")
+            }
         }
-        #endif
 
-        Task {
-            await ensureActivityExists(workoutId: workoutId, workoutName: workoutName)
-            let state = WorkoutActivityAttributes.ContentState(
+        func testLiveActivity() {
+            print("[LiveActivity] === Testing Live Activity functionality ===")
+
+            #if canImport(ActivityKit)
+                print("[LiveActivity] ActivityKit available: ✅")
+
+                let authInfo = ActivityAuthorizationInfo()
+                print("[LiveActivity] Activities enabled: \(authInfo.areActivitiesEnabled)")
+                print(
+                    "[LiveActivity] App in foreground: \(UIApplication.shared.applicationState == .active)"
+                )
+
+                // Check if we're running in simulator
+                #if targetEnvironment(simulator)
+                    print(
+                        "[LiveActivity] ⚠️ Running in simulator - Live Activities may have limitations"
+                    )
+                #endif
+
+                // Check Info.plist configuration
+                if let supportsLiveActivities = Bundle.main.object(
+                    forInfoDictionaryKey: "NSSupportsLiveActivities") as? Bool
+                {
+                    print(
+                        "[LiveActivity] NSSupportsLiveActivities in Info.plist: \(supportsLiveActivities)"
+                    )
+                    if !supportsLiveActivities {
+                        print("[LiveActivity] ❌ NSSupportsLiveActivities ist auf false gesetzt!")
+                        print(
+                            "[LiveActivity] 💡 Setzen Sie NSSupportsLiveActivities auf true in Info.plist"
+                        )
+                    }
+                } else {
+                    print("[LiveActivity] ❌ NSSupportsLiveActivities fehlt in Info.plist!")
+                    print(
+                        "[LiveActivity] 💡 Fügen Sie NSSupportsLiveActivities=true zur Info.plist hinzu"
+                    )
+                    print("[LiveActivity] 📝 Anleitung:")
+                    print("[LiveActivity]    1. Öffnen Sie Info.plist")
+                    print(
+                        "[LiveActivity]    2. Fügen Sie hinzu: <key>NSSupportsLiveActivities</key><true/>"
+                    )
+                    print("[LiveActivity]    3. Projekt neu builden")
+                    return
+                }
+
+                if !authInfo.areActivitiesEnabled {
+                    print("[LiveActivity] ❌ Live Activities nicht aktiviert")
+                    if Bundle.main.object(forInfoDictionaryKey: "NSSupportsLiveActivities") as? Bool
+                        == true
+                    {
+                        print(
+                            "[LiveActivity] 💡 Info.plist ist korrekt, aber Live Activities sind deaktiviert"
+                        )
+                        print(
+                            "[LiveActivity] 📱 Nach Info.plist Änderung sollte der Schalter in den Einstellungen erscheinen"
+                        )
+                        print(
+                            "[LiveActivity] 🔄 Versuchen Sie: App komplett schließen und neu starten"
+                        )
+                    } else {
+                        print(
+                            "[LiveActivity] 💡 Gehen Sie zu: Einstellungen > [App Name] > Live Activities"
+                        )
+                    }
+                    return
+                }
+
+                Task {
+                    print("[LiveActivity] Starting test activity...")
+                    await startOrUpdateGeneralState(workoutId: UUID(), workoutName: "Test Workout")
+
+                    // Test update after 2 seconds
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    print("[LiveActivity] Updating test activity...")
+                    await updateState(
+                        remaining: 30,
+                        total: 60,
+                        title: "Test Pause",
+                        exerciseName: "Test Exercise",
+                        isTimerExpired: false,
+                        heartRate: 145,
+                        timerEndDate: Date().addingTimeInterval(30)
+                    )
+
+                    // Auto-end after 10 seconds
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                    print("[LiveActivity] Ending test activity...")
+                    end()
+                }
+            #else
+                print("[LiveActivity] ❌ ActivityKit not available")
+            #endif
+        }
+
+        // MARK: - Private
+
+        private func ensureActivityExists(workoutId: UUID, workoutName: String) async {
+            if activity == nil {
+                await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName)
+            }
+        }
+
+        private func startOrUpdateGeneralState(workoutId: UUID, workoutName: String) async {
+            let baseState = WorkoutActivityAttributes.ContentState(
                 remainingSeconds: 0,
                 totalSeconds: 1,
-                title: "Pause beendet",
+                title: "Workout läuft",
                 exerciseName: nil,
-                isTimerExpired: true,
+                isTimerExpired: false,
                 currentHeartRate: currentHeartRate,
                 timerEndDate: nil
             )
 
-            print("[LiveActivity] 🔔 Sending alert with title: 'Weiter geht's. 💪🏼'")
-
-            await updateState(state: state, alertConfig: .init(
-                title: "Weiter geht's. 💪🏼",
-                body: "Die Pause ist vorbei",
-                sound: .default
-            ))
-
-            print("[LiveActivity] ✅ Alert sent successfully")
-        }
-    }
-
-    func end() {
-        guard let activity else { return }
-
-        // Performance: Clear all state to prevent further updates
-        let activityToEnd = activity
-        self.activity = nil
-        self.currentHeartRate = nil
-        self.lastTimerUpdateTime = nil
-        self.lastHeartRateUpdateTime = nil
-        self.lastSentState = nil
-
-        Task {
-            let closingState = WorkoutActivityAttributes.ContentState(
-                remainingSeconds: 0,
-                totalSeconds: 1,
-                title: "Workout beendet",
-                exerciseName: nil,
-                isTimerExpired: false,
-                currentHeartRate: nil,
-                timerEndDate: nil
-            )
-
-            await activityToEnd.end(using: closingState, dismissalPolicy: .immediate)
-            print("[LiveActivity] ✅ Activity beendet")
-        }
-    }
-    
-    func testLiveActivity() {
-        print("[LiveActivity] === Testing Live Activity functionality ===")
-        
-        #if canImport(ActivityKit)
-        print("[LiveActivity] ActivityKit available: ✅")
-        
-        let authInfo = ActivityAuthorizationInfo()
-        print("[LiveActivity] Activities enabled: \(authInfo.areActivitiesEnabled)")
-        print("[LiveActivity] App in foreground: \(UIApplication.shared.applicationState == .active)")
-        
-        // Check if we're running in simulator
-        #if targetEnvironment(simulator)
-        print("[LiveActivity] ⚠️ Running in simulator - Live Activities may have limitations")
-        #endif
-        
-        // Check Info.plist configuration
-        if let supportsLiveActivities = Bundle.main.object(forInfoDictionaryKey: "NSSupportsLiveActivities") as? Bool {
-            print("[LiveActivity] NSSupportsLiveActivities in Info.plist: \(supportsLiveActivities)")
-            if !supportsLiveActivities {
-                print("[LiveActivity] ❌ NSSupportsLiveActivities ist auf false gesetzt!")
-                print("[LiveActivity] 💡 Setzen Sie NSSupportsLiveActivities auf true in Info.plist")
+            if let activity {
+                do {
+                    await activity.update(using: baseState)
+                    print("[LiveActivity] Updated existing activity: \(activity.id)")
+                } catch {
+                    print("[LiveActivity] Failed to update activity: \(error.localizedDescription)")
+                }
+                return
             }
-        } else {
-            print("[LiveActivity] ❌ NSSupportsLiveActivities fehlt in Info.plist!")
-            print("[LiveActivity] 💡 Fügen Sie NSSupportsLiveActivities=true zur Info.plist hinzu")
-            print("[LiveActivity] 📝 Anleitung:")
-            print("[LiveActivity]    1. Öffnen Sie Info.plist")
-            print("[LiveActivity]    2. Fügen Sie hinzu: <key>NSSupportsLiveActivities</key><true/>")
-            print("[LiveActivity]    3. Projekt neu builden")
-            return
-        }
-        
-        if !authInfo.areActivitiesEnabled {
-            print("[LiveActivity] ❌ Live Activities nicht aktiviert")
-            if Bundle.main.object(forInfoDictionaryKey: "NSSupportsLiveActivities") as? Bool == true {
-                print("[LiveActivity] 💡 Info.plist ist korrekt, aber Live Activities sind deaktiviert")
-                print("[LiveActivity] 📱 Nach Info.plist Änderung sollte der Schalter in den Einstellungen erscheinen")
-                print("[LiveActivity] 🔄 Versuchen Sie: App komplett schließen und neu starten")
-            } else {
-                print("[LiveActivity] 💡 Gehen Sie zu: Einstellungen > [App Name] > Live Activities")
-            }
-            return
-        }
-        
-        Task {
-            print("[LiveActivity] Starting test activity...")
-            await startOrUpdateGeneralState(workoutId: UUID(), workoutName: "Test Workout")
-            
-            // Test update after 2 seconds
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            print("[LiveActivity] Updating test activity...")
-            await updateState(
-                remaining: 30,
-                total: 60,
-                title: "Test Pause",
-                exerciseName: "Test Exercise",
-                isTimerExpired: false,
-                heartRate: 145,
-                timerEndDate: Date().addingTimeInterval(30)
-            )
-            
-            // Auto-end after 10 seconds
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
-            print("[LiveActivity] Ending test activity...")
-            end()
-        }
-        #else
-        print("[LiveActivity] ❌ ActivityKit not available")
-        #endif
-    }
 
-    // MARK: - Private
+            let attributes = WorkoutActivityAttributes(
+                workoutId: workoutId, workoutName: workoutName, startDate: Date())
 
-    private func ensureActivityExists(workoutId: UUID, workoutName: String) async {
-        if activity == nil {
-            await startOrUpdateGeneralState(workoutId: workoutId, workoutName: workoutName)
-        }
-    }
-
-    private func startOrUpdateGeneralState(workoutId: UUID, workoutName: String) async {
-        let baseState = WorkoutActivityAttributes.ContentState(
-            remainingSeconds: 0,
-            totalSeconds: 1,
-            title: "Workout läuft",
-            exerciseName: nil,
-            isTimerExpired: false,
-            currentHeartRate: currentHeartRate,
-            timerEndDate: nil
-        )
-
-        if let activity {
             do {
-                await activity.update(using: baseState)
-                print("[LiveActivity] Updated existing activity: \(activity.id)")
+                let newActivity = try Activity.request(
+                    attributes: attributes, contentState: baseState, pushType: nil)
+                activity = newActivity
+                print("[LiveActivity] Successfully started activity: \(newActivity.id)")
             } catch {
-                print("[LiveActivity] Failed to update activity: \(error.localizedDescription)")
+                print("[LiveActivity] Failed to start: \(error.localizedDescription)")
+                print("[LiveActivity] Error details: \(error)")
+
+                // Handle specific ActivityKit errors
+                if let nsError = error as NSError? {
+                    print("[LiveActivity] Error domain: \(nsError.domain), code: \(nsError.code)")
+                    print("[LiveActivity] User info: \(nsError.userInfo)")
+
+                    switch nsError.domain {
+                    case "ActivityKitErrorDomain":
+                        switch nsError.code {
+                        case 1:  // Activity not enabled
+                            print("[LiveActivity] ❌ Activities are not enabled for this app")
+                            print("[LiveActivity] 💡 Enable in Settings > [App] > Live Activities")
+                        case 2:  // Activity limit exceeded
+                            print("[LiveActivity] ❌ Too many active activities (max 8)")
+                        case 3:  // Activity disabled
+                            print("[LiveActivity] ❌ Live Activities are disabled system-wide")
+                        case 4:  // Invalid request
+                            print("[LiveActivity] ❌ Invalid activity request")
+                        default:
+                            print("[LiveActivity] ❌ ActivityKit error code: \(nsError.code)")
+                        }
+                    case "NSOSStatusErrorDomain":
+                        switch nsError.code {
+                        case -54:
+                            print(
+                                "[LiveActivity] ⚠️ LaunchServices database error - this is often temporary"
+                            )
+                            print(
+                                "[LiveActivity] 💡 Try: Clean build folder, restart Xcode/Simulator, or reboot device"
+                            )
+                        default:
+                            print("[LiveActivity] ❌ OS Status error code: \(nsError.code)")
+                        }
+                    default:
+                        print(
+                            "[LiveActivity] ❌ Other error domain: \(nsError.domain), code: \(nsError.code)"
+                        )
+                    }
+                }
             }
-            return
         }
 
-        let attributes = WorkoutActivityAttributes(workoutId: workoutId, workoutName: workoutName, startDate: Date())
+        private func updateState(
+            remaining: Int, total: Int, title: String, exerciseName: String?, isTimerExpired: Bool,
+            heartRate: Int? = nil, timerEndDate: Date? = nil
+        ) async {
+            let state = WorkoutActivityAttributes.ContentState(
+                remainingSeconds: remaining,
+                totalSeconds: max(total, 1),
+                title: title,
+                exerciseName: exerciseName,
+                isTimerExpired: isTimerExpired,
+                currentHeartRate: heartRate,
+                timerEndDate: timerEndDate
+            )
+            await updateState(state: state)
+        }
 
-        do {
-            let newActivity = try Activity.request(attributes: attributes, contentState: baseState, pushType: nil)
-            activity = newActivity
-            print("[LiveActivity] Successfully started activity: \(newActivity.id)")
-        } catch {
-            print("[LiveActivity] Failed to start: \(error.localizedDescription)")
-            print("[LiveActivity] Error details: \(error)")
-            
-            // Handle specific ActivityKit errors
-            if let nsError = error as NSError? {
-                print("[LiveActivity] Error domain: \(nsError.domain), code: \(nsError.code)")
-                print("[LiveActivity] User info: \(nsError.userInfo)")
-                
-                switch nsError.domain {
-                case "ActivityKitErrorDomain":
-                    switch nsError.code {
-                    case 1: // Activity not enabled
-                        print("[LiveActivity] ❌ Activities are not enabled for this app")
-                        print("[LiveActivity] 💡 Enable in Settings > [App] > Live Activities")
-                    case 2: // Activity limit exceeded
-                        print("[LiveActivity] ❌ Too many active activities (max 8)")
-                    case 3: // Activity disabled
-                        print("[LiveActivity] ❌ Live Activities are disabled system-wide")
-                    case 4: // Invalid request
-                        print("[LiveActivity] ❌ Invalid activity request")
-                    default:
-                        print("[LiveActivity] ❌ ActivityKit error code: \(nsError.code)")
-                    }
-                case "NSOSStatusErrorDomain":
-                    switch nsError.code {
-                    case -54:
-                        print("[LiveActivity] ⚠️ LaunchServices database error - this is often temporary")
-                        print("[LiveActivity] 💡 Try: Clean build folder, restart Xcode/Simulator, or reboot device")
-                    default:
-                        print("[LiveActivity] ❌ OS Status error code: \(nsError.code)")
-                    }
-                default:
-                    print("[LiveActivity] ❌ Other error domain: \(nsError.domain), code: \(nsError.code)")
+        private func updateState(
+            state: WorkoutActivityAttributes.ContentState, alertConfig: AlertConfiguration? = nil
+        ) async {
+            guard let activity else {
+                print("[LiveActivity] ⚠️ Update fehlgeschlagen - keine aktive Activity")
+                return
+            }
+
+            do {
+                if let alert = alertConfig {
+                    print(
+                        "[LiveActivity] 🔔 Updating with alert: title='\(alert.title)', body='\(alert.body)', sound=\(alert.sound)"
+                    )
+                }
+                await activity.update(using: state, alertConfiguration: alertConfig)
+                print(
+                    "[LiveActivity] ✅ Update erfolgreich - remaining: \(state.remainingSeconds)s, expired: \(state.isTimerExpired), hasAlert: \(alertConfig != nil)"
+                )
+            } catch {
+                print("[LiveActivity] ❌ Update fehlgeschlagen: \(error.localizedDescription)")
+                if let nsError = error as NSError? {
+                    print("[LiveActivity] Error domain: \(nsError.domain), code: \(nsError.code)")
+                    print("[LiveActivity] User info: \(nsError.userInfo)")
                 }
             }
         }
     }
 
-    private func updateState(remaining: Int, total: Int, title: String, exerciseName: String?, isTimerExpired: Bool, heartRate: Int? = nil, timerEndDate: Date? = nil) async {
-        let state = WorkoutActivityAttributes.ContentState(
-            remainingSeconds: remaining,
-            totalSeconds: max(total, 1),
-            title: title,
-            exerciseName: exerciseName,
-            isTimerExpired: isTimerExpired,
-            currentHeartRate: heartRate,
-            timerEndDate: timerEndDate
-        )
-        await updateState(state: state)
-    }
+    // MARK: - RestTimerState Integration (Phase 3)
 
-    private func updateState(state: WorkoutActivityAttributes.ContentState, alertConfig: AlertConfiguration? = nil) async {
-        guard let activity else {
-            print("[LiveActivity] ⚠️ Update fehlgeschlagen - keine aktive Activity")
-            return
+    @available(iOS 16.1, *)
+    extension WorkoutLiveActivityController {
+
+        /// Updates Live Activity based on RestTimerState
+        ///
+        /// This is the main entry point for the new notification system.
+        /// Maps RestTimerState to appropriate Live Activity updates.
+        ///
+        /// - Parameter state: Current timer state (nil = no active timer)
+        func updateForState(_ state: RestTimerState?) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                print("[LiveActivity] ❌ Activities not enabled")
+                return
+            }
+
+            guard let state = state else {
+                // No active timer - clear rest display
+                print("[LiveActivity] 🔄 No active state - clearing rest")
+                Task {
+                    await ensureActivityExists(workoutId: UUID(), workoutName: "Workout")
+                    await startOrUpdateGeneralState(workoutId: UUID(), workoutName: "Workout läuft")
+                }
+                return
+            }
+
+            Task {
+                await ensureActivityExists(
+                    workoutId: state.workoutId, workoutName: state.workoutName)
+
+                switch state.phase {
+                case .running:
+                    await updateRunningState(state)
+
+                case .paused:
+                    await updatePausedState(state)
+
+                case .expired:
+                    await updateExpiredState(state)
+
+                case .completed:
+                    // Completed = timer acknowledged, clear rest display
+                    await startOrUpdateGeneralState(
+                        workoutId: state.workoutId, workoutName: state.workoutName)
+                }
+            }
         }
 
-        do {
-            if let alert = alertConfig {
-                print("[LiveActivity] 🔔 Updating with alert: title='\(alert.title)', body='\(alert.body)', sound=\(alert.sound)")
+        /// Shows expiration alert in Dynamic Island (Extended UI)
+        ///
+        /// This creates a prominent alert with haptic feedback and sound.
+        /// Only works if Live Activity is already active.
+        ///
+        /// - Parameter state: The expired timer state
+        func showExpirationAlert(for state: RestTimerState) {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                print("[LiveActivity] ❌ showExpirationAlert: Activities not enabled")
+                return
             }
-            await activity.update(using: state, alertConfiguration: alertConfig)
-            print("[LiveActivity] ✅ Update erfolgreich - remaining: \(state.remainingSeconds)s, expired: \(state.isTimerExpired), hasAlert: \(alertConfig != nil)")
-        } catch {
-            print("[LiveActivity] ❌ Update fehlgeschlagen: \(error.localizedDescription)")
-            if let nsError = error as NSError? {
-                print("[LiveActivity] Error domain: \(nsError.domain), code: \(nsError.code)")
-                print("[LiveActivity] User info: \(nsError.userInfo)")
+
+            print("[LiveActivity] 🔔 showExpirationAlert called")
+
+            Task {
+                await ensureActivityExists(
+                    workoutId: state.workoutId, workoutName: state.workoutName)
+
+                let contentState = WorkoutActivityAttributes.ContentState(
+                    remainingSeconds: 0,
+                    totalSeconds: state.totalSeconds,
+                    title: "Pause beendet",
+                    exerciseName: state.nextExerciseName ?? state.currentExerciseName,
+                    isTimerExpired: true,
+                    currentHeartRate: state.currentHeartRate,
+                    timerEndDate: nil
+                )
+
+                // Create alert with custom title/body
+                let alertConfig = AlertConfiguration(
+                    title: "Weiter geht's! 💪🏼",
+                    body: state.nextExerciseName != nil
+                        ? "Nächste Übung: \(state.nextExerciseName!)"
+                        : "Die Pause ist vorbei",
+                    sound: .default
+                )
+
+                await updateState(state: contentState, alertConfig: alertConfig)
+
+                print("[LiveActivity] ✅ Expiration alert sent")
             }
         }
+
+        // MARK: - Private State Handlers
+
+        private func updateRunningState(_ state: RestTimerState) async {
+            // Check if this is an important update or can be throttled
+            let isImportantUpdate =
+                lastSentState == nil || lastSentState?.remainingSeconds == 0
+                || lastSentState?.heartRate != state.currentHeartRate
+
+            let now = Date()
+            if !isImportantUpdate,
+                let lastUpdate = lastTimerUpdateTime,
+                now.timeIntervalSince(lastUpdate) < 10.0
+            {
+                // Skip - timer self-updates via timerEndDate
+                return
+            }
+
+            lastTimerUpdateTime = now
+            lastSentState = (
+                remainingSeconds: state.remainingSeconds, heartRate: state.currentHeartRate
+            )
+
+            let contentState = WorkoutActivityAttributes.ContentState(
+                remainingSeconds: state.remainingSeconds,
+                totalSeconds: state.totalSeconds,
+                title: "Pause",
+                exerciseName: state.currentExerciseName,
+                isTimerExpired: false,
+                currentHeartRate: state.currentHeartRate,
+                timerEndDate: state.endDate
+            )
+
+            await updateState(state: contentState)
+
+            print(
+                "[LiveActivity] ✅ Running state updated: \(state.remainingSeconds)s / \(state.totalSeconds)s"
+            )
+        }
+
+        private func updatePausedState(_ state: RestTimerState) async {
+            let contentState = WorkoutActivityAttributes.ContentState(
+                remainingSeconds: state.remainingSeconds,
+                totalSeconds: state.totalSeconds,
+                title: "Pause (pausiert)",
+                exerciseName: state.currentExerciseName,
+                isTimerExpired: false,
+                currentHeartRate: state.currentHeartRate,
+                timerEndDate: nil  // No end date when paused
+            )
+
+            await updateState(state: contentState)
+
+            print("[LiveActivity] ✅ Paused state updated")
+        }
+
+        private func updateExpiredState(_ state: RestTimerState) async {
+            let contentState = WorkoutActivityAttributes.ContentState(
+                remainingSeconds: 0,
+                totalSeconds: state.totalSeconds,
+                title: "Pause beendet",
+                exerciseName: state.nextExerciseName ?? state.currentExerciseName,
+                isTimerExpired: true,
+                currentHeartRate: state.currentHeartRate,
+                timerEndDate: nil
+            )
+
+            await updateState(state: contentState)
+
+            print("[LiveActivity] ✅ Expired state updated")
+        }
     }
-}
 
 #else
-final class WorkoutLiveActivityController {
-    static let shared = WorkoutLiveActivityController()
-    private init() {}
+    final class WorkoutLiveActivityController {
+        static let shared = WorkoutLiveActivityController()
+        private init() {}
 
-    func start(workoutName: String) {}
-    func updateRest(workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int) {}
-    func clearRest(workoutName: String) {}
-    func showRestEnded(workoutName: String) {}
-    func end() {}
-}
+        func start(workoutName: String) {}
+        func updateRest(
+            workoutName: String, exerciseName: String?, remainingSeconds: Int, totalSeconds: Int
+        ) {}
+        func clearRest(workoutName: String) {}
+        func showRestEnded(workoutName: String) {}
+        func end() {}
+
+        // Phase 3 stubs
+        func updateForState(_ state: RestTimerState?) {}
+        func showExpirationAlert(for state: RestTimerState) {}
+    }
 #endif

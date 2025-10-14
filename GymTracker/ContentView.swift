@@ -108,6 +108,57 @@ struct ContentView: View {
     @State private var showingEndWorkoutConfirmation = false
 
     var body: some View {
+        contentWithModifiers
+    }
+
+    private var contentWithModifiers: some View {
+        tabContent
+            .overlay(alignment: .bottom) {
+                activeWorkoutBarOverlay
+            }
+            .overlay {
+                restTimerOverlay
+            }
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
+            .animation(
+                .spring(response: 0.3, dampingFraction: 0.8), value: overlayManager.isShowingOverlay
+            )
+            .tint(AppTheme.powerOrange)
+            .environment(\.keyboardDismissalEnabled, true)
+            .alert("Workout beenden?", isPresented: $showingEndWorkoutConfirmation) {
+                Button("Beenden", role: .destructive) {
+                    endActiveSession()
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Das aktive Workout wird beendet und gelöscht.")
+            }
+            .onAppear(perform: setupView)
+            .task {
+                await NotificationManager.shared.requestAuthorization()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateToActiveWorkout)) {
+                (_: Notification) in
+                handleNavigateToActiveWorkout()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .restTimerNotificationTapped)) {
+                (notification: Notification) in
+                if let workoutId = notification.userInfo?["workoutId"] as? UUID {
+                    handleNavigateToWorkout(workoutId)
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                handleScenePhaseChange(newPhase)
+            }
+            .onOpenURL { url in
+                handleOpenURL(url)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkoutsTab)) { _ in
+                handleNavigateToWorkoutsTab()
+            }
+    }
+
+    private var tabContent: some View {
         TabView(selection: $selectedTab) {
             // Workouts Tab
             NavigationStack {
@@ -142,146 +193,155 @@ struct ContentView: View {
             }
             .tag(2)
         }
-        .overlay(alignment: .bottom) {
-            // ActiveWorkoutBar wird angezeigt wenn ein aktives Workout existiert (aber nicht in WorkoutDetailView)
-            if let activeWorkout = workoutStore.activeWorkout, !workoutStore.isShowingWorkoutDetail
-            {
-                VStack(spacing: 0) {
-                    Spacer()
+    }
 
-                    ActiveWorkoutBar(
-                        workout: activeWorkout,
-                        resumeAction: {
-                            // Switch to Home tab and signal to navigate to active workout
-                            selectedTab = 0
-                            NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
-                        },
-                        endAction: { showingEndWorkoutConfirmation = true }
-                    )
-                    .environmentObject(workoutStore)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 90)  // Platz für die Tab-Bar (ca. 50px TabBar + 40px Spacing)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(
-                        .spring(response: 0.35, dampingFraction: 0.8),
-                        value: workoutStore.isShowingWorkoutDetail
-                    )
-                    .animation(
-                        .spring(response: 0.35, dampingFraction: 0.8),
-                        value: workoutStore.activeWorkout?.id)
-                }
-                .ignoresSafeArea(.keyboard)
-            }
-        }
-        .overlay {
-            // Rest Timer Expired Overlay
-            if overlayManager.isShowingOverlay, let state = overlayManager.currentState {
-                RestTimerExpiredOverlay(state: state) {
-                    overlayManager.dismissOverlay()
-                    // Acknowledge expiration in state manager
-                    workoutStore.restTimerStateManager?.acknowledgeExpired()
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                .zIndex(999)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: selectedTab)
-        .animation(
-            .spring(response: 0.3, dampingFraction: 0.8), value: overlayManager.isShowingOverlay
-        )
-        .tint(AppTheme.powerOrange)
-        .environment(\.keyboardDismissalEnabled, true)
-        .alert("Workout beenden?", isPresented: $showingEndWorkoutConfirmation) {
-            Button("Beenden", role: .destructive) {
-                endActiveSession()
-            }
-            Button("Abbrechen", role: .cancel) {}
-        } message: {
-            Text("Das aktive Workout wird beendet und gelöscht.")
-        }
-        .onAppear {
-            // Set model context in WorkoutStore immediately when view appears
-            workoutStore.modelContext = modelContext
-
-            // Pass overlayManager to workoutStore for rest timer integration
-            workoutStore.overlayManager = overlayManager
-
-            // Connect overlayManager to RestTimerStateManager (Phase 2)
-            workoutStore.restTimerStateManager?.overlayManager = overlayManager
-
-            // Restore active workout state from UserDefaults (after Force Quit)
-            if let workoutIDString = UserDefaults.standard.string(forKey: "activeWorkoutID"),
-                let workoutID = UUID(uuidString: workoutIDString)
-            {
-                // Verify workout still exists
-                let descriptor = FetchDescriptor<WorkoutEntity>(
-                    predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
-                )
-                if (try? modelContext.fetch(descriptor).first) != nil {
-                    print("✅ Restoring active workout from persisted state: \(workoutID)")
-                    workoutStore.activeSessionID = workoutID
-
-                    // Restore rest timer state if exists
-                    workoutStore.restorePersistedRestState()
-                } else {
-                    print("⚠️ Persisted workout not found → clearing state")
-                    UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
-                }
-            }
-
-            // Initialize AudioManager
-            _ = AudioManager.shared
-
-            // Performance: Pre-warm keyboard to avoid initial delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                let textField = UITextField()
-                textField.becomeFirstResponder()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    textField.resignFirstResponder()
-                }
-                keyboardPreWarmer = textField
-            }
-        }
-        .task {
-            NotificationManager.shared.requestAuthorization()
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            switch newPhase {
-            case .active:
-                workoutStore.refreshRestFromWallClock()
-            case .background:
-                // Memory: Cleanup caches and timers when app goes to background
-                workoutStore.performMemoryCleanup()
-            default:
-                break
-            }
-        }
-        .onOpenURL { url in
-            // Handle .gymtracker file import
-            if url.pathExtension.lowercased() == "gymtracker" {
-                importWorkout(from: url)
-                return
-            }
-
-            // Handle deep link from Live Activity to jump into the active workout
-            guard url.scheme?.lowercased() == "workout" else { return }
-            if url.host?.lowercased() == "active" {
-                if workoutStore.activeSessionID != nil {
-                    // Switch to Home tab first
-                    selectedTab = 0
-                    // Then signal the WorkoutsHomeView to navigate to active workout
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+    @ViewBuilder
+    private var activeWorkoutBarOverlay: some View {
+        if let activeWorkout = workoutStore.activeWorkout, !workoutStore.isShowingWorkoutDetail {
+            VStack(spacing: 0) {
+                Spacer()
+                ActiveWorkoutBar(
+                    workout: activeWorkout,
+                    resumeAction: {
+                        selectedTab = 0
                         NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
-                    }
+                    },
+                    endAction: { showingEndWorkoutConfirmation = true }
+                )
+                .environmentObject(workoutStore)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 90)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(
+                    .spring(response: 0.35, dampingFraction: 0.8),
+                    value: workoutStore.isShowingWorkoutDetail
+                )
+                .animation(
+                    .spring(response: 0.35, dampingFraction: 0.8),
+                    value: workoutStore.activeWorkout?.id)
+            }
+            .ignoresSafeArea(.keyboard)
+        }
+    }
+
+    @ViewBuilder
+    private var restTimerOverlay: some View {
+        if overlayManager.isShowingOverlay, let state = overlayManager.currentState {
+            RestTimerExpiredOverlay(state: state) {
+                overlayManager.dismissOverlay()
+                workoutStore.restTimerStateManager.acknowledgeExpired()
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            .zIndex(999)
+        }
+    }
+
+    private func setupView() {
+        // Set model context in WorkoutStore immediately when view appears
+        workoutStore.modelContext = modelContext
+
+        // Pass overlayManager to workoutStore for rest timer integration
+        workoutStore.overlayManager = overlayManager
+
+        // Connect overlayManager to RestTimerStateManager (Phase 2)
+        workoutStore.restTimerStateManager.overlayManager = overlayManager
+
+        // Restore active workout state from UserDefaults (after Force Quit)
+        if let workoutIDString = UserDefaults.standard.string(forKey: "activeWorkoutID"),
+            let workoutID = UUID(uuidString: workoutIDString)
+        {
+            // Verify workout still exists
+            let descriptor = FetchDescriptor<WorkoutEntity>(
+                predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
+            )
+            if (try? modelContext.fetch(descriptor).first) != nil {
+                print("✅ Restoring active workout from persisted state: \(workoutID)")
+                workoutStore.activeSessionID = workoutID
+
+                // Restore rest timer state if exists
+                workoutStore.restorePersistedRestState()
+            } else {
+                print("⚠️ Persisted workout not found → clearing state")
+                UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
+            }
+        }
+
+        // Initialize AudioManager
+        _ = AudioManager.shared
+
+        // Performance: Pre-warm keyboard to avoid initial delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let textField = UITextField()
+            textField.becomeFirstResponder()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                textField.resignFirstResponder()
+            }
+            keyboardPreWarmer = textField
+        }
+    }
+
+    private func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            workoutStore.refreshRestFromWallClock()
+        case .background:
+            workoutStore.performMemoryCleanup()
+        default:
+            break
+        }
+    }
+
+    private func handleOpenURL(_ url: URL) {
+        // Handle .gymtracker file import
+        if url.pathExtension.lowercased() == "gymtracker" {
+            importWorkout(from: url)
+            return
+        }
+
+        // Handle deep link from Live Activity
+        guard url.scheme?.lowercased() == "workout" else { return }
+        if url.host?.lowercased() == "active" {
+            if workoutStore.activeSessionID != nil {
+                selectedTab = 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkoutsTab)) { _ in
+    }
+
+    private func handleNavigateToWorkoutsTab() {
+        selectedTab = 1
+        if !workoutStore.userProfile.hasExploredWorkouts {
+            workoutStore.markOnboardingStep(hasExploredWorkouts: true)
+        }
+    }
+
+    // MARK: - Deep Link Navigation (Phase 5)
+
+    private func handleNavigateToActiveWorkout() {
+        guard let activeWorkoutId: UUID = workoutStore.activeSessionID else {
+            AppLogger.app.warning("No active workout to navigate to")
+            return
+        }
+
+        AppLogger.app.info("🔗 Navigating to active workout: \(activeWorkoutId)")
+        selectedTab = 0
+        NotificationCenter.default.post(name: .resumeActiveWorkout, object: nil)
+    }
+
+    private func handleNavigateToWorkout(_ workoutId: UUID) {
+        AppLogger.app.info("🔗 Navigating to workout: \(workoutId)")
+
+        if workoutStore.activeSessionID == workoutId {
+            handleNavigateToActiveWorkout()
+        } else {
             selectedTab = 1
-            // Mark "explored workouts" as completed when user navigates to Workouts tab
-            if !workoutStore.userProfile.hasExploredWorkouts {
-                workoutStore.markOnboardingStep(hasExploredWorkouts: true)
-            }
+            NotificationCenter.default.post(
+                name: NSNotification.Name("showWorkoutDetail"),
+                object: nil,
+                userInfo: ["workoutId": workoutId]
+            )
         }
     }
 

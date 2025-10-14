@@ -1,10 +1,18 @@
-import SwiftUI
-import SwiftData
 import Foundation
 import OSLog
+import SwiftData
+import SwiftUI
+
 #if canImport(ActivityKit)
-import ActivityKit
+    import ActivityKit
 #endif
+
+// MARK: - Deep Link Notification Names
+
+extension Notification.Name {
+    /// Posted when app should navigate to active workout (from deep link)
+    static let navigateToActiveWorkout = Notification.Name("navigateToActiveWorkout")
+}
 
 @main
 struct GymTrackerApp: App {
@@ -16,55 +24,59 @@ struct GymTrackerApp: App {
     @State private var showStorageWarning = false
 
     // Shared container with robust fallback chain
-    static let containerResult: (container: ModelContainer, location: ModelContainerFactory.StorageLocation) = {
-        let schema = Schema([
-            ExerciseEntity.self,
-            ExerciseSetEntity.self,
-            WorkoutExerciseEntity.self,
-            WorkoutEntity.self,
-            WorkoutSessionEntity.self,
-            UserProfileEntity.self,
-            ExerciseRecordEntity.self,
-            WorkoutFolderEntity.self
-        ])
+    static let containerResult:
+        (container: ModelContainer, location: ModelContainerFactory.StorageLocation) = {
+            let schema = Schema([
+                ExerciseEntity.self,
+                ExerciseSetEntity.self,
+                WorkoutExerciseEntity.self,
+                WorkoutEntity.self,
+                WorkoutSessionEntity.self,
+                UserProfileEntity.self,
+                ExerciseRecordEntity.self,
+                WorkoutFolderEntity.self,
+            ])
 
-        // Check storage health before attempting creation
-        let health = ModelContainerFactory.checkStorageHealth()
-        AppLogger.app.info("Storage health check:\n\(health.summary)")
+            // Check storage health before attempting creation
+            let health = ModelContainerFactory.checkStorageHealth()
+            AppLogger.app.info("Storage health check:\n\(health.summary)")
 
-        if health.hasCriticalIssues {
-            AppLogger.app.warning("Critical storage issues detected, but attempting creation anyway")
-        }
-
-        // Use schema with lightweight migration support
-        // SwiftData will automatically migrate when new properties have default values
-        let result = ModelContainerFactory.createContainer(schema: schema)
-
-        switch result {
-        case .success(let container, let location):
-            if !location.isPersistent {
-                AppLogger.app.warning("⚠️ Using \(location.rawValue) storage - data may be temporary!")
+            if health.hasCriticalIssues {
+                AppLogger.app.warning(
+                    "Critical storage issues detected, but attempting creation anyway")
             }
-            return (container, location)
 
-        case .failure(let error):
-            // This should never happen since in-memory is always available
-            // But if it does, we need a fallback container for the app to start
-            AppLogger.app.critical("Container creation completely failed: \(error.localizedDescription)")
+            // Use schema with lightweight migration support
+            // SwiftData will automatically migrate when new properties have default values
+            let result = ModelContainerFactory.createContainer(schema: schema)
 
-            // Last resort: try one more in-memory container
-            do {
-                let config = ModelConfiguration(isStoredInMemoryOnly: true)
-                let container = try ModelContainer(for: schema, configurations: [config])
-                AppLogger.app.warning("Using emergency in-memory container")
-                return (container, .inMemory)
-            } catch {
-                // If even this fails, create a minimal container
-                // This is the absolute last resort to prevent crash
-                fatalError("Emergency container creation failed: \(error)")
+            switch result {
+            case .success(let container, let location):
+                if !location.isPersistent {
+                    AppLogger.app.warning(
+                        "⚠️ Using \(location.rawValue) storage - data may be temporary!")
+                }
+                return (container, location)
+
+            case .failure(let error):
+                // This should never happen since in-memory is always available
+                // But if it does, we need a fallback container for the app to start
+                AppLogger.app.critical(
+                    "Container creation completely failed: \(error.localizedDescription)")
+
+                // Last resort: try one more in-memory container
+                do {
+                    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+                    let container = try ModelContainer(for: schema, configurations: [config])
+                    AppLogger.app.warning("Using emergency in-memory container")
+                    return (container, .inMemory)
+                } catch {
+                    // If even this fails, create a minimal container
+                    // This is the absolute last resort to prevent crash
+                    fatalError("Emergency container creation failed: \(error)")
+                }
             }
-        }
-    }()
+        }()
 
     var sharedModelContainer: ModelContainer {
         Self.containerResult.container
@@ -112,8 +124,50 @@ struct GymTrackerApp: App {
                     showStorageWarning = false
                 }
             } message: {
-                Text("Die App verwendet temporären Speicher (\(storageLocation.rawValue)).\n\nDeine Daten könnten beim nächsten App-Start verloren gehen.\n\nBitte stelle sicher, dass genug Speicherplatz verfügbar ist und starte die App neu.")
+                Text(
+                    "Die App verwendet temporären Speicher (\(storageLocation.rawValue)).\n\nDeine Daten könnten beim nächsten App-Start verloren gehen.\n\nBitte stelle sicher, dass genug Speicherplatz verfügbar ist und starte die App neu."
+                )
             }
+            .onOpenURL { url in
+                handleDeepLink(url)
+            }
+        }
+    }
+
+    // MARK: - Deep Link Handling
+
+    /// Handles deep links from notifications
+    ///
+    /// Supported schemes:
+    /// - `gymtracker://workout/active` - Navigate to active workout
+    ///
+    /// - Parameter url: The deep link URL
+    private func handleDeepLink(_ url: URL) {
+        AppLogger.app.info("🔗 Deep link received: \(url.absoluteString)")
+
+        // Parse URL scheme
+        guard url.scheme == "gymtracker" else {
+            AppLogger.app.warning("⚠️ Invalid deep link scheme: \(url.scheme ?? "nil")")
+            return
+        }
+
+        // Parse host and path
+        let host = url.host
+        let path = url.path
+
+        AppLogger.app.info("Deep link - host: \(host ?? "nil"), path: \(path)")
+
+        // Handle workout deep link
+        if host == "workout" && path == "/active" {
+            // Post notification to navigate to active workout
+            // ContentView will handle the actual navigation
+            NotificationCenter.default.post(
+                name: .navigateToActiveWorkout,
+                object: nil
+            )
+            AppLogger.app.info("✅ Posted navigate to active workout notification")
+        } else {
+            AppLogger.app.warning("⚠️ Unknown deep link: \(url.absoluteString)")
         }
     }
 
@@ -122,8 +176,8 @@ struct GymTrackerApp: App {
     /// Data version constants - increment these manually when database updates are needed
     private struct DataVersions {
         static let EXERCISE_DATABASE_VERSION = 1  // Increment when exercises.csv changes
-        static let SAMPLE_WORKOUT_VERSION = 2     // Increment when workouts.csv changes (already in use)
-        static let FORCE_FULL_RESET_VERSION = 2   // Increment for critical breaking changes (nuclear option)
+        static let SAMPLE_WORKOUT_VERSION = 2  // Increment when workouts.csv changes (already in use)
+        static let FORCE_FULL_RESET_VERSION = 2  // Increment for critical breaking changes (nuclear option)
     }
 
     /// Performs all database migrations in the background to avoid blocking UI
@@ -149,7 +203,8 @@ struct GymTrackerApp: App {
 
             // Check if we're using in-memory storage (fallback already happened)
             if storageLocation == .inMemory {
-                AppLogger.data.warning("Already using in-memory storage - proceeding with fresh data")
+                AppLogger.data.warning(
+                    "Already using in-memory storage - proceeding with fresh data")
                 await performForceReset(context: context)
                 return
             }
@@ -158,19 +213,25 @@ struct GymTrackerApp: App {
         // 🚨 SCHRITT 0: Force Full Reset (Nuclear Option - nur bei kritischen Breaking Changes)
         let forceResetVersion = UserDefaults.standard.integer(forKey: "forceResetVersion")
         if forceResetVersion < DataVersions.FORCE_FULL_RESET_VERSION {
-            AppLogger.data.warning("🚨 Force full reset triggered (version \(forceResetVersion) → \(DataVersions.FORCE_FULL_RESET_VERSION))")
+            AppLogger.data.warning(
+                "🚨 Force full reset triggered (version \(forceResetVersion) → \(DataVersions.FORCE_FULL_RESET_VERSION))"
+            )
             await performForceReset(context: context)
-            UserDefaults.standard.set(DataVersions.FORCE_FULL_RESET_VERSION, forKey: "forceResetVersion")
+            UserDefaults.standard.set(
+                DataVersions.FORCE_FULL_RESET_VERSION, forKey: "forceResetVersion")
             AppLogger.data.info("✅ Force reset completed - all data reloaded")
-            return // Nach Force-Reset sind alle Daten bereits neu geladen
+            return  // Nach Force-Reset sind alle Daten bereits neu geladen
         }
 
         // 🔄 SCHRITT 1: Exercise Database Update (wenn Exercise-CSV sich geändert hat)
         let lastExerciseVersion = UserDefaults.standard.integer(forKey: "exerciseDatabaseVersion")
         if lastExerciseVersion < DataVersions.EXERCISE_DATABASE_VERSION {
-            AppLogger.exercises.info("🔄 Exercise database update needed (version \(lastExerciseVersion) → \(DataVersions.EXERCISE_DATABASE_VERSION))")
+            AppLogger.exercises.info(
+                "🔄 Exercise database update needed (version \(lastExerciseVersion) → \(DataVersions.EXERCISE_DATABASE_VERSION))"
+            )
             await performExerciseUpdate(context: context)
-            UserDefaults.standard.set(DataVersions.EXERCISE_DATABASE_VERSION, forKey: "exerciseDatabaseVersion")
+            UserDefaults.standard.set(
+                DataVersions.EXERCISE_DATABASE_VERSION, forKey: "exerciseDatabaseVersion")
             AppLogger.exercises.info("✅ Exercise database updated successfully")
         }
 
@@ -187,7 +248,7 @@ struct GymTrackerApp: App {
         do {
             // Performance: Only check a sample for UUID format, not all exercises
             var descriptor = FetchDescriptor<ExerciseEntity>()
-            descriptor.fetchLimit = 10 // Check only first 10 for UUID format
+            descriptor.fetchLimit = 10  // Check only first 10 for UUID format
             let sampleExercises = try context.fetch(descriptor)
 
             // Prüfe ob Exercises deterministische UUIDs haben (Format: 00000000-0000-0000-0000-XXXXXXXXXXXX)
@@ -202,7 +263,8 @@ struct GymTrackerApp: App {
                 let existingExercises = try context.fetch(allExercisesDescriptor)
 
                 if !existingExercises.isEmpty {
-                    AppLogger.exercises.info("Deleting \(existingExercises.count) exercises with incorrect UUIDs")
+                    AppLogger.exercises.info(
+                        "Deleting \(existingExercises.count) exercises with incorrect UUIDs")
                     for exercise in existingExercises {
                         context.delete(exercise)
                     }
@@ -213,7 +275,8 @@ struct GymTrackerApp: App {
                 ExerciseSeeder.seedExercises(context: context)
                 AppLogger.exercises.info("Exercises loaded successfully")
             } else {
-                AppLogger.exercises.info("\(sampleExercises.count)+ exercises with correct UUIDs already present")
+                AppLogger.exercises.info(
+                    "\(sampleExercises.count)+ exercises with correct UUIDs already present")
             }
         } catch {
             AppLogger.exercises.error("Exercise check failed: \(error.localizedDescription)")
@@ -226,7 +289,7 @@ struct GymTrackerApp: App {
 
             // Migration: Alte Workouts ohne Flag als Benutzer-Workouts markieren
             for workout in existingWorkouts where workout.isSampleWorkout == nil {
-                workout.isSampleWorkout = false // Alte Workouts = Benutzer-Workouts
+                workout.isSampleWorkout = false  // Alte Workouts = Benutzer-Workouts
             }
             try? context.save()
 
@@ -236,7 +299,9 @@ struct GymTrackerApp: App {
             for workout in sampleWorkouts {
                 let nilExerciseCount = workout.exercises.filter { $0.exercise == nil }.count
                 if nilExerciseCount > 0 {
-                    AppLogger.workouts.warning("⚠️ Workout '\(workout.name)' hat \(nilExerciseCount) korrupte Exercise-Referenzen")
+                    AppLogger.workouts.warning(
+                        "⚠️ Workout '\(workout.name)' hat \(nilExerciseCount) korrupte Exercise-Referenzen"
+                    )
                     hasCorruptedWorkouts = true
                 }
             }
@@ -245,7 +310,8 @@ struct GymTrackerApp: App {
             if hasCorruptedWorkouts || existingWorkouts.isEmpty {
                 // Lösche nur Sample-Workouts (Benutzerdaten bleiben!)
                 if !sampleWorkouts.isEmpty {
-                    AppLogger.workouts.info("Deleting \(sampleWorkouts.count) corrupted/outdated sample workouts")
+                    AppLogger.workouts.info(
+                        "Deleting \(sampleWorkouts.count) corrupted/outdated sample workouts")
                     for workout in sampleWorkouts {
                         context.delete(workout)
                     }
@@ -253,15 +319,20 @@ struct GymTrackerApp: App {
                 }
 
                 // Lade neue Sample-Workouts
-                AppLogger.workouts.info("Loading sample workouts (Version \(DataVersions.SAMPLE_WORKOUT_VERSION))")
+                AppLogger.workouts.info(
+                    "Loading sample workouts (Version \(DataVersions.SAMPLE_WORKOUT_VERSION))")
                 WorkoutSeeder.seedWorkouts(context: context)
 
                 // Speichere neue Version
-                UserDefaults.standard.set(DataVersions.SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
-                AppLogger.workouts.info("Sample workouts updated to version \(DataVersions.SAMPLE_WORKOUT_VERSION)")
+                UserDefaults.standard.set(
+                    DataVersions.SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
+                AppLogger.workouts.info(
+                    "Sample workouts updated to version \(DataVersions.SAMPLE_WORKOUT_VERSION)")
             } else {
                 let userWorkouts = existingWorkouts.filter { $0.isSampleWorkout == false }
-                AppLogger.workouts.info("Sample workouts OK: \(sampleWorkouts.count) samples, \(userWorkouts.count) user workouts")
+                AppLogger.workouts.info(
+                    "Sample workouts OK: \(sampleWorkouts.count) samples, \(userWorkouts.count) user workouts"
+                )
             }
         } catch {
             AppLogger.workouts.error("Sample workout update failed: \(error.localizedDescription)")
@@ -291,24 +362,24 @@ struct GymTrackerApp: App {
         }
 
         // Wait a bit for app to fully initialize before testing Live Activities
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
 
         #if canImport(ActivityKit)
-        if #available(iOS 16.1, *) {
-            AppLogger.liveActivity.info("Live Activity setup initiated")
-            WorkoutLiveActivityController.shared.requestPermissionIfNeeded()
+            if #available(iOS 16.1, *) {
+                AppLogger.liveActivity.info("Live Activity setup initiated")
+                WorkoutLiveActivityController.shared.requestPermissionIfNeeded()
 
-            // Cleanup stale Live Activities (z.B. nach Force-Quit)
-            WorkoutLiveActivityController.shared.cleanupStaleActivities()
+                // Cleanup stale Live Activities (z.B. nach Force-Quit)
+                WorkoutLiveActivityController.shared.cleanupStaleActivities()
 
-            // Synchronisiere App-State mit Live Activities (nach Force-Quit)
-            await synchronizeWithLiveActivities(context: context)
+                // Synchronisiere App-State mit Live Activities (nach Force-Quit)
+                await synchronizeWithLiveActivities(context: context)
 
-            // Live Activity Test nur im Debug-Modus
-            #if DEBUG
-            // WorkoutLiveActivityController.shared.testLiveActivity()
-            #endif
-        }
+                // Live Activity Test nur im Debug-Modus
+                #if DEBUG
+                    // WorkoutLiveActivityController.shared.testLiveActivity()
+                #endif
+            }
         #endif
     }
 
@@ -318,42 +389,47 @@ struct GymTrackerApp: App {
     /// This ensures the app and Live Activities stay in sync
     private func synchronizeWithLiveActivities(context: ModelContext) async {
         #if canImport(ActivityKit)
-        if #available(iOS 16.1, *) {
-            let activeActivities = Activity<WorkoutActivityAttributes>.activities
+            if #available(iOS 16.1, *) {
+                let activeActivities = Activity<WorkoutActivityAttributes>.activities
 
-            guard let activity = activeActivities.first else {
-                // No Live Activity → ensure no persisted workout state
-                UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
-                AppLogger.liveActivity.info("No Live Activity found → cleared persisted workout state")
-                return
-            }
-
-            // Live Activity exists → check if workout exists in DB
-            let workoutId = activity.attributes.workoutId
-            let workoutName = activity.attributes.workoutName
-
-            AppLogger.liveActivity.info("Found active Live Activity for workout: \(workoutName) (ID: \(workoutId))")
-
-            // Verify workout exists in database
-            let descriptor = FetchDescriptor<WorkoutEntity>(
-                predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
-            )
-
-            do {
-                if let _ = try context.fetch(descriptor).first {
-                    // Workout exists → persist workout ID for WorkoutStore to restore
-                    UserDefaults.standard.set(workoutId.uuidString, forKey: "activeWorkoutID")
-                    AppLogger.liveActivity.info("✅ Persisted workout state for restoration: \(workoutId)")
-                } else {
-                    // Workout doesn't exist → remove stale Live Activity
-                    AppLogger.liveActivity.warning("⚠️ Live Activity references non-existent workout → removing")
-                    await activity.end(dismissalPolicy: .immediate)
+                guard let activity = activeActivities.first else {
+                    // No Live Activity → ensure no persisted workout state
                     UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
+                    AppLogger.liveActivity.info(
+                        "No Live Activity found → cleared persisted workout state")
+                    return
                 }
-            } catch {
-                AppLogger.liveActivity.error("❌ Error fetching workout: \(error.localizedDescription)")
+
+                // Live Activity exists → check if workout exists in DB
+                let workoutId = activity.attributes.workoutId
+                let workoutName = activity.attributes.workoutName
+
+                AppLogger.liveActivity.info(
+                    "Found active Live Activity for workout: \(workoutName) (ID: \(workoutId))")
+
+                // Verify workout exists in database
+                let descriptor = FetchDescriptor<WorkoutEntity>(
+                    predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
+                )
+
+                do {
+                    if (try context.fetch(descriptor).first) != nil {
+                        // Workout exists → persist workout ID for WorkoutStore to restore
+                        UserDefaults.standard.set(workoutId.uuidString, forKey: "activeWorkoutID")
+                        AppLogger.liveActivity.info(
+                            "✅ Persisted workout state for restoration: \(workoutId)")
+                    } else {
+                        // Workout doesn't exist → remove stale Live Activity
+                        AppLogger.liveActivity.warning(
+                            "⚠️ Live Activity references non-existent workout → removing")
+                        await activity.end(dismissalPolicy: .immediate)
+                        UserDefaults.standard.removeObject(forKey: "activeWorkoutID")
+                    }
+                } catch {
+                    AppLogger.liveActivity.error(
+                        "❌ Error fetching workout: \(error.localizedDescription)")
+                }
             }
-        }
         #endif
     }
 
@@ -403,11 +479,13 @@ struct GymTrackerApp: App {
 
             // Exercises neu laden
             ExerciseSeeder.seedExercises(context: context)
-            UserDefaults.standard.set(DataVersions.EXERCISE_DATABASE_VERSION, forKey: "exerciseDatabaseVersion")
+            UserDefaults.standard.set(
+                DataVersions.EXERCISE_DATABASE_VERSION, forKey: "exerciseDatabaseVersion")
 
             // Sample-Workouts neu laden
             WorkoutSeeder.seedWorkouts(context: context)
-            UserDefaults.standard.set(DataVersions.SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
+            UserDefaults.standard.set(
+                DataVersions.SAMPLE_WORKOUT_VERSION, forKey: "sampleWorkoutVersion")
 
             // User Profile neu erstellen
             let profile = UserProfileEntity()
@@ -451,7 +529,8 @@ struct GymTrackerApp: App {
 
             try context.save()
             UserDefaults.standard.set(true, forKey: "exerciseCountMigrationCompleted")
-            AppLogger.data.info("✅ Exercise count migration completed: updated \(updatedCount) workouts")
+            AppLogger.data.info(
+                "✅ Exercise count migration completed: updated \(updatedCount) workouts")
         } catch {
             AppLogger.data.error("❌ Exercise count migration failed: \(error.localizedDescription)")
         }
@@ -474,7 +553,8 @@ struct GymTrackerApp: App {
             ExerciseSeeder.seedExercises(context: context)
 
             let newExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-            AppLogger.exercises.info("✅ Exercise update completed: \(newExercises.count) exercises loaded")
+            AppLogger.exercises.info(
+                "✅ Exercise update completed: \(newExercises.count) exercises loaded")
 
         } catch {
             AppLogger.exercises.error("❌ Exercise update failed: \(error.localizedDescription)")
@@ -515,7 +595,7 @@ enum ModelContainerFactory {
             (.applicationSupport, { try createApplicationSupportContainer(schema: schema) }),
             (.documents, { try createDocumentsContainer(schema: schema) }),
             (.temporary, { try createTemporaryContainer(schema: schema) }),
-            (.inMemory, { try createInMemoryContainer(schema: schema) })
+            (.inMemory, { try createInMemoryContainer(schema: schema) }),
         ]
 
         for (location, createAttempt) in fallbackChain {
@@ -544,8 +624,11 @@ enum ModelContainerFactory {
     private static func createApplicationSupportContainer(schema: Schema) throws -> ModelContainer {
         // Create Application Support directory if needed
         let fileManager = FileManager.default
-        if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            try? fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true, attributes: nil)
+        if let appSupportURL = fileManager.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first {
+            try? fileManager.createDirectory(
+                at: appSupportURL, withIntermediateDirectories: true, attributes: nil)
         }
 
         // Try default location (Application Support)
@@ -553,7 +636,8 @@ enum ModelContainerFactory {
     }
 
     private static func createDocumentsContainer(schema: Schema) throws -> ModelContainer {
-        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+            .first!
         let storeURL = documentsURL.appendingPathComponent("GymTracker.sqlite")
 
         let config = ModelConfiguration(url: storeURL)
@@ -585,7 +669,8 @@ enum ModelContainerFactory {
             let availableMB = Double(availableBytes) / 1_048_576
 
             if availableMB < 50 {
-                issues.append("Kritisch wenig Speicherplatz: \(String(format: "%.1f", availableMB)) MB")
+                issues.append(
+                    "Kritisch wenig Speicherplatz: \(String(format: "%.1f", availableMB)) MB")
             } else if availableMB < 100 {
                 warnings.append("Wenig Speicherplatz: \(String(format: "%.1f", availableMB)) MB")
             }
@@ -594,9 +679,12 @@ enum ModelContainerFactory {
         // Check write permissions for common directories
         let fileManager = FileManager.default
         let testDirs: [(String, URL?)] = [
-            ("Application Support", fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first),
+            (
+                "Application Support",
+                fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ),
             ("Documents", fileManager.urls(for: .documentDirectory, in: .userDomainMask).first),
-            ("Temporary", URL(fileURLWithPath: NSTemporaryDirectory()))
+            ("Temporary", URL(fileURLWithPath: NSTemporaryDirectory())),
         ]
 
         for (name, url) in testDirs {
@@ -628,7 +716,9 @@ enum ModelContainerFactory {
     private static func getAvailableStorage() -> Int64? {
         do {
             let fileURL = URL(fileURLWithPath: NSHomeDirectory())
-            let values = try fileURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+            let values = try fileURL.resourceValues(forKeys: [
+                .volumeAvailableCapacityForImportantUsageKey
+            ])
             return values.volumeAvailableCapacityForImportantUsage
         } catch {
             AppLogger.app.error("Failed to check storage: \(error.localizedDescription)")
@@ -647,7 +737,8 @@ enum ModelContainerFactory {
     }
 
     private static func logFailure(location: StorageLocation, error: Error) {
-        AppLogger.app.error("❌ Failed to create container at \(location.rawValue): \(error.localizedDescription)")
+        AppLogger.app.error(
+            "❌ Failed to create container at \(location.rawValue): \(error.localizedDescription)")
     }
 }
 

@@ -45,7 +45,10 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>workout</string>
+				<string>gymtracker</string>
 			</array>
+			<key>CFBundleURLName</key>
+			<string>com.example.GymTracker.deeplink</string>
 		</dict>
 	</array>
 </dict>

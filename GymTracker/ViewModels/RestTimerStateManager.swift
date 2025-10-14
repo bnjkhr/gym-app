@@ -9,6 +9,10 @@
 import Foundation
 import UIKit
 
+#if canImport(ActivityKit)
+    import ActivityKit
+#endif
+
 /// Single Source of Truth for all rest timer state and lifecycle management
 ///
 /// This manager is responsible for:
@@ -85,8 +89,13 @@ final class RestTimerStateManager: ObservableObject {
     /// In-app overlay manager (injected, optional for Phase 2)
     weak var overlayManager: RestTimerOverlayProtocol?
 
-    // NOTE: LiveActivityManager, NotificationManager
-    // will be injected in Phase 3-4.
+    /// Live Activity controller (Phase 3)
+    #if canImport(ActivityKit)
+        private let liveActivityController: WorkoutLiveActivityController?
+    #endif
+
+    /// Notification manager (Phase 4)
+    private let notificationManager: NotificationManager
 
     // MARK: - Initialization
 
@@ -95,12 +104,23 @@ final class RestTimerStateManager: ObservableObject {
     /// - Parameters:
     ///   - storage: UserDefaults instance for persistence (default: .standard)
     ///   - timerEngine: Timer engine instance (default: new instance)
+    ///   - notificationManager: Notification manager instance (default: shared)
     init(
         storage: UserDefaults = .standard,
-        timerEngine: TimerEngine? = nil
+        timerEngine: TimerEngine? = nil,
+        notificationManager: NotificationManager? = nil
     ) {
         self.storage = storage
         self.timerEngine = timerEngine ?? TimerEngine()
+        self.notificationManager = notificationManager ?? .shared
+
+        #if canImport(ActivityKit)
+            if #available(iOS 16.1, *) {
+                self.liveActivityController = WorkoutLiveActivityController.shared
+            } else {
+                self.liveActivityController = nil
+            }
+        #endif
 
         AppLogger.workouts.info("RestTimerStateManager initialized")
     }
@@ -282,10 +302,18 @@ final class RestTimerStateManager: ObservableObject {
         updateTimerEngine(for: newState)
 
         // 2. Live Activity (Phase 3)
-        // TODO: liveActivityManager.updateForState(newState)
+        #if canImport(ActivityKit)
+            if #available(iOS 16.1, *) {
+                liveActivityController?.updateForState(newState)
+            }
+        #endif
 
         // 3. Notifications (Phase 4)
-        // TODO: notificationManager.updateForState(newState)
+        if let newState = newState {
+            notificationManager.scheduleNotification(for: newState)
+        } else {
+            notificationManager.cancelNotifications()
+        }
     }
 
     /// Updates the timer engine based on state
@@ -337,12 +365,17 @@ final class RestTimerStateManager: ObservableObject {
         AppLogger.workouts.info("Triggering expiration notifications")
 
         // 1. Live Activity Alert (Phase 3)
-        // TODO: liveActivityManager.showExpirationAlert(for: state)
+        #if canImport(ActivityKit)
+            if #available(iOS 16.1, *) {
+                liveActivityController?.showExpirationAlert(for: state)
+                AppLogger.workouts.info("✅ Live Activity expiration alert triggered")
+            }
+        #endif
 
         // 2. In-App Overlay (Phase 2) - only if app is active
         if UIApplication.shared.applicationState == .active {
             overlayManager?.showExpiredOverlay(for: state)
-            AppLogger.workouts.info("App is active - showing in-app overlay")
+            AppLogger.workouts.info("✅ In-app overlay shown (app active)")
         }
 
         // 3. Push Notification (Phase 4) - already scheduled, will fire automatically
@@ -350,11 +383,12 @@ final class RestTimerStateManager: ObservableObject {
         // 4. Haptic Feedback
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
+        AppLogger.workouts.debug("✅ Haptic feedback triggered")
 
         // 5. Sound (Phase 2)
         // TODO: AudioManager.shared.playBoxBell()
 
-        AppLogger.workouts.info("Expiration notifications triggered")
+        AppLogger.workouts.info("✅ Expiration notifications triggered")
     }
 
     // MARK: - Persistence
