@@ -3320,17 +3320,8 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     // MARK: - Published Properties (Synced with legacyStore)
 
-    @Published var activeSessionID: UUID? {
-        didSet {
-            legacyStore.activeSessionID = activeSessionID
-        }
-    }
-
-    @Published var isShowingWorkoutDetail: Bool = false {
-        didSet {
-            legacyStore.isShowingWorkoutDetail = isShowingWorkoutDetail
-        }
-    }
+    @Published var activeSessionID: UUID?
+    @Published var isShowingWorkoutDetail: Bool = false
 
     var modelContext: ModelContext? {
         get { legacyStore.modelContext }
@@ -3412,8 +3403,25 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     // MARK: - Initialization
 
+    private var cancellables = Set<AnyCancellable>()
+
     init() {
         self.legacyStore = WorkoutStore()
+
+        // Sync published properties from legacyStore to coordinator (one-way only)
+        legacyStore.$activeSessionID
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newValue in
+                self?.activeSessionID = newValue
+            }
+            .store(in: &cancellables)
+
+        legacyStore.$isShowingWorkoutDetail
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newValue in
+                self?.isShowingWorkoutDetail = newValue
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Exercise Methods

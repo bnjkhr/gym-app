@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WorkoutsView: View {
     init() {}
@@ -27,118 +27,140 @@ struct WorkoutsView: View {
     @State private var cachedWorkoutsInFolders: [UUID: [WorkoutEntity]] = [:]
 
     var body: some View {
+        listContent
+            .padding(.bottom, 96)
+            .toolbar(.hidden, for: .navigationBar)
+            .scrollContentBackground(.hidden)
+            .listStyle(.insetGrouped)
+            .safeAreaInset(edge: .bottom) {
+                bottomToolbar
+            }
+            .sheet(isPresented: $showingAddWorkout) {
+                AddWorkoutView()
+                    .environmentObject(workoutStore)
+            }
+            .sheet(isPresented: $showingAddFolder) {
+                AddFolderView()
+            }
+            .onAppear(perform: handleOnAppear)
+            .onChange(of: workoutEntities) { _, _ in
+                updateCache()
+            }
+            .onChange(of: expandedFolders) { _, newValue in
+                saveExpandedState(newValue)
+            }
+    }
+
+    // MARK: - View Components
+
+    private var listContent: some View {
         List {
-            // Folders section
-            ForEach(folders) { folder in
-                FolderSectionView(
-                    folder: folder,
-                    isExpanded: expandedFolders.contains(folder.id),
-                    onToggle: {
-                        withAnimation {
-                            if expandedFolders.contains(folder.id) {
-                                expandedFolders.remove(folder.id)
-                            } else {
-                                expandedFolders.insert(folder.id)
-                            }
-                        }
-                    },
-                    workouts: cachedWorkoutsInFolders[folder.id] ?? [],
-                    modelContext: modelContext,
-                    workoutStore: workoutStore,
-                    draggedWorkout: $draggedWorkout
-                )
-            }
+            foldersSection
+            workoutsWithoutFolderSection
+        }
+    }
 
-            // Workouts without folder
-            if !cachedWorkoutsWithoutFolder.isEmpty {
-                Section {
-                    ForEach(cachedWorkoutsWithoutFolder) { entity in
-                        WorkoutEntityRow(entity: entity, modelContext: modelContext, workoutStore: workoutStore)
-                            .equatable()
-                            .id(entity.id) // Performance: Explicit ID for better view recycling
-                            .onDrag {
-                                draggedWorkout = entity
-                                return NSItemProvider(object: entity.id.uuidString as NSString)
-                            }
+    @ViewBuilder
+    private var foldersSection: some View {
+        ForEach(folders) { folder in
+            FolderSectionView(
+                folder: folder,
+                isExpanded: expandedFolders.contains(folder.id),
+                onToggle: {
+                    withAnimation {
+                        if expandedFolders.contains(folder.id) {
+                            expandedFolders.remove(folder.id)
+                        } else {
+                            expandedFolders.insert(folder.id)
+                        }
                     }
-                    .onDelete { offsets in
-                        deleteWorkouts(offsets, from: cachedWorkoutsWithoutFolder)
+                },
+                workouts: cachedWorkoutsInFolders[folder.id] ?? [],
+                modelContext: modelContext,
+                workoutStore: workoutStore,
+                draggedWorkout: $draggedWorkout
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var workoutsWithoutFolderSection: some View {
+        if !cachedWorkoutsWithoutFolder.isEmpty {
+            Section {
+                ForEach(cachedWorkoutsWithoutFolder) { entity in
+                    WorkoutEntityRow(
+                        entity: entity, modelContext: modelContext, workoutStore: workoutStore
+                    )
+                    .equatable()
+                    .id(entity.id)
+                    .onDrag {
+                        draggedWorkout = entity
+                        return NSItemProvider(object: entity.id.uuidString as NSString)
                     }
-                } header: {
-                    Text("Workouts")
                 }
-            }
-        }
-        .padding(.bottom, 96)
-        .toolbar(.hidden, for: .navigationBar)
-        .scrollContentBackground(.hidden)
-        .listStyle(.insetGrouped)
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 8) {
-                Rectangle()
-                    .fill(Color.black.opacity(0.08))
-                    .frame(height: 0.5)
-
-                HStack(spacing: 12) {
-                    Button {
-                        showingAddFolder = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "folder.badge.plus")
-                            Text("Ordner")
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(AppTheme.darkPurple.opacity(0.8))
-
-                    Button {
-                        showingAddWorkout = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus")
-                            Text("Workout")
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.darkPurple)
+                .onDelete { offsets in
+                    deleteWorkouts(offsets, from: cachedWorkoutsWithoutFolder)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .padding(.bottom, 6)
+            } header: {
+                Text("Workouts")
             }
-            .background(.ultraThinMaterial)
-            .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 0)
-            .zIndex(1)
         }
-        .sheet(isPresented: $showingAddWorkout) {
-            AddWorkoutView()
-                .environmentObject(workoutStore)
-        }
-        .sheet(isPresented: $showingAddFolder) {
-            AddFolderView()
-        }
-        .onAppear {
-            // Load expanded state from UserDefaults
-            if let savedExpanded = UserDefaults.standard.array(forKey: "expandedFolders") as? [String] {
-                expandedFolders = Set(savedExpanded.compactMap { UUID(uuidString: $0) })
+    }
+
+    private var bottomToolbar: some View {
+        VStack(spacing: 8) {
+            Rectangle()
+                .fill(Color.black.opacity(0.08))
+                .frame(height: 0.5)
+
+            HStack(spacing: 12) {
+                Button {
+                    showingAddFolder = true
+                } label: {
+                    HStack {
+                        Image(systemName: "folder.badge.plus")
+                        Text("Ordner")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(AppTheme.darkPurple.opacity(0.8))
+
+                Button {
+                    showingAddWorkout = true
+                } label: {
+                    HStack {
+                        Image(systemName: "plus")
+                        Text("Workout")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.darkPurple)
             }
-            // Performance: Initial cache population
-            updateCache()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .padding(.bottom, 6)
         }
-        .onChange(of: expandedFolders) { _, newValue in
-            // Save expanded state
-            UserDefaults.standard.set(newValue.map { $0.uuidString }, forKey: "expandedFolders")
+        .background(.ultraThinMaterial)
+        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 0)
+        .zIndex(1)
+    }
+
+    // MARK: - Helper Methods
+
+    private func handleOnAppear() {
+        // Load expanded state from UserDefaults
+        if let savedExpanded = UserDefaults.standard.array(forKey: "expandedFolders") as? [String] {
+            expandedFolders = Set(savedExpanded.compactMap { UUID(uuidString: $0) })
         }
-        .onChange(of: workoutEntities) { _, _ in
-            // Performance: Update cache when workouts change
-            updateCache()
-        }
-        .onChange(of: folders) { _, _ in
-            // Performance: Update cache when folders change
-            updateCache()
-        }
+        // Performance: Initial cache population
+        updateCache()
+    }
+
+    private func saveExpandedState(_ newValue: Set<UUID>) {
+        // Save expanded state
+        UserDefaults.standard.set(newValue.map { $0.uuidString }, forKey: "expandedFolders")
     }
 
     // Performance: Cache update function - called when data changes
@@ -149,7 +171,8 @@ struct WorkoutsView: View {
         // Cache workouts in each folder (sorted by orderInFolder)
         var newCache: [UUID: [WorkoutEntity]] = [:]
         for folder in folders {
-            let workoutsInFolder = workoutEntities
+            let workoutsInFolder =
+                workoutEntities
                 .filter { $0.folder?.id == folder.id }
                 .sorted { $0.orderInFolder < $1.orderInFolder }
             newCache[folder.id] = workoutsInFolder
@@ -184,7 +207,7 @@ struct FolderSectionView: View {
     let onToggle: () -> Void
     let workouts: [WorkoutEntity]
     let modelContext: ModelContext
-    let workoutStore: WorkoutStore
+    let workoutStore: WorkoutStoreCoordinator
     @Binding var draggedWorkout: WorkoutEntity?
 
     @State private var showingEditFolder = false
@@ -195,29 +218,31 @@ struct FolderSectionView: View {
             // Performance: Only render content when expanded (Lazy Loading)
             if isExpanded {
                 ForEach(workouts) { entity in
-                    WorkoutEntityRow(entity: entity, modelContext: modelContext, workoutStore: workoutStore)
-                        .equatable()
-                        .id(entity.id) // Performance: Explicit ID for better view recycling
-                        .onDrag {
-                            draggedWorkout = entity
-                            return NSItemProvider(object: entity.id.uuidString as NSString)
+                    WorkoutEntityRow(
+                        entity: entity, modelContext: modelContext, workoutStore: workoutStore
+                    )
+                    .equatable()
+                    .id(entity.id)  // Performance: Explicit ID for better view recycling
+                    .onDrag {
+                        draggedWorkout = entity
+                        return NSItemProvider(object: entity.id.uuidString as NSString)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            modelContext.delete(entity)
+                            try? modelContext.save()
+                        } label: {
+                            Label("Löschen", systemImage: "trash")
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                modelContext.delete(entity)
-                                try? modelContext.save()
-                            } label: {
-                                Label("Löschen", systemImage: "trash")
-                            }
 
-                            Button {
-                                entity.folder = nil
-                                try? modelContext.save()
-                            } label: {
-                                Label("Aus Ordner", systemImage: "folder.badge.minus")
-                            }
-                            .tint(.customOrange)
+                        Button {
+                            entity.folder = nil
+                            try? modelContext.save()
+                        } label: {
+                            Label("Aus Ordner", systemImage: "folder.badge.minus")
                         }
+                        .tint(.customOrange)
+                    }
                 }
             }
         } header: {
@@ -254,7 +279,7 @@ struct FolderSectionView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .foregroundColor(.secondary)
-                        .padding(8) // Larger tap target
+                        .padding(8)  // Larger tap target
                 }
                 .buttonStyle(.plain)
             }
@@ -282,14 +307,13 @@ struct FolderSectionView: View {
 struct WorkoutEntityRow: View, Equatable {
     let entity: WorkoutEntity
     let modelContext: ModelContext
-    let workoutStore: WorkoutStore
+    let workoutStore: WorkoutStoreCoordinator
 
     // Performance: Equatable conformance to avoid unnecessary re-renders
     static func == (lhs: WorkoutEntityRow, rhs: WorkoutEntityRow) -> Bool {
-        lhs.entity.id == rhs.entity.id &&
-        lhs.entity.name == rhs.entity.name &&
-        lhs.entity.exerciseCount == rhs.entity.exerciseCount &&
-        lhs.entity.date == rhs.entity.date
+        lhs.entity.id == rhs.entity.id && lhs.entity.name == rhs.entity.name
+            && lhs.entity.exerciseCount == rhs.entity.exerciseCount
+            && lhs.entity.date == rhs.entity.date
     }
 
     var body: some View {
@@ -354,7 +378,7 @@ struct FolderEditSheet: View {
             }
         }
         .alert("Ordner löschen?", isPresented: $showingDeleteAlert) {
-            Button("Abbrechen", role: .cancel) { }
+            Button("Abbrechen", role: .cancel) {}
             Button("Löschen", role: .destructive) {
                 // Move workouts out of folder before deleting
                 for workout in folder.workouts {
@@ -395,7 +419,10 @@ struct WorkoutRowView: View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self, ExerciseEntity.self, WorkoutSessionEntity.self, UserProfileEntity.self, WorkoutFolderEntity.self, configurations: config)
+    let container = try! ModelContainer(
+        for: WorkoutEntity.self, WorkoutExerciseEntity.self, ExerciseSetEntity.self,
+        ExerciseEntity.self, WorkoutSessionEntity.self, UserProfileEntity.self,
+        WorkoutFolderEntity.self, configurations: config)
     // Seed one workout
     let exercise = ExerciseEntity(id: UUID(), name: "Kniebeugen")
     let set = ExerciseSetEntity(id: UUID(), reps: 8, weight: 80, restTime: 120, completed: false)
@@ -403,7 +430,6 @@ struct WorkoutRowView: View {
     let workout = WorkoutEntity(id: UUID(), name: "Leg Day", exercises: [we], defaultRestTime: 90)
     container.mainContext.insert(workout)
     return WorkoutsView()
-        .environmentObject(WorkoutStore())
+        .environmentObject(WorkoutStoreCoordinator())
         .modelContainer(container)
 }
-

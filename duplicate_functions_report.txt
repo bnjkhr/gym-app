@@ -1,0 +1,213 @@
+DUPLICATE_BLOCK
+./WorkoutsTabView.swift:611: private func endActiveSession() {
+./GymTracker/ContentView.swift:394: private func endActiveSession() {
+./GymTracker/ContentView.swift:1176: private func endActiveSession() {
+
+DUPLICATE_BLOCK
+./WorkoutsTabView.swift:527: private func editWorkout(id: UUID) {
+./GymTracker/ContentView.swift:1041: private func editWorkout(id: UUID) {
+
+DUPLICATE_BLOCK
+./WorkoutsTabView.swift:531: private func deleteWorkout(id: UUID) {
+./GymTracker/ContentView.swift:1045: private func deleteWorkout(id: UUID) {
+
+DUPLICATE_BLOCK
+./WorkoutsTabView.swift:546: private func duplicateWorkout(id: UUID) {
+./GymTracker/ContentView.swift:1060: private func duplicateWorkout(id: UUID) {
+
+DUPLICATE_BLOCK
+./WorkoutsTabView.swift:592: private func shareWorkout(id: UUID) {
+./GymTracker/ContentView.swift:1106: private func shareWorkout(id: UUID) {
+
+DUPLICATE_BLOCK
+./GymTracker/ContentView.swift:400: private func importWorkout(from url: URL) {
+./GymTracker/ContentView.swift:1125: private func importWorkout(from url: URL) {
+
+DUPLICATE_BLOCK
+./GymTracker/ContentView.swift:471: private func workoutCategory(for workout: Workout) -> String {
+./GymTracker/ContentView.swift:2163: private func workoutCategory(for workout: Workout) -> String {
+
+DUPLICATE_BLOCK
+./GymTracker/KeyboardDismissalUtilities.swift:185: func updateUIView(_ uiView: UIView, context: Context) {}
+./GymTracker/KeyboardDismissalUtilities.swift:217: func updateUIView(_ uiView: UIView, context: Context) {}
+
+DUPLICATE_BLOCK
+./GymTracker/KeyboardDismissalUtilities.swift:187: func makeCoordinator() -> Coordinator {
+./GymTracker/KeyboardDismissalUtilities.swift:219: func makeCoordinator() -> Coordinator {
+
+DUPLICATE_BLOCK
+./GymTracker/KeyboardDismissalUtilities.swift:149: func body(content: Content) -> some View {
+./GymTracker/KeyboardDismissalUtilities.swift:372: func body(content: Content) -> some View {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:624: private static func createApplicationSupportContainer(schema: Schema) throws -> ModelContainer {
+./GymTracker/Database/ModelContainerFactory.swift:95: private static func createApplicationSupportContainer(schema: Schema) throws -> ModelContainer {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:638: private static func createDocumentsContainer(schema: Schema) throws -> ModelContainer {
+./GymTracker/Database/ModelContainerFactory.swift:106: private static func createDocumentsContainer(schema: Schema) throws -> ModelContainer {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:647: private static func createTemporaryContainer(schema: Schema) throws -> ModelContainer {
+./GymTracker/Database/ModelContainerFactory.swift:114: private static func createTemporaryContainer(schema: Schema) throws -> ModelContainer {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:655: private static func createInMemoryContainer(schema: Schema) throws -> ModelContainer {
+./GymTracker/Database/ModelContainerFactory.swift:122: private static func createInMemoryContainer(schema: Schema) throws -> ModelContainer {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:716: private static func getAvailableStorage() -> Int64? {
+./GymTracker/Database/ModelContainerFactory.swift:213: private static func getAvailableStorage() -> Int64? {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:731: private static func logSuccess(location: StorageLocation) {
+./GymTracker/Database/ModelContainerFactory.swift:226: private static func logSuccess(location: StorageLocation) {
+
+DUPLICATE_BLOCK
+./GymTracker/GymTrackerApp.swift:739: private static func logFailure(location: StorageLocation, error: Error) {
+./GymTracker/Database/ModelContainerFactory.swift:234: private static func logFailure(location: StorageLocation, error: Error) {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:1540: func invalidateCaches() {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:16: func invalidateCaches() {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStoreServices.swift:79: func setContext(_ context: ModelContext) {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:352: func setContext(_ context: ModelContext) {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:598: func setContext(_ context: ModelContext) {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:772: func setContext(_ context: ModelContext) {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:689: func deleteWorkout(at indexSet: IndexSet) {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:409: func deleteWorkout(at indexSet: IndexSet) {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:1126: func toggleFavorite(for workoutID: UUID) {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:424: func toggleFavorite(for workoutID: UUID) {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:602: func previousWorkout(before workout: Workout) -> Workout? {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:466: func previousWorkout(before workout: Workout) -> Workout? {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:487: private func getHomeFavoritesCount() -> Int {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:478: private func getHomeFavoritesCount() -> Int {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStoreServices.swift:231: private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:529: private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStoreServices.swift:83: func setCacheService(_ service: CacheService) {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:602: func setCacheService(_ service: CacheService) {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3612: func muscleVolume(byGroupInLastWeeks weeks: Int) -> [(MuscleGroup, Double)] {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1941: func muscleVolume(byGroupInLastWeeks weeks: Int) -> [(MuscleGroup, Double)] {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3616: func exerciseStats(for exercise: Exercise) -> WorkoutStore.ExerciseStats? {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1945: func exerciseStats(for exercise: Exercise) -> WorkoutStore.ExerciseStats? {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3620: func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1949: func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3635: func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1953: func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3641: func getExerciseRecord(for exercise: Exercise) -> ExerciseRecord? {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1957: func getExerciseRecord(for exercise: Exercise) -> ExerciseRecord? {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3645: func getAllExerciseRecords() -> [ExerciseRecord] {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1961: func getAllExerciseRecords() -> [ExerciseRecord] {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3649: func checkForNewRecord(exercise: Exercise, weight: Double, reps: Int) -> RecordType? {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1965: func checkForNewRecord(exercise: Exercise, weight: Double, reps: Int) -> RecordType? {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3671: func updateExerciseDatabase() {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1969: func updateExerciseDatabase() {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3675: func resetAllData() async throws {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1973: func resetAllData() async throws {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3606: func performMemoryCleanup() {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1979: func performMemoryCleanup() {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1899: func refreshRestFromWallClock() {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1983: func refreshRestFromWallClock() {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStore.swift:3602: func restorePersistedRestState() {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1988: func restorePersistedRestState() {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1889: func stopRest() {
+./GymTracker/ViewModels/WorkoutStoreServices.swift:1992: func stopRest() {
+
+DUPLICATE_BLOCK
+./ShareableWorkout.swift:39: static func from(entity: WorkoutEntity) -> ShareableWorkout {
+./GymTracker/Models/ShareableWorkout.swift:39: static func from(entity: WorkoutEntity) -> ShareableWorkout {
+
+DUPLICATE_BLOCK
+./ShareableWorkout.swift:65: func exportToFile() throws -> URL {
+./GymTracker/Models/ShareableWorkout.swift:65: func exportToFile() throws -> URL {
+
+DUPLICATE_BLOCK
+./ShareableWorkout.swift:87: static func importFrom(url: URL) throws -> ShareableWorkout {
+./GymTracker/Models/ShareableWorkout.swift:87: static func importFrom(url: URL) throws -> ShareableWorkout {
+
+DUPLICATE_BLOCK
+./GymTracker/ViewModels/WorkoutStoreServices.swift:278: private func matchesDifficultyLevel(_ exercise: Exercise, for level: ExperienceLevel) -> Bool {
+./GymTracker/Views/ExerciseSwapView.swift:209: private func matchesDifficultyLevel(_ exercise: Exercise, for level: ExperienceLevel) -> Bool {
+
+DUPLICATE_BLOCK
+./GymTracker/ContentView.swift:425: static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+./GymTracker/Views/SettingsView.swift:7: static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+./GymTracker/Views/StatisticsView.swift:13: static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+
+DUPLICATE_BLOCK
+./WorkoutsTabView.swift:325: private func workoutsInFolder(_ folder: WorkoutFolderEntity) -> [WorkoutEntity] {
+./GymTracker/Views/WorkoutsView.swift:188: private func workoutsInFolder(_ folder: WorkoutFolderEntity) -> [WorkoutEntity] {
+
+DUPLICATE_BLOCK
+./GymTracker/Views/StatisticsView.swift:750: private func timeAgo(_ date: Date) -> String {
+./GymTracker/Views/StatisticsView.swift:1139: private func timeAgo(_ date: Date) -> String {
+
+DUPLICATE_BLOCK
+./GymTracker/HeartRateView.swift:230: private func loadHeartRateData() {
+./GymTracker/Views/StatisticsView.swift:2690: private func loadHeartRateData() {
+
+DUPLICATE_BLOCK
+./GymTracker/Views/StatisticsView.swift:2794: func color(for colorScheme: ColorScheme) -> Color {
+./GymTracker/Views/StatisticsView.swift:2830: func color(for colorScheme: ColorScheme) -> Color {
+
+DUPLICATE_BLOCK
+./GymTracker/Views/ProfileEditView.swift:540: func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+./GymTracker/Views/ProfileEditView.swift:582: func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+DUPLICATE_BLOCK
+./GymTracker/Views/ProfileEditView.swift:542: func makeCoordinator() -> Coordinator {
+./GymTracker/Views/ProfileEditView.swift:584: func makeCoordinator() -> Coordinator {
+./GymTracker/Views/WorkoutDetailView.swift:1155: func makeCoordinator() -> Coordinator {
+
+DUPLICATE_BLOCK
+./GymTracker/Views/ProfileEditView.swift:553: func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+./GymTracker/Views/ProfileEditView.swift:595: func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+
+DUPLICATE_BLOCK
+./GymTracker/Views/ProfileEditView.swift:563: func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+./GymTracker/Views/ProfileEditView.swift:605: func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+
+DUPLICATE_BLOCK
+./GymTracker/BackupView.swift:343: private func showAlert(_ message: String) {
+./GymTracker/Views/Settings/DebugMenuView.swift:362: private func showAlert(_ message: String) {
+

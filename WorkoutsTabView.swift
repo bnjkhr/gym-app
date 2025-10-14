@@ -1,11 +1,11 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WorkoutsTabView: View {
-    @EnvironmentObject var workoutStore: WorkoutStore
+    @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
-    
+
     @Query(sort: [
         SortDescriptor(\WorkoutEntity.date, order: SortOrder.reverse)
     ])
@@ -25,7 +25,7 @@ struct WorkoutsTabView: View {
     @State private var navigateToQuickWorkout = false
     @State private var expandedFolders: Set<UUID> = []
     @State private var draggedWorkout: WorkoutEntity?
-    
+
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
     @State private var workoutToDelete: Workout?
@@ -33,21 +33,21 @@ struct WorkoutsTabView: View {
     @State private var quickGeneratedWorkout: Workout?
     @State private var quickWorkoutName: String = ""
     @State private var showingHomeLimitAlert = false
-    
+
     private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout? {
         return Workout(entity: entity, in: modelContext)
     }
-    
+
     private var displayWorkouts: [Workout] {
         workoutEntities.compactMap { mapWorkoutEntity($0) }
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color(.systemBackground)
                     .ignoresSafeArea()
-                
+
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 20) {
                         // Ordner-Sections
@@ -113,11 +113,14 @@ struct WorkoutsTabView: View {
                                 LazyVGrid(
                                     columns: [
                                         GridItem(.flexible(), spacing: 8),
-                                        GridItem(.flexible(), spacing: 8)
+                                        GridItem(.flexible(), spacing: 8),
                                     ],
                                     spacing: 12
                                 ) {
-                                    ForEach(workoutsWithoutFolder.compactMap { mapWorkoutEntity($0) }, id: \.id) { workout in
+                                    ForEach(
+                                        workoutsWithoutFolder.compactMap { mapWorkoutEntity($0) },
+                                        id: \.id
+                                    ) { workout in
                                         WorkoutTileCard(
                                             workout: workout,
                                             isHomeFavorite: workout.isFavorite,
@@ -125,11 +128,14 @@ struct WorkoutsTabView: View {
                                             onEdit: { editWorkout(id: workout.id) },
                                             onStart: { startWorkout(with: workout.id) },
                                             onDelete: { workoutToDelete = workout },
-                                            onToggleHome: { toggleHomeFavorite(workoutID: workout.id) },
+                                            onToggleHome: {
+                                                toggleHomeFavorite(workoutID: workout.id)
+                                            },
                                             onDuplicate: { duplicateWorkout(id: workout.id) },
                                             onShare: { shareWorkout(id: workout.id) },
                                             onMoveToFolder: { folder in
-                                                moveWorkoutToFolder(workoutID: workout.id, folder: folder)
+                                                moveWorkoutToFolder(
+                                                    workoutID: workout.id, folder: folder)
                                             },
                                             isInFolder: false
                                         )
@@ -201,17 +207,17 @@ struct WorkoutsTabView: View {
                         onSave: {
                             if var w = quickGeneratedWorkout {
                                 w.name = quickWorkoutName
-                                
+
                                 if workoutStore.modelContext == nil {
                                     workoutStore.modelContext = modelContext
                                 }
-                                
+
                                 workoutStore.addWorkout(w)
                             }
                             quickGeneratedWorkout = nil
                             navigateToQuickWorkout = false
                         },
-                        onDismiss: { 
+                        onDismiss: {
                             quickGeneratedWorkout = nil
                             navigateToQuickWorkout = false
                         }
@@ -249,10 +255,13 @@ struct WorkoutsTabView: View {
                     ErrorWorkoutView()
                 }
             }
-            .alert("Wirklich löschen?", isPresented: Binding(
-                get: { workoutToDelete != nil },
-                set: { if !$0 { workoutToDelete = nil } }
-            )) {
+            .alert(
+                "Wirklich löschen?",
+                isPresented: Binding(
+                    get: { workoutToDelete != nil },
+                    set: { if !$0 { workoutToDelete = nil } }
+                )
+            ) {
                 Button("Löschen", role: .destructive) {
                     if let id = workoutToDelete?.id {
                         deleteWorkout(id: id)
@@ -272,9 +281,11 @@ struct WorkoutsTabView: View {
                 Text("Damit wir dein 1‑Klick‑Workout optimal erstellen können.")
             }
             .alert("Home-Favoriten voll", isPresented: $showingHomeLimitAlert) {
-                Button("Verstanden") { }
+                Button("Verstanden") {}
             } message: {
-                Text("Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen.")
+                Text(
+                    "Du kannst maximal 4 Workouts als Home-Favoriten speichern.\n\nEntferne zuerst ein anderes Workout aus dem Home-Tab, um Platz zu schaffen."
+                )
             }
         }
         .sheet(item: $shareItem) { item in
@@ -304,7 +315,7 @@ struct WorkoutsTabView: View {
             }
         }
     }
-    
+
     // MARK: - Helper Functions
 
     private var workoutsWithoutFolder: [WorkoutEntity] {
@@ -319,9 +330,9 @@ struct WorkoutsTabView: View {
 
     private func createWorkoutAssistantButton() -> some View {
         Button {
-            showingAddWorkout = false // Schließe erst das Sheet
+            showingAddWorkout = false  // Schließe erst das Sheet
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                navigateToWorkoutWizard = true // Dann navigiere
+                navigateToWorkoutWizard = true  // Dann navigiere
             }
         } label: {
             HStack {
@@ -351,12 +362,12 @@ struct WorkoutsTabView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private func createManualWorkoutButton() -> some View {
         Button {
-            showingAddWorkout = false // Schließe erst das Sheet
+            showingAddWorkout = false  // Schließe erst das Sheet
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                navigateToManualAdd = true // Dann navigiere
+                navigateToManualAdd = true  // Dann navigiere
             }
         } label: {
             HStack {
@@ -382,11 +393,13 @@ struct WorkoutsTabView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private func createQuickWorkoutButton() -> some View {
         Button {
             let profile = workoutStore.userProfile
-            let isProfileMissing = profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && profile.weight == nil && profile.birthDate == nil
+            let isProfileMissing =
+                profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && profile.weight == nil && profile.birthDate == nil
             if isProfileMissing {
                 showingProfileAlert = true
                 return
@@ -402,11 +415,11 @@ struct WorkoutsTabView: View {
             )
             quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
             quickWorkoutName = "Mein \(goal.displayName) Workout"
-            
+
             // Navigation statt Sheet
-            showingAddWorkout = false // Schließe erst das Sheet
+            showingAddWorkout = false  // Schließe erst das Sheet
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                navigateToQuickWorkout = true // Dann navigiere
+                navigateToQuickWorkout = true  // Dann navigiere
             }
         } label: {
             HStack(alignment: .top) {
@@ -414,11 +427,16 @@ struct WorkoutsTabView: View {
                     Text("1-Klick-Workout mit Profil erstellen")
                         .font(.headline)
                         .foregroundColor(.primary)
-                    if workoutStore.userProfile.name.isEmpty && workoutStore.userProfile.weight == nil && workoutStore.userProfile.birthDate == nil {
-                        Text("Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.leading)
+                    if workoutStore.userProfile.name.isEmpty
+                        && workoutStore.userProfile.weight == nil
+                        && workoutStore.userProfile.birthDate == nil
+                    {
+                        Text(
+                            "Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten."
+                        )
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
                     } else {
                         Text("Ziel und Trainingsfrequenz werden aus deinem Profil übernommen.")
                             .font(.subheadline)
@@ -443,7 +461,7 @@ struct WorkoutsTabView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private func createAddWorkoutSheet() -> some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -479,18 +497,19 @@ struct WorkoutsTabView: View {
             }
         }
     }
-    
+
     private func startWorkout(with id: UUID) {
         do {
             try modelContext.save()
         } catch {
             // Error handled silently
         }
-        
+
         if workoutStore.activeSessionID == id {
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(
+                    workoutId: entity.id, workoutName: entity.name)
             }
             return
         }
@@ -499,15 +518,16 @@ struct WorkoutsTabView: View {
         if workoutStore.activeSessionID == id {
             selectedWorkout = WorkoutSelection(id: id)
             if let entity = workoutEntities.first(where: { $0.id == id }) {
-                WorkoutLiveActivityController.shared.start(workoutId: entity.id, workoutName: entity.name)
+                WorkoutLiveActivityController.shared.start(
+                    workoutId: entity.id, workoutName: entity.name)
             }
         }
     }
-    
+
     private func editWorkout(id: UUID) {
         editingWorkoutSelection = WorkoutSelection(id: id)
     }
-    
+
     private func deleteWorkout(id: UUID) {
         if let entity = workoutEntities.first(where: { $0.id == id }) {
             modelContext.delete(entity)
@@ -534,8 +554,8 @@ struct WorkoutsTabView: View {
             defaultRestTime: originalEntity.defaultRestTime,
             duration: nil,
             notes: originalEntity.notes,
-            isFavorite: false, // Nicht als Favorit markieren
-            isSampleWorkout: false // Benutzer-Workout
+            isFavorite: false,  // Nicht als Favorit markieren
+            isSampleWorkout: false  // Benutzer-Workout
         )
 
         // Kopiere alle Übungen mit Sets, sortiere nach order
@@ -593,7 +613,7 @@ struct WorkoutsTabView: View {
         workoutStore.activeSessionID = nil
         WorkoutLiveActivityController.shared.end()
     }
-    
+
     private func toggleHomeFavorite(workoutID: UUID) {
         let success = workoutStore.toggleHomeFavorite(workoutID: workoutID)
         if !success {
@@ -682,11 +702,12 @@ private struct FolderGridSection: View {
                 LazyVGrid(
                     columns: [
                         GridItem(.flexible(), spacing: 8),
-                        GridItem(.flexible(), spacing: 8)
+                        GridItem(.flexible(), spacing: 8),
                     ],
                     spacing: 12
                 ) {
-                    ForEach(workouts.compactMap { Workout(entity: $0, in: modelContext) }, id: \.id) { workout in
+                    ForEach(workouts.compactMap { Workout(entity: $0, in: modelContext) }, id: \.id)
+                    { workout in
                         WorkoutTileCard(
                             workout: workout,
                             isHomeFavorite: workout.isFavorite,
@@ -713,7 +734,7 @@ private struct FolderGridSection: View {
             Button("Ordner löschen", role: .destructive) {
                 onDeleteFolder()
             }
-            Button("Abbrechen", role: .cancel) { }
+            Button("Abbrechen", role: .cancel) {}
         } message: {
             Text("Die Workouts in diesem Ordner werden nicht gelöscht.")
         }
@@ -722,5 +743,5 @@ private struct FolderGridSection: View {
 
 #Preview {
     WorkoutsTabView()
-        .environmentObject(WorkoutStore())
+        .environmentObject(WorkoutStoreCoordinator())
 }
