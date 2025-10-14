@@ -71,7 +71,6 @@
 		AD52FECB2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD52FECA2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift */; };
 		AD52FECD2E8B2A110048DF0F /* WorkoutRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD52FECC2E8B2A110048DF0F /* WorkoutRepository.swift */; };
 		AD52FECF2E8B32640048DF0F /* SwiftDataEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD52FECE2E8B32640048DF0F /* SwiftDataEntities.swift */; };
-		AD52FED32E8B362F0048DF0F /* SwiftDataMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD52FED22E8B362F0048DF0F /* SwiftDataMigration.swift */; };
 		AD52FEDD2E8BCBD40048DF0F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD52FEDC2E8BCBD40048DF0F /* WidgetKit.framework */; };
 		AD52FEDF2E8BCBD40048DF0F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AD52FEDE2E8BCBD40048DF0F /* SwiftUI.framework */; };
 		AD52FEF02E8BCBD50048DF0F /* WorkoutWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AD52FEDA2E8BCBD40048DF0F /* WorkoutWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -106,6 +105,9 @@
 		ADD0805B2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */; };
 		ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */; };
 		ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04062E9E52E50080B745 /* DebugMenuView.swift */; };
+		ADE92E9A2E9EC6F00077A45A /* TipEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E972E9EC6F00077A45A /* TipEngine.swift */; };
+		ADE92E9B2E9EC6F00077A45A /* TipFeedbackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E982E9EC6F00077A45A /* TipFeedbackManager.swift */; };
+		ADE92E9C2E9EC6F00077A45A /* WorkoutAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E992E9EC6F00077A45A /* WorkoutAnalyzer.swift */; };
 		ADF073D02E92F89200B487B9 /* ExerciseMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */; };
 		ADF0E3A72E91B8B5003FC831 /* WorkoutsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */; };
 		ADF1AA732E931A5700DBDAFA /* ExerciseDatabaseMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */; };
@@ -214,7 +216,6 @@
 		AD52FECA2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workout+SwiftDataMapping.swift"; sourceTree = "<group>"; };
 		AD52FECC2E8B2A110048DF0F /* WorkoutRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRepository.swift; sourceTree = "<group>"; };
 		AD52FECE2E8B32640048DF0F /* SwiftDataEntities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataEntities.swift; sourceTree = "<group>"; };
-		AD52FED22E8B362F0048DF0F /* SwiftDataMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataMigration.swift; sourceTree = "<group>"; };
 		AD52FEDA2E8BCBD40048DF0F /* WorkoutWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD52FEDC2E8BCBD40048DF0F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		AD52FEDE2E8BCBD40048DF0F /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -251,6 +252,9 @@
 		ADD0805A2E8C7D29003FAAFB /* ProfilePersistenceHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistenceHelper.swift; sourceTree = "<group>"; };
 		ADDD04062E9E52E50080B745 /* DebugMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugMenuView.swift; sourceTree = "<group>"; };
 		ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
+		ADE92E972E9EC6F00077A45A /* TipEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipEngine.swift; sourceTree = "<group>"; };
+		ADE92E982E9EC6F00077A45A /* TipFeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipFeedbackManager.swift; sourceTree = "<group>"; };
+		ADE92E992E9EC6F00077A45A /* WorkoutAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAnalyzer.swift; sourceTree = "<group>"; };
 		ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMarkdownParser.swift; sourceTree = "<group>"; };
 		ADF0E3A62E91B8B5003FC831 /* WorkoutsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsTabView.swift; sourceTree = "<group>"; };
 		ADF1AA722E931A5700DBDAFA /* ExerciseDatabaseMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDatabaseMigration.swift; sourceTree = SOURCE_ROOT; };
@@ -371,7 +375,6 @@
 				AD4B5D4D2E8A723B0083787B /* AppLayout.swift */,
 				AD52FECA2E8B2A0E0048DF0F /* Workout+SwiftDataMapping.swift */,
 				AD52FECC2E8B2A110048DF0F /* WorkoutRepository.swift */,
-				AD52FED22E8B362F0048DF0F /* SwiftDataMigration.swift */,
 				AD52FEF82E8BD0DB0048DF0F /* Info.plist */,
 				AD960E9F2E8BF83200E91131 /* DataManager.swift */,
 				AD960EA12E8C093D00E91131 /* ExerciseSeeder.swift */,
@@ -475,6 +478,9 @@
 		AD2A83C42E942E7500A6ADBE /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				ADE92E972E9EC6F00077A45A /* TipEngine.swift */,
+				ADE92E982E9EC6F00077A45A /* TipFeedbackManager.swift */,
+				ADE92E992E9EC6F00077A45A /* WorkoutAnalyzer.swift */,
 				ADB19F582E9D83D1004BE444 /* HapticManager.swift */,
 				ADB19F522E9D8201004BE444 /* TimerEngine.swift */,
 			);
@@ -699,6 +705,9 @@
 				AD4B5D4E2E8A723B0083787B /* AppLayout.swift in Sources */,
 				AD2A83BE2E942DFE00A6ADBE /* TrainingTip.swift in Sources */,
 				11E7491A2C9E4C9E00AB1234 /* Color+Theme.swift in Sources */,
+				ADE92E9A2E9EC6F00077A45A /* TipEngine.swift in Sources */,
+				ADE92E9B2E9EC6F00077A45A /* TipFeedbackManager.swift in Sources */,
+				ADE92E9C2E9EC6F00077A45A /* WorkoutAnalyzer.swift in Sources */,
 				AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */,
 				ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */,
 				ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */,
@@ -740,7 +749,6 @@
 				AD2A83D22E94614300A6ADBE /* HealthKitWorkoutTracker.swift in Sources */,
 				11E749142C9E4C4B00AB1234 /* SettingsView.swift in Sources */,
 				AD960EA42E8C0A7000E91131 /* SwiftDataSafeMapping.swift in Sources */,
-				AD52FED32E8B362F0048DF0F /* SwiftDataMigration.swift in Sources */,
 				AD52FECF2E8B32640048DF0F /* SwiftDataEntities.swift in Sources */,
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,
 				11E748F02C9E4B0F00AB1234 /* GymTrackerApp.swift in Sources */,
