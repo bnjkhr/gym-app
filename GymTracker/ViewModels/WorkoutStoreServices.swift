@@ -1,4 +1,7 @@
 import Foundation
+import HealthKit
+import SwiftData
+import SwiftUI
 
 /// Service für zentrale Cache-Verwaltung
 @MainActor
@@ -54,9 +57,6 @@ struct ExerciseStats {
     let averageWeight: Double?
     let history: [HistoryPoint]
 }
-import Foundation
-import SwiftUI
-import SwiftData
 
 /// Repository für Exercise CRUD-Operationen und Abfragen
 @MainActor
@@ -103,30 +103,37 @@ class ExerciseRepository: ObservableObject {
         let descriptor = FetchDescriptor<ExerciseEntity>()
         let allExercises = (try? context.fetch(descriptor)) ?? []
 
-        if let existing = allExercises.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+        if let existing = allExercises.first(where: {
+            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+        }) {
             return mapExerciseEntity(existing)
         }
 
-        let newExercise = Exercise(name: name, muscleGroups: [], equipmentType: .mixed, description: "")
+        let newExercise = Exercise(
+            name: name, muscleGroups: [], equipmentType: .mixed, description: "")
         let entity = ExerciseEntity.make(from: newExercise)
         context.insert(entity)
         try? context.save()
         return newExercise
     }
 
-    func getSimilarExercises(to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil) -> [Exercise] {
+    func getSimilarExercises(
+        to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil
+    ) -> [Exercise] {
         let allExercises = getExercises()
 
         let candidates = allExercises.filter { candidate in
-            candidate.id != exercise.id &&
-            exercise.hasSimilarMuscleGroups(to: candidate)
+            candidate.id != exercise.id && exercise.hasSimilarMuscleGroups(to: candidate)
         }
 
-        let scoredExercises = candidates.compactMap { candidate -> (exercise: Exercise, score: Int, matchesLevel: Bool, sharesPrimary: Bool)? in
+        let scoredExercises = candidates.compactMap {
+            candidate -> (exercise: Exercise, score: Int, matchesLevel: Bool, sharesPrimary: Bool)?
+            in
             let score = exercise.similarityScore(to: candidate)
             guard score > 0 else { return nil }
 
-            let matchesLevel = userLevel != nil ? matchesDifficultyLevel(candidate, for: userLevel!) : true
+            let matchesLevel =
+                userLevel != nil ? matchesDifficultyLevel(candidate, for: userLevel!) : true
             let sharesPrimary = exercise.sharesPrimaryMuscleGroup(with: candidate)
             return (candidate, score, matchesLevel, sharesPrimary)
         }
@@ -139,7 +146,7 @@ class ExerciseRepository: ObservableObject {
                 return false
             }
 
-            if let _ = userLevel {
+            if userLevel != nil {
                 if first.matchesLevel && !second.matchesLevel {
                     return true
                 }
@@ -168,7 +175,9 @@ class ExerciseRepository: ObservableObject {
         let nameDescriptor = FetchDescriptor<ExerciseEntity>()
         let allExercises = (try? context.fetch(nameDescriptor)) ?? []
 
-        if allExercises.contains(where: { $0.name.localizedCaseInsensitiveCompare(exercise.name) == .orderedSame }) {
+        if allExercises.contains(where: {
+            $0.name.localizedCaseInsensitiveCompare(exercise.name) == .orderedSame
+        }) {
             return
         }
 
@@ -248,7 +257,9 @@ class ExerciseRepository: ObservableObject {
             )
         }
 
-        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap {
+            MuscleGroup(rawValue: $0)
+        }
         let equipmentType = EquipmentType(rawValue: validSource.equipmentTypeRaw) ?? .mixed
         let difficultyLevel = DifficultyLevel(rawValue: validSource.difficultyLevelRaw) ?? .anfänger
 
@@ -267,16 +278,16 @@ class ExerciseRepository: ObservableObject {
     private func matchesDifficultyLevel(_ exercise: Exercise, for level: ExperienceLevel) -> Bool {
         switch level {
         case .beginner:
-            return exercise.difficultyLevel == .anfänger || exercise.difficultyLevel == .fortgeschritten
+            return exercise.difficultyLevel == .anfänger
+                || exercise.difficultyLevel == .fortgeschritten
         case .intermediate:
             return true
         case .advanced:
-            return exercise.difficultyLevel == .fortgeschritten || exercise.difficultyLevel == .profi
+            return exercise.difficultyLevel == .fortgeschritten
+                || exercise.difficultyLevel == .profi
         }
     }
 }
-import Foundation
-import SwiftData
 
 /// Repository für Workout CRUD-Operationen und Abfragen
 @MainActor
@@ -318,7 +329,8 @@ class WorkoutRepository: ObservableObject {
         }
 
         do {
-            let descriptor = FetchDescriptor<WorkoutEntity>(predicate: #Predicate<WorkoutEntity> { $0.id == activeSessionID })
+            let descriptor = FetchDescriptor<WorkoutEntity>(
+                predicate: #Predicate<WorkoutEntity> { $0.id == activeSessionID })
             if let entity = try context.fetch(descriptor).first {
                 return mapWorkoutEntity(entity)
             } else {
@@ -453,7 +465,8 @@ class WorkoutRepository: ObservableObject {
 
     func previousWorkout(before workout: Workout) -> Workout? {
         let sessionHistory = getSessionHistory()
-        return sessionHistory
+        return
+            sessionHistory
             .filter { $0.templateId == workout.id }
             .sorted { $0.date > $1.date }
             .first
@@ -542,7 +555,9 @@ class WorkoutRepository: ObservableObject {
             )
         }
 
-        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap { MuscleGroup(rawValue: $0) }
+        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap {
+            MuscleGroup(rawValue: $0)
+        }
         let equipmentType = EquipmentType(rawValue: validSource.equipmentTypeRaw) ?? .mixed
         let difficultyLevel = DifficultyLevel(rawValue: validSource.difficultyLevelRaw) ?? .anfänger
 
@@ -558,9 +573,6 @@ class WorkoutRepository: ObservableObject {
         )
     }
 }
-import Foundation
-import SwiftData
-import HealthKit
 
 /// Service für Active Session Management und Session-Recording
 @MainActor
@@ -654,7 +666,9 @@ class SessionService: ObservableObject {
         }
     }
 
-    func recordSession(from workout: Workout, userProfile: UserProfile, healthKitManager: HealthKitManager) {
+    func recordSession(
+        from workout: Workout, userProfile: UserProfile, healthKitManager: HealthKitManager
+    ) {
         guard let context = modelContext else {
             print("❌ SessionService: ModelContext ist nil beim Speichern einer Session")
             return
@@ -727,11 +741,8 @@ class SessionService: ObservableObject {
         return entities.map { WorkoutSession(entity: $0) }
     }
 }
-import Foundation
-import SwiftData
-import HealthKit
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 /// Service für User Profile Management
@@ -778,7 +789,8 @@ class UserProfileService: ObservableObject {
             guard let entity = try context.fetch(descriptor).first else {
                 // No entity found, return UserDefaults backup or empty profile
                 let backup = ProfilePersistenceHelper.loadFromUserDefaults()
-                self.userProfile = !backup.name.isEmpty || backup.weight != nil ? backup : UserProfile()
+                self.userProfile =
+                    !backup.name.isEmpty || backup.weight != nil ? backup : UserProfile()
                 return
             }
 
@@ -795,8 +807,14 @@ class UserProfileService: ObservableObject {
 
     // MARK: - Public API
 
-    func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil) {
-        let imageData = profileImageData ?? ProfilePersistenceHelper.loadFromUserDefaults().profileImageData
+    func updateProfile(
+        name: String, birthDate: Date?, weight: Double?, height: Double? = nil,
+        biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel,
+        equipment: EquipmentPreference, preferredDuration: WorkoutDuration,
+        healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil
+    ) {
+        let imageData =
+            profileImageData ?? ProfilePersistenceHelper.loadFromUserDefaults().profileImageData
 
         let updatedProfile = UserProfile(
             name: name,
@@ -865,35 +883,37 @@ class UserProfileService: ObservableObject {
     }
 
     #if canImport(UIKit)
-    func updateProfileImage(_ image: UIImage?) {
-        let imageData: Data? = if let image = image {
-            image.jpegData(compressionQuality: 0.8)
-        } else {
-            nil
-        }
+        func updateProfileImage(_ image: UIImage?) {
+            let imageData: Data? =
+                if let image = image {
+                    image.jpegData(compressionQuality: 0.8)
+                } else {
+                    nil
+                }
 
-        guard let context = modelContext else {
-            print("⚠️ UserProfileService: ModelContext ist nil beim Aktualisieren des Profilbilds")
-            return
-        }
-
-        do {
-            let descriptor = FetchDescriptor<UserProfileEntity>()
-            if let entity = try context.fetch(descriptor).first {
-                entity.profileImageData = imageData
-
-                let profile = UserProfile(entity: entity)
-                ProfilePersistenceHelper.saveToUserDefaults(profile)
-
-                try context.save()
-                loadProfile()
-                profileUpdateTrigger = UUID()
-                print("✅ Profilbild erfolgreich aktualisiert")
+            guard let context = modelContext else {
+                print(
+                    "⚠️ UserProfileService: ModelContext ist nil beim Aktualisieren des Profilbilds")
+                return
             }
-        } catch {
-            print("❌ Fehler beim Aktualisieren des Profilbilds: \(error)")
+
+            do {
+                let descriptor = FetchDescriptor<UserProfileEntity>()
+                if let entity = try context.fetch(descriptor).first {
+                    entity.profileImageData = imageData
+
+                    let profile = UserProfile(entity: entity)
+                    ProfilePersistenceHelper.saveToUserDefaults(profile)
+
+                    try context.save()
+                    loadProfile()
+                    profileUpdateTrigger = UUID()
+                    print("✅ Profilbild erfolgreich aktualisiert")
+                }
+            } catch {
+                print("❌ Fehler beim Aktualisieren des Profilbilds: \(error)")
+            }
         }
-    }
     #endif
 
     func updateLockerNumber(_ lockerNumber: String) {
@@ -922,9 +942,14 @@ class UserProfileService: ObservableObject {
         }
     }
 
-    func markOnboardingStep(hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil, hasSetupProfile: Bool? = nil) {
+    func markOnboardingStep(
+        hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil,
+        hasSetupProfile: Bool? = nil
+    ) {
         guard let context = modelContext else {
-            print("⚠️ UserProfileService: ModelContext ist nil beim Aktualisieren des Onboarding-Status")
+            print(
+                "⚠️ UserProfileService: ModelContext ist nil beim Aktualisieren des Onboarding-Status"
+            )
             return
         }
 
@@ -987,15 +1012,14 @@ class UserProfileService: ObservableObject {
         }
     }
 }
-import Foundation
-import HealthKit
 
 /// Protocol für HealthKit Integration (für Dependency Injection)
 protocol HealthKitServiceProtocol {
     func requestHealthKitAuthorization() async throws
     func importFromHealthKit(userProfileService: UserProfileService) async throws
     func saveWorkoutToHealthKit(_ workoutSession: WorkoutSession) async throws
-    func readHeartRateData(from startDate: Date, to endDate: Date) async throws -> [HeartRateReading]
+    func readHeartRateData(from startDate: Date, to endDate: Date) async throws
+        -> [HeartRateReading]
     func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading]
     func readBodyFatData(from startDate: Date, to endDate: Date) async throws -> [BodyFatReading]
 }
@@ -1060,12 +1084,15 @@ class HealthKitIntegrationService: ObservableObject, HealthKitServiceProtocol {
         try await healthKitManager.saveWorkout(workoutSession)
     }
 
-    func readHeartRateData(from startDate: Date, to endDate: Date) async throws -> [HeartRateReading] {
+    func readHeartRateData(from startDate: Date, to endDate: Date) async throws
+        -> [HeartRateReading]
+    {
         guard healthKitManager.isAuthorized else { return [] }
         return try await healthKitManager.readHeartRate(from: startDate, to: endDate)
     }
 
-    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading] {
+    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading]
+    {
         guard healthKitManager.isAuthorized else { return [] }
         return try await healthKitManager.readWeight(from: startDate, to: endDate)
     }
@@ -1075,8 +1102,6 @@ class HealthKitIntegrationService: ObservableObject, HealthKitServiceProtocol {
         return try await healthKitManager.readBodyFat(from: startDate, to: endDate)
     }
 }
-import Foundation
-import HealthKit
 
 /// Service für Herzfrequenz-Tracking während Workouts
 @MainActor
@@ -1096,7 +1121,8 @@ class HeartRateTrackingService: ObservableObject {
         let tracker = HealthKitWorkoutTracker()
         tracker.onHeartRateUpdate = { [weak self] heartRate in
             Task { @MainActor in
-                WorkoutLiveActivityController.shared.updateHeartRate(workoutId: workoutId, workoutName: workoutName, heartRate: heartRate)
+                WorkoutLiveActivityController.shared.updateHeartRate(
+                    workoutId: workoutId, workoutName: workoutName, heartRate: heartRate)
             }
         }
         tracker.startTracking()
@@ -1114,10 +1140,8 @@ class HeartRateTrackingService: ObservableObject {
         print("✅ Herzfrequenz-Tracking beendet")
     }
 }
-import Foundation
-import SwiftUI
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 /// Service für zentrale Rest-Timer Verwaltung
@@ -1148,11 +1172,9 @@ class RestTimerService: ObservableObject {
         var endDate: Date?
 
         static func == (lhs: ActiveRestState, rhs: ActiveRestState) -> Bool {
-            lhs.workoutId == rhs.workoutId &&
-            lhs.exerciseIndex == rhs.exerciseIndex &&
-            lhs.setIndex == rhs.setIndex &&
-            lhs.remainingSeconds == rhs.remainingSeconds &&
-            lhs.isRunning == rhs.isRunning
+            lhs.workoutId == rhs.workoutId && lhs.exerciseIndex == rhs.exerciseIndex
+                && lhs.setIndex == rhs.setIndex && lhs.remainingSeconds == rhs.remainingSeconds
+                && lhs.isRunning == rhs.isRunning
         }
     }
 
@@ -1184,7 +1206,9 @@ class RestTimerService: ObservableObject {
         setupRestTimer()
         updateLiveActivityRest()
         if restNotificationsEnabled {
-            let exerciseName = (workout.exercises.indices.contains(exerciseIndex) ? workout.exercises[exerciseIndex].exercise.name : nil)
+            let exerciseName =
+                (workout.exercises.indices.contains(exerciseIndex)
+                    ? workout.exercises[exerciseIndex].exercise.name : nil)
             NotificationManager.shared.scheduleRestEndNotification(
                 remainingSeconds: total,
                 workoutName: workout.name,
@@ -1273,7 +1297,8 @@ class RestTimerService: ObservableObject {
         restTimer = nil
         NotificationManager.shared.cancelRestEndNotification()
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(
+                workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
     }
@@ -1282,7 +1307,8 @@ class RestTimerService: ObservableObject {
         restTimer?.invalidate()
         restTimer = nil
         if let state = activeRestState {
-            WorkoutLiveActivityController.shared.clearRest(workoutId: state.workoutId, workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.clearRest(
+                workoutId: state.workoutId, workoutName: state.workoutName)
         }
         activeRestState = nil
     }
@@ -1296,7 +1322,8 @@ class RestTimerService: ObservableObject {
         state.remainingSeconds = remaining
 
         if remaining <= 0 {
-            WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
+            WorkoutLiveActivityController.shared.showRestEnded(
+                workoutId: state.workoutId, workoutName: state.workoutName)
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 self.clearRestState()
@@ -1313,7 +1340,9 @@ class RestTimerService: ObservableObject {
         restTimer?.invalidate()
         restTimer = nil
 
-        guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else { return }
+        guard let state = activeRestState, state.isRunning, state.remainingSeconds > 0 else {
+            return
+        }
 
         restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.tickRest()
@@ -1354,11 +1383,12 @@ class RestTimerService: ObservableObject {
 
                 SoundPlayer.playBoxBell()
                 #if canImport(UIKit)
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
                 #endif
 
-                WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
+                WorkoutLiveActivityController.shared.showRestEnded(
+                    workoutId: state.workoutId, workoutName: state.workoutName)
 
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -1376,11 +1406,12 @@ class RestTimerService: ObservableObject {
 
                     SoundPlayer.playBoxBell()
                     #if canImport(UIKit)
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
                     #endif
 
-                    WorkoutLiveActivityController.shared.showRestEnded(workoutId: state.workoutId, workoutName: state.workoutName)
+                    WorkoutLiveActivityController.shared.showRestEnded(
+                        workoutId: state.workoutId, workoutName: state.workoutName)
 
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -1412,7 +1443,8 @@ class RestTimerService: ObservableObject {
 
     private func getActiveWorkoutExerciseName(at index: Int) -> String? {
         guard let workout = workoutProvider?.getActiveWorkout() else { return nil }
-        return workout.exercises.indices.contains(index) ? workout.exercises[index].exercise.name : nil
+        return workout.exercises.indices.contains(index)
+            ? workout.exercises[index].exercise.name : nil
     }
 }
 
@@ -1421,8 +1453,6 @@ class RestTimerService: ObservableObject {
 protocol WorkoutProviding: AnyObject {
     func getActiveWorkout() -> Workout?
 }
-import Foundation
-import SwiftData
 
 /// Service für Last-Used Exercise Metrics Management
 @MainActor
@@ -1467,7 +1497,9 @@ class LastUsedMetricsService: ObservableObject {
                 exerciseEntity.lastUsedDate = session.date
                 exerciseEntity.lastUsedRestTime = lastSet.restTime
 
-                print("✅ Last-Used aktualisiert für \(exerciseEntity.name): \(lastSet.weight)kg × \(lastSet.reps)")
+                print(
+                    "✅ Last-Used aktualisiert für \(exerciseEntity.name): \(lastSet.weight)kg × \(lastSet.reps)"
+                )
             }
         }
 
@@ -1487,8 +1519,9 @@ class LastUsedMetricsService: ObservableObject {
         )
 
         guard let entity = try? context.fetch(descriptor).first,
-              let weight = entity.lastUsedWeight,
-              let setCount = entity.lastUsedSetCount else {
+            let weight = entity.lastUsedWeight,
+            let setCount = entity.lastUsedSetCount
+        else {
             return legacyLastMetrics(for: exercise)
         }
 
@@ -1526,7 +1559,8 @@ class LastUsedMetricsService: ObservableObject {
         let sessions = (try? context.fetch(descriptor)) ?? []
 
         for session in sessions {
-            if let exerciseData = session.exercises.first(where: { $0.exercise?.id == exercise.id }) {
+            if let exerciseData = session.exercises.first(where: { $0.exercise?.id == exercise.id })
+            {
                 let weight = exerciseData.sets.first?.weight ?? 0
                 return (weight, exerciseData.sets.count)
             }
@@ -1578,10 +1612,6 @@ struct ExerciseLastUsedMetrics {
         return parts.joined(separator: " • ")
     }
 }
-import Foundation
-import SwiftUI
-import SwiftData
-import HealthKit
 
 /// Hauptkoordinator der alle Services orchestriert
 /// Ersetzt schrittweise den monolithischen WorkoutStore
@@ -1711,7 +1741,9 @@ class WorkoutStoreCoordinator: ObservableObject {
         exerciseRepository.exercise(named: name)
     }
 
-    func getSimilarExercises(to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil) -> [Exercise] {
+    func getSimilarExercises(
+        to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil
+    ) -> [Exercise] {
         exerciseRepository.getSimilarExercises(to: exercise, count: count, userLevel: userLevel)
     }
 
@@ -1754,7 +1786,8 @@ class WorkoutStoreCoordinator: ObservableObject {
     }
 
     func recordSession(from workout: Workout) {
-        sessionService.recordSession(from: workout, userProfile: userProfile, healthKitManager: healthKitManager)
+        sessionService.recordSession(
+            from: workout, userProfile: userProfile, healthKitManager: healthKitManager)
     }
 
     func removeSession(with id: UUID) {
@@ -1763,22 +1796,36 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     // MARK: - Profile Service Methods
 
-    func updateProfile(name: String, birthDate: Date?, weight: Double?, height: Double? = nil, biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel, equipment: EquipmentPreference, preferredDuration: WorkoutDuration, healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil) {
-        userProfileService.updateProfile(name: name, birthDate: birthDate, weight: weight, height: height, biologicalSex: biologicalSex, goal: goal, experience: experience, equipment: equipment, preferredDuration: preferredDuration, healthKitSyncEnabled: healthKitSyncEnabled, profileImageData: profileImageData)
+    func updateProfile(
+        name: String, birthDate: Date?, weight: Double?, height: Double? = nil,
+        biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel,
+        equipment: EquipmentPreference, preferredDuration: WorkoutDuration,
+        healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil
+    ) {
+        userProfileService.updateProfile(
+            name: name, birthDate: birthDate, weight: weight, height: height,
+            biologicalSex: biologicalSex, goal: goal, experience: experience, equipment: equipment,
+            preferredDuration: preferredDuration, healthKitSyncEnabled: healthKitSyncEnabled,
+            profileImageData: profileImageData)
     }
 
     #if canImport(UIKit)
-    func updateProfileImage(_ image: UIImage?) {
-        userProfileService.updateProfileImage(image)
-    }
+        func updateProfileImage(_ image: UIImage?) {
+            userProfileService.updateProfileImage(image)
+        }
     #endif
 
     func updateLockerNumber(_ lockerNumber: String) {
         userProfileService.updateLockerNumber(lockerNumber)
     }
 
-    func markOnboardingStep(hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil, hasSetupProfile: Bool? = nil) {
-        userProfileService.markOnboardingStep(hasExploredWorkouts: hasExploredWorkouts, hasCreatedFirstWorkout: hasCreatedFirstWorkout, hasSetupProfile: hasSetupProfile)
+    func markOnboardingStep(
+        hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil,
+        hasSetupProfile: Bool? = nil
+    ) {
+        userProfileService.markOnboardingStep(
+            hasExploredWorkouts: hasExploredWorkouts,
+            hasCreatedFirstWorkout: hasCreatedFirstWorkout, hasSetupProfile: hasSetupProfile)
     }
 
     // MARK: - HealthKit Integration Methods
@@ -1795,11 +1842,14 @@ class WorkoutStoreCoordinator: ObservableObject {
         try await healthKitService.saveWorkoutToHealthKit(workoutSession)
     }
 
-    func readHeartRateData(from startDate: Date, to endDate: Date) async throws -> [HeartRateReading] {
+    func readHeartRateData(from startDate: Date, to endDate: Date) async throws
+        -> [HeartRateReading]
+    {
         try await healthKitService.readHeartRateData(from: startDate, to: endDate)
     }
 
-    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading] {
+    func readWeightData(from startDate: Date, to endDate: Date) async throws -> [BodyWeightReading]
+    {
         try await healthKitService.readWeightData(from: startDate, to: endDate)
     }
 
@@ -1810,7 +1860,9 @@ class WorkoutStoreCoordinator: ObservableObject {
     // MARK: - Rest Timer Methods
 
     func startRest(for workout: Workout, exerciseIndex: Int, setIndex: Int, totalSeconds: Int) {
-        restTimerService.startRest(for: workout, exerciseIndex: exerciseIndex, setIndex: setIndex, totalSeconds: totalSeconds)
+        restTimerService.startRest(
+            for: workout, exerciseIndex: exerciseIndex, setIndex: setIndex,
+            totalSeconds: totalSeconds)
         activeRestState = restTimerService.activeRestState
     }
 
@@ -1920,6 +1972,26 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     func resetAllData() async throws {
         try await legacyStore.resetAllData()
+    }
+
+    // MARK: - Additional Methods from ContentView
+
+    func performMemoryCleanup() {
+        legacyStore.performMemoryCleanup()
+    }
+
+    func refreshRestFromWallClock() {
+        restTimerService.refreshRestFromWallClock()
+        activeRestState = restTimerService.activeRestState
+    }
+
+    func restorePersistedRestState() {
+        legacyStore.restorePersistedRestState()
+    }
+
+    func stopRest() {
+        restTimerService.stopRest()
+        activeRestState = restTimerService.activeRestState
     }
 }
 

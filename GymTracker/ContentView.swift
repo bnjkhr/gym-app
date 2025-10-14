@@ -89,7 +89,7 @@ struct ShareItem: Identifiable {
 }
 
 struct ContentView: View {
-    @StateObject private var workoutStore = WorkoutStore()
+    @StateObject private var workoutStore = WorkoutStoreCoordinator()
     @StateObject private var overlayManager = InAppOverlayManager()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme

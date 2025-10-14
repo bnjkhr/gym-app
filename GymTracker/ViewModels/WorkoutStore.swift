@@ -3302,3 +3302,334 @@ extension WorkoutStore {
 extension Notification.Name {
     static let profileUpdatedFromHealthKit = Notification.Name("profileUpdatedFromHealthKit")
 }
+
+// MARK: - WorkoutStoreCoordinator (Phase 2 Migration)
+
+/// Koordinator der alle WorkoutStore-Services zusammenführt und als zentrale Schnittstelle dient.
+/// In Phase 2: Einfacher Wrapper um WorkoutStore für schrittweise Migration
+@MainActor
+class WorkoutStoreCoordinator: ObservableObject {
+
+    // MARK: - Legacy Store (Phase 2: Kompletter Fallback)
+
+    private let legacyStore: WorkoutStore
+
+    // MARK: - Published Properties (Delegated)
+
+    var activeSessionID: UUID? {
+        get { legacyStore.activeSessionID }
+        set { legacyStore.activeSessionID = newValue }
+    }
+
+    var isShowingWorkoutDetail: Bool {
+        get { legacyStore.isShowingWorkoutDetail }
+        set { legacyStore.isShowingWorkoutDetail = newValue }
+    }
+
+    var modelContext: ModelContext? {
+        get { legacyStore.modelContext }
+        set { legacyStore.modelContext = newValue }
+    }
+
+    var overlayManager: InAppOverlayManager? {
+        get { legacyStore.overlayManager }
+        set { legacyStore.overlayManager = newValue }
+    }
+
+    var restTimerStateManager: RestTimerStateManager {
+        legacyStore.restTimerStateManager
+    }
+
+    var activeRestState: WorkoutStore.ActiveRestState? {
+        legacyStore.activeRestState
+    }
+
+    // MARK: - Computed Properties
+
+    var exercises: [Exercise] {
+        legacyStore.exercises
+    }
+
+    var workouts: [Workout] {
+        legacyStore.workouts
+    }
+
+    var activeWorkout: Workout? {
+        legacyStore.activeWorkout
+    }
+
+    var homeWorkouts: [Workout] {
+        legacyStore.homeWorkouts
+    }
+
+    var userProfile: UserProfile {
+        legacyStore.userProfile
+    }
+
+    var profileUpdateTrigger: UUID {
+        legacyStore.profileUpdateTrigger
+    }
+
+    var healthKitManager: HealthKitManager {
+        legacyStore.healthKitManager
+    }
+
+    var totalWorkoutCount: Int {
+        legacyStore.totalWorkoutCount
+    }
+
+    var averageWorkoutsPerWeek: Double {
+        legacyStore.averageWorkoutsPerWeek
+    }
+
+    var currentWeekStreak: Int {
+        legacyStore.currentWeekStreak
+    }
+
+    var averageDurationMinutes: Int {
+        legacyStore.averageDurationMinutes
+    }
+
+    // MARK: - Initialization
+
+    init() {
+        self.legacyStore = WorkoutStore()
+    }
+
+    // MARK: - Exercise Methods
+
+    func exercise(named name: String) -> Exercise {
+        legacyStore.exercise(named: name)
+    }
+
+    func getSimilarExercises(
+        to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil
+    ) -> [Exercise] {
+        legacyStore.getSimilarExercises(to: exercise, count: count, userLevel: userLevel)
+    }
+
+    func addExercise(_ exercise: Exercise) {
+        legacyStore.addExercise(exercise)
+    }
+
+    func updateExercise(_ exercise: Exercise) {
+        legacyStore.updateExercise(exercise)
+    }
+
+    func deleteExercise(at indexSet: IndexSet) {
+        legacyStore.deleteExercise(at: indexSet)
+    }
+
+    // MARK: - Workout Methods
+
+    func addWorkout(_ workout: Workout) {
+        legacyStore.addWorkout(workout)
+    }
+
+    func updateWorkout(_ workout: Workout) {
+        legacyStore.updateWorkout(workout)
+    }
+
+    func deleteWorkout(at indexSet: IndexSet) {
+        legacyStore.deleteWorkout(at: indexSet)
+    }
+
+    func toggleFavorite(for workoutID: UUID) {
+        legacyStore.toggleFavorite(for: workoutID)
+    }
+
+    func toggleHomeFavorite(workoutID: UUID) -> Bool {
+        legacyStore.toggleHomeFavorite(workoutID: workoutID)
+    }
+
+    func previousWorkout(before workout: Workout) -> Workout? {
+        legacyStore.previousWorkout(before: workout)
+    }
+
+    // MARK: - Session Methods
+
+    func startSession(for workoutId: UUID) {
+        legacyStore.startSession(for: workoutId)
+    }
+
+    func endCurrentSession() {
+        legacyStore.endCurrentSession()
+    }
+
+    func recordSession(from workout: Workout) {
+        legacyStore.recordSession(from: workout)
+    }
+
+    func removeSession(with id: UUID) {
+        legacyStore.removeSession(with: id)
+    }
+
+    func getSessionHistory() -> [WorkoutSession] {
+        // Access private method via modelContext directly
+        guard let context = legacyStore.modelContext else { return [] }
+        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 100
+        descriptor.includePendingChanges = false
+        let entities = (try? context.fetch(descriptor)) ?? []
+        return entities.map { WorkoutSession(entity: $0) }
+    }
+
+    // MARK: - Profile Methods
+
+    func updateProfile(
+        name: String, birthDate: Date?, weight: Double?, height: Double? = nil,
+        biologicalSex: HKBiologicalSex? = nil, goal: FitnessGoal, experience: ExperienceLevel,
+        equipment: EquipmentPreference, preferredDuration: WorkoutDuration,
+        healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil
+    ) {
+        legacyStore.updateProfile(
+            name: name, birthDate: birthDate, weight: weight, height: height,
+            biologicalSex: biologicalSex, goal: goal, experience: experience, equipment: equipment,
+            preferredDuration: preferredDuration, healthKitSyncEnabled: healthKitSyncEnabled,
+            profileImageData: profileImageData)
+    }
+
+    #if canImport(UIKit)
+        func updateProfileImage(_ image: UIImage?) {
+            legacyStore.updateProfileImage(image)
+        }
+    #endif
+
+    func updateLockerNumber(_ lockerNumber: String) {
+        legacyStore.updateLockerNumber(lockerNumber)
+    }
+
+    func markOnboardingStep(
+        hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil,
+        hasSetupProfile: Bool? = nil
+    ) {
+        legacyStore.markOnboardingStep(
+            hasExploredWorkouts: hasExploredWorkouts,
+            hasCreatedFirstWorkout: hasCreatedFirstWorkout, hasSetupProfile: hasSetupProfile)
+    }
+
+    // MARK: - HealthKit Methods
+
+    func requestHealthKitAuthorization() async throws {
+        try await legacyStore.requestHealthKitAuthorization()
+    }
+
+    func importFromHealthKit() async throws {
+        try await legacyStore.importFromHealthKit()
+    }
+
+    // MARK: - Rest Timer Methods
+
+    func startRest(for workout: Workout, exerciseIndex: Int, setIndex: Int, totalSeconds: Int) {
+        legacyStore.startRest(
+            for: workout, exerciseIndex: exerciseIndex, setIndex: setIndex,
+            totalSeconds: totalSeconds)
+    }
+
+    func pauseRest() {
+        legacyStore.pauseRest()
+    }
+
+    func resumeRest() {
+        legacyStore.resumeRest()
+    }
+
+    func addRest(seconds: Int) {
+        legacyStore.addRest(seconds: seconds)
+    }
+
+    func setRest(remaining: Int, total: Int? = nil) {
+        legacyStore.setRest(remaining: remaining, total: total)
+    }
+
+    func stopRest() {
+        legacyStore.stopRest()
+    }
+
+    func clearRestState() {
+        legacyStore.clearRestState()
+    }
+
+    func refreshRestFromWallClock() {
+        legacyStore.refreshRestFromWallClock()
+    }
+
+    func restorePersistedRestState() {
+        legacyStore.restorePersistedRestState()
+    }
+
+    func performMemoryCleanup() {
+        legacyStore.performMemoryCleanup()
+    }
+
+    // MARK: - Analytics Methods
+
+    func muscleVolume(byGroupInLastWeeks weeks: Int) -> [(MuscleGroup, Double)] {
+        legacyStore.muscleVolume(byGroupInLastWeeks: weeks)
+    }
+
+    func exerciseStats(for exercise: Exercise) -> WorkoutStore.ExerciseStats? {
+        legacyStore.exerciseStats(for: exercise)
+    }
+
+    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
+        legacyStore.workoutsByDay(in: range)
+    }
+
+    func getExerciseStats(exerciseId: UUID) -> WorkoutStore.ExerciseStats? {
+        // Find the exercise first
+        guard let exercise = legacyStore.exercises.first(where: { $0.id == exerciseId }) else {
+            return nil
+        }
+        // Use the public exerciseStats method
+        return legacyStore.exerciseStats(for: exercise)
+    }
+
+    // MARK: - Workout Generation
+
+    func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
+        legacyStore.generateWorkout(from: preferences)
+    }
+
+    // MARK: - Exercise Records
+
+    func getExerciseRecord(for exercise: Exercise) -> ExerciseRecord? {
+        legacyStore.getExerciseRecord(for: exercise)
+    }
+
+    func getAllExerciseRecords() -> [ExerciseRecord] {
+        legacyStore.getAllExerciseRecords()
+    }
+
+    func checkForNewRecord(exercise: Exercise, weight: Double, reps: Int) -> RecordType? {
+        legacyStore.checkForNewRecord(exercise: exercise, weight: weight, reps: reps)
+    }
+
+    // MARK: - Last Used Metrics
+
+    func lastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
+        legacyStore.lastMetrics(for: exercise)
+    }
+
+    func completeLastMetrics(for exercise: Exercise) -> ExerciseLastUsedMetrics? {
+        legacyStore.completeLastMetrics(for: exercise)
+    }
+
+    // MARK: - Cache Management
+
+    func invalidateCaches() {
+        legacyStore.invalidateCaches()
+    }
+
+    // MARK: - Database Management
+
+    func updateExerciseDatabase() {
+        legacyStore.updateExerciseDatabase()
+    }
+
+    func resetAllData() async throws {
+        try await legacyStore.resetAllData()
+    }
+}
