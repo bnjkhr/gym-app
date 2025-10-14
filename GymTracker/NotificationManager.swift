@@ -89,19 +89,20 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
 
     /// Schedules a notification for timer expiration
     ///
-    /// Smart Logic:
-    /// - Only schedules if app is background/inactive (foreground uses overlay)
-    /// - Includes deep link to active workout
-    /// - Automatically cancels previous notifications
+    /// **Important:** This ALWAYS schedules the notification, regardless of app state.
+    /// The notification system will determine delivery based on app state at expiration time.
+    ///
+    /// Smart Logic at expiration time:
+    /// - If app is active: Overlay shows instead (notification suppressed by system)
+    /// - If app is background/inactive: Push notification shows
+    ///
+    /// Benefits:
+    /// - Timer started while app active → goes to background → notification still fires
+    /// - No race conditions between scheduling and app state changes
+    /// - Simpler logic with fewer edge cases
     ///
     /// - Parameter state: Timer state to schedule notification for
     func scheduleNotification(for state: RestTimerState) {
-        guard shouldSendPush() else {
-            AppLogger.workouts.info(
-                "⏭️ Skipping push notification (app is active, overlay will handle)")
-            return
-        }
-
         guard state.remainingSeconds > 0 else {
             AppLogger.workouts.warning("⚠️ Cannot schedule notification: timer already expired")
             return

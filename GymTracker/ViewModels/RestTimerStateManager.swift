@@ -78,6 +78,35 @@ final class RestTimerStateManager: ObservableObject {
     /// Last time heart rate was updated
     private var lastHeartRateUpdate: Date?
 
+    // MARK: - User Preferences (Phase 6)
+
+    /// Whether to show in-app overlay (user preference, default: true)
+    private var showInAppOverlay: Bool {
+        // Check if key exists, if not return default value (true)
+        if UserDefaults.standard.object(forKey: "showInAppOverlay") == nil {
+            return true  // Default: enabled
+        }
+        return UserDefaults.standard.bool(forKey: "showInAppOverlay")
+    }
+
+    /// Whether to enable push notifications (user preference, default: true)
+    private var enablePushNotifications: Bool {
+        // Check if key exists, if not return default value (true)
+        if UserDefaults.standard.object(forKey: "enablePushNotifications") == nil {
+            return true  // Default: enabled
+        }
+        return UserDefaults.standard.bool(forKey: "enablePushNotifications")
+    }
+
+    /// Whether to enable Live Activity (user preference, default: true)
+    private var enableLiveActivity: Bool {
+        // Check if key exists, if not return default value (true)
+        if UserDefaults.standard.object(forKey: "enableLiveActivity") == nil {
+            return true  // Default: enabled
+        }
+        return UserDefaults.standard.bool(forKey: "enableLiveActivity")
+    }
+
     // MARK: - Dependencies
 
     /// Persistent storage
@@ -294,25 +323,59 @@ final class RestTimerStateManager: ObservableObject {
     ///
     /// Coordinates Timer Engine, Live Activity, Notifications, and Overlay.
     ///
+    /// **Critical:** Live Activity updates are async but fire-and-forget.
+    /// This is intentional to avoid blocking state updates. Errors are logged
+    /// but don't prevent other subsystems from working.
+    ///
     /// - Parameters:
     ///   - oldState: Previous state
     ///   - newState: New state
     private func notifySubsystems(oldState: RestTimerState?, newState: RestTimerState?) {
-        // 1. Timer Engine
+        // 1. Timer Engine (synchronous, fast)
         updateTimerEngine(for: newState)
 
-        // 2. Live Activity (Phase 3)
+        // 2. Live Activity (async, fire-and-forget with error handling)
         #if canImport(ActivityKit)
             if #available(iOS 16.1, *) {
-                liveActivityController?.updateForState(newState)
+                // Check user preference before updating
+                if enableLiveActivity {
+                    // Capture state for async context
+                    let stateCopy = newState
+                    Task { @MainActor [weak self] in
+                        guard let self = self else { return }
+                        do {
+                            self.liveActivityController?.updateForState(stateCopy)
+                            if stateCopy != nil {
+                                AppLogger.workouts.debug("✅ Live Activity update dispatched")
+                            }
+                        } catch {
+                            AppLogger.workouts.error("❌ Live Activity update failed: \(error)")
+                        }
+                    }
+                } else {
+                    AppLogger.workouts.debug("⏭️ Live Activity disabled by user")
+                }
             }
         #endif
 
-        // 3. Notifications (Phase 4)
-        if let newState = newState {
-            notificationManager.scheduleNotification(for: newState)
+        // 3. Notifications (async, fire-and-forget with error handling)
+        // Check user preference before scheduling
+        if enablePushNotifications {
+            let stateCopy = newState
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                do {
+                    if let state = stateCopy {
+                        self.notificationManager.scheduleNotification(for: state)
+                    } else {
+                        self.notificationManager.cancelNotifications()
+                    }
+                } catch {
+                    AppLogger.workouts.error("❌ Notification scheduling failed: \(error)")
+                }
+            }
         } else {
-            notificationManager.cancelNotifications()
+            AppLogger.workouts.debug("⏭️ Push notifications disabled by user")
         }
     }
 
@@ -372,10 +435,14 @@ final class RestTimerStateManager: ObservableObject {
             }
         #endif
 
-        // 2. In-App Overlay (Phase 2) - only if app is active
+        // 2. In-App Overlay (Phase 2) - only if app is active AND user enabled it
         if UIApplication.shared.applicationState == .active {
-            overlayManager?.showExpiredOverlay(for: state)
-            AppLogger.workouts.info("✅ In-app overlay shown (app active)")
+            if showInAppOverlay {
+                overlayManager?.showExpiredOverlay(for: state)
+                AppLogger.workouts.info("✅ In-app overlay shown (app active)")
+            } else {
+                AppLogger.workouts.debug("⏭️ In-app overlay disabled by user")
+            }
         }
 
         // 3. Push Notification (Phase 4) - already scheduled, will fire automatically
