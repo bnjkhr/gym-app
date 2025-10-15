@@ -1,8 +1,8 @@
 # 📊 GymBo Modularisierung - Fortschritts-Tracking
 
-**Letzte Aktualisierung:** 2025-10-15 20:00  
-**Aktueller Status:** 🟢 Phase 1 - Almost Complete (94%)  
-**Gesamt-Fortschritt:** 32% (Phase 1: 8/9 Services + Quick Wins, nur noch 1 Service + Cleanup)
+**Letzte Aktualisierung:** 2025-10-15 20:30  
+**Aktueller Status:** 🎉 Phase 1 - All Services Complete! Nur noch Cleanup!  
+**Gesamt-Fortschritt:** 35% (Phase 1: 9/9 Services + Quick Wins ✅, nur noch Cleanup & Integration)
 
 ---
 
@@ -14,7 +14,7 @@ _Noch keine Phase vollständig abgeschlossen_
 ### Aktuelle Phase: Phase 1 - Services Extrahieren
 
 **Ziel:** WorkoutStore von 2,595 auf ~1,200 Zeilen reduzieren  
-**Fortschritt:** 94% (8/9 Services + 2 Quick Wins abgeschlossen)
+**Fortschritt:** 100% Services! (9/9 Services + 2 Quick Wins abgeschlossen) 🎉
 
 ---
 
@@ -219,9 +219,32 @@ Ursache: 4 neue Service-Dateien sind nicht im Xcode-Projekt registriert
 
 ---
 
-**Task 1.6: LastUsedMetricsService** (~200 Zeilen, 2-3h)
-- Last-Used Metrics extrahieren (L238-403)
-- ExerciseLastUsedMetrics struct
+---
+
+#### ✅ Task 1.6: LastUsedMetricsService erstellt
+- [x] Code aus WorkoutStore extrahiert (L14-53, L238-403)
+- [x] `GymTracker/Services/LastUsedMetricsService.swift` erstellt (~280 Zeilen)
+- [x] `ExerciseLastUsedMetrics` struct extrahiert und erweitert
+- [x] Implementiert:
+  - `lastMetrics(for:) -> (weight: Double, setCount: Int)?` - Schneller Zugriff
+  - `completeLastMetrics(for:) -> ExerciseLastUsedMetrics?` - Vollständige Metriken
+  - `legacyLastMetrics(for:) -> (weight: Double, setCount: Int)?` - Fallback via Session-History
+  - `updateLastUsedMetrics(from:)` - Update nach Workout-Completion
+  - `clearLastUsedMetrics(for:)` - Metriken zurücksetzen
+  - `hasLastUsedMetrics(for:) -> Bool` - Verfügbarkeits-Check
+- [x] Features:
+  - Optimierter Zugriff via ExerciseEntity Properties
+  - Legacy-Fallback für Migration/Kompatibilität
+  - Validierung: Nur neuere Daten überschreiben ältere
+  - Display-Formatter (displayText, detailedDisplayText)
+- [x] Vollständige SwiftDoc-Dokumentation
+- [x] Performance-Optimierungen dokumentiert
+
+**Zeitaufwand:** 1 Stunde  
+**Datum:** 2025-10-15  
+**Status:** ✅ Abgeschlossen
+
+---
 
 **Task 1.7: WorkoutStore Cleanup** (4-6h)
 - Extrahierten Code entfernen
@@ -373,12 +396,13 @@ let profileService = ProfileService()  // L79 ❌ DUPLIKAT
 | SessionManagementService | ✅ Erstellt | 240 | ⬜ |
 | ExerciseRecordService | ✅ Erstellt | 360 | ⬜ |
 | HealthKitSyncService | ✅ Erstellt | 320 | ⬜ |
-| **WorkoutGenerationService** | ✅ **Erstellt** | **470** | ⬜ |
-| LastUsedMetricsService | ⬜ Ausstehend | 0 | ⬜ |
+| WorkoutGenerationService | ✅ Erstellt | 470 | ⬜ |
+| **LastUsedMetricsService** | ✅ **Erstellt** | **280** | ⬜ |
 
-**Phase 1 Fortschritt: 8/9 Services erstellt (89%)**
-**Neue LOC:** 1,620 Zeilen in Services
-**WorkoutStore Reduktion:** ~1,100 Zeilen extrahiert
+**Phase 1 Services: 9/9 ABGESCHLOSSEN! 🎉**
+**Neue LOC:** 1,900 Zeilen in Services
+**WorkoutStore Reduktion:** ~1,350 Zeilen extrahiert
+**Verbleibend:** Nur noch Task 1.7 (Cleanup & Integration)
 
 ### Test Coverage
 
