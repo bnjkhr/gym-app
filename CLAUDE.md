@@ -608,6 +608,10 @@ When adding new features:
 - **VIEWS_DOCUMENTATION.md**: Views catalog
 - **TESTFLIGHT_UPDATE_GUIDE.md**: App Store deployment
 - **SECURITY.md**: Security considerations
+- **MODULARIZATION_PLAN.md**: Complete refactoring plan (Phase 1-6, 13-14 weeks)
+- **PHASE_2_PLAN.md**: Detailed Phase 2 implementation plan (9 coordinators, 35-45h)
+- **PROGRESS.md**: Live progress tracking across all refactoring phases
+- **BUGFIXES.md**: Documentation of all errors encountered during refactoring
 
 ---
 

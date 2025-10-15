@@ -89,6 +89,8 @@
 		ADAAFBED2E9FC840002EADAC /* WorkoutSessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAAFBEB2E9FC840002EADAC /* WorkoutSessionService.swift */; };
 		ADAAFBEE2E9FC840002EADAC /* ExerciseRecordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAAFBE82E9FC840002EADAC /* ExerciseRecordService.swift */; };
 		ADAAFBEF2E9FC840002EADAC /* HealthKitSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAAFBE92E9FC840002EADAC /* HealthKitSyncService.swift */; };
+		ADAAFBF22E9FE77A002EADAC /* WorkoutGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAAFBF12E9FE77A002EADAC /* WorkoutGenerationService.swift */; };
+		ADAAFBF32E9FE77A002EADAC /* LastUsedMetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAAFBF02E9FE77A002EADAC /* LastUsedMetricsService.swift */; };
 		ADB19F512E9D81EC004BE444 /* RestTimerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB19F502E9D81EC004BE444 /* RestTimerState.swift */; };
 		ADB19F532E9D8201004BE444 /* TimerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB19F522E9D8201004BE444 /* TimerEngine.swift */; };
 		ADB19F552E9D8210004BE444 /* RestTimerStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB19F542E9D8210004BE444 /* RestTimerStateManager.swift */; };
@@ -241,6 +243,8 @@
 		ADAAFBE92E9FC840002EADAC /* HealthKitSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitSyncService.swift; sourceTree = "<group>"; };
 		ADAAFBEA2E9FC840002EADAC /* SessionManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManagementService.swift; sourceTree = "<group>"; };
 		ADAAFBEB2E9FC840002EADAC /* WorkoutSessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionService.swift; sourceTree = "<group>"; };
+		ADAAFBF02E9FE77A002EADAC /* LastUsedMetricsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastUsedMetricsService.swift; sourceTree = "<group>"; };
+		ADAAFBF12E9FE77A002EADAC /* WorkoutGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGenerationService.swift; sourceTree = "<group>"; };
 		ADB19F502E9D81EC004BE444 /* RestTimerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerState.swift; sourceTree = "<group>"; };
 		ADB19F522E9D8201004BE444 /* TimerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerEngine.swift; sourceTree = "<group>"; };
 		ADB19F542E9D8210004BE444 /* RestTimerStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerStateManager.swift; sourceTree = "<group>"; };
@@ -491,6 +495,8 @@
 		AD2A83C42E942E7500A6ADBE /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				ADAAFBF02E9FE77A002EADAC /* LastUsedMetricsService.swift */,
+				ADAAFBF12E9FE77A002EADAC /* WorkoutGenerationService.swift */,
 				ADAAFBE82E9FC840002EADAC /* ExerciseRecordService.swift */,
 				ADAAFBE92E9FC840002EADAC /* HealthKitSyncService.swift */,
 				ADAAFBEA2E9FC840002EADAC /* SessionManagementService.swift */,
@@ -761,6 +767,8 @@
 				AD3B0FA42E98478D00015183 /* WeeklySetsCard.swift in Sources */,
 				AD3B0FA52E98478D00015183 /* ProgressionScoreCard.swift in Sources */,
 				AD3B0FA62E98478D00015183 /* TopPRsCard.swift in Sources */,
+				ADAAFBF22E9FE77A002EADAC /* WorkoutGenerationService.swift in Sources */,
+				ADAAFBF32E9FE77A002EADAC /* LastUsedMetricsService.swift in Sources */,
 				ADB19F532E9D8201004BE444 /* TimerEngine.swift in Sources */,
 				11E749092C9E4BB300AB1234 /* ExercisesView.swift in Sources */,
 				AD87F84F2E955F89001A4033 /* SessionDetailView.swift in Sources */,
