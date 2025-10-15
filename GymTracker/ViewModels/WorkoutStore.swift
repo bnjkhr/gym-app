@@ -8,50 +8,6 @@ import SwiftUI
     import UIKit
 #endif
 
-// MARK: - Supporting Structures
-
-/// Struktur für Last-Used Metriken einer Übung
-struct ExerciseLastUsedMetrics {
-    let weight: Double?
-    let reps: Int?
-    let setCount: Int?
-    let lastUsedDate: Date?
-    let restTime: TimeInterval?
-
-    var hasData: Bool {
-        weight != nil && reps != nil
-    }
-
-    var displayText: String {
-        guard let weight = weight, let reps = reps else {
-            return "Keine vorherigen Daten"
-        }
-        return "Letztes Mal: \(weight.formatted())kg × \(reps) Wdh."
-    }
-
-    var detailedDisplayText: String {
-        guard hasData else { return "Keine vorherigen Daten" }
-
-        var parts: [String] = []
-
-        if let weight = weight, let reps = reps {
-            parts.append("\(weight.formatted())kg × \(reps) Wdh.")
-        }
-
-        if let setCount = setCount {
-            parts.append("\(setCount) Sätze")
-        }
-
-        if let date = lastUsedDate {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            parts.append("am \(formatter.string(from: date))")
-        }
-
-        return parts.joined(separator: " • ")
-    }
-}
-
 @MainActor
 class WorkoutStore: ObservableObject {
     @Published var activeSessionID: UUID?
@@ -72,10 +28,13 @@ class WorkoutStore: ObservableObject {
     // Herzfrequenz-Tracking
     private var heartRateTracker: HealthKitWorkoutTracker?
 
+    // MARK: - Services
     private let analyticsService = WorkoutAnalyticsService()
     private let dataService = WorkoutDataService()
     private let profileService = ProfileService()
     private let sessionService = WorkoutSessionService()
+    private let metricsService = LastUsedMetricsService()
+    private let generationService = WorkoutGenerationService()
     typealias ExerciseStats = WorkoutAnalyticsService.ExerciseStats
 
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
@@ -88,6 +47,7 @@ class WorkoutStore: ObservableObject {
             analyticsService.setContext(modelContext)
             dataService.setContext(modelContext)
             sessionService.setContext(modelContext)
+            metricsService.setContext(modelContext)
 
             if let context = modelContext {
                 // Phase 8: Automatische Markdown-Migration beim ersten App-Start
@@ -233,60 +193,14 @@ class WorkoutStore: ObservableObject {
             .map(Workout.init(session:))
     }
 
-    /// Vereinfachte lastMetrics Funktion - nutzt jetzt die gespeicherten Werte für bessere Performance
+    // MARK: - Last-Used Metrics (Delegated to LastUsedMetricsService)
+
     func lastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
-        guard let context = modelContext else { return nil }
-
-        let descriptor = FetchDescriptor<ExerciseEntity>(
-            predicate: #Predicate<ExerciseEntity> { entity in entity.id == exercise.id }
-        )
-
-        guard let exerciseEntity = try? context.fetch(descriptor).first,
-            let weight = exerciseEntity.lastUsedWeight,
-            let setCount = exerciseEntity.lastUsedSetCount
-        else {
-            // Fallback: alte Methode als Backup
-            return legacyLastMetrics(for: exercise)
-        }
-
-        return (weight, setCount)
+        return metricsService.lastMetrics(for: exercise)
     }
 
-    /// Erweiterte lastMetrics mit allen verfügbaren Infos
     func completeLastMetrics(for exercise: Exercise) -> ExerciseLastUsedMetrics? {
-        guard let context = modelContext else { return nil }
-
-        let descriptor = FetchDescriptor<ExerciseEntity>(
-            predicate: #Predicate<ExerciseEntity> { entity in entity.id == exercise.id }
-        )
-
-        guard let exerciseEntity = try? context.fetch(descriptor).first else { return nil }
-
-        return ExerciseLastUsedMetrics(
-            weight: exerciseEntity.lastUsedWeight,
-            reps: exerciseEntity.lastUsedReps,
-            setCount: exerciseEntity.lastUsedSetCount,
-            lastUsedDate: exerciseEntity.lastUsedDate,
-            restTime: exerciseEntity.lastUsedRestTime
-        )
-    }
-
-    /// Legacy-Fallback Methode - iteriert durch Session-History (langsamer)
-    private func legacyLastMetrics(for exercise: Exercise) -> (weight: Double, setCount: Int)? {
-        let sessionHistory = getSessionHistory()
-        let sortedSessions = sessionHistory.sorted { $0.date > $1.date }
-
-        for workout in sortedSessions {
-            if let workoutExercise = workout.exercises.first(where: {
-                $0.exercise.id == exercise.id
-            }) {
-                let setCount = max(workoutExercise.sets.count, 1)
-                let weight = workoutExercise.sets.last?.weight ?? 0
-                return (weight, setCount)
-            }
-        }
-
-        return nil
+        return metricsService.completeLastMetrics(for: exercise)
     }
 
     func deleteExercise(at indexSet: IndexSet) {
@@ -350,52 +264,10 @@ class WorkoutStore: ObservableObject {
         }
     }
 
-    // MARK: - Last-Used Metrics Management
+    // MARK: - Last-Used Metrics Management (Delegated to LastUsedMetricsService)
 
-    /// Aktualisiert die "letzte Verwendung" Daten für alle Übungen in einem abgeschlossenen Workout
     private func updateLastUsedMetrics(from session: WorkoutSession) {
-        guard let context = modelContext else { return }
-
-        for workoutExercise in session.exercises {
-            // Hole die ExerciseEntity frisch aus dem Context
-            let descriptor = FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { entity in
-                    entity.id == workoutExercise.exercise.id
-                }
-            )
-
-            guard let exerciseEntity = try? context.fetch(descriptor).first else {
-                print("⚠️ ExerciseEntity nicht gefunden für: \(workoutExercise.exercise.name)")
-                continue
-            }
-
-            // Finde den letzten abgeschlossenen Satz
-            let completedSets = workoutExercise.sets.filter { $0.completed }
-            guard let lastSet = completedSets.last else {
-                print("ℹ️ Keine abgeschlossenen Sätze für: \(workoutExercise.exercise.name)")
-                continue
-            }
-
-            // Aktualisiere die Last-Used Werte nur wenn das neue Workout neuer ist
-            if exerciseEntity.lastUsedDate == nil || session.date > exerciseEntity.lastUsedDate! {
-                exerciseEntity.lastUsedWeight = lastSet.weight
-                exerciseEntity.lastUsedReps = lastSet.reps
-                exerciseEntity.lastUsedSetCount = completedSets.count
-                exerciseEntity.lastUsedDate = session.date
-                exerciseEntity.lastUsedRestTime = lastSet.restTime
-
-                print(
-                    "✅ Last-Used aktualisiert für \(exerciseEntity.name): \(lastSet.weight)kg × \(lastSet.reps)"
-                )
-            }
-        }
-
-        do {
-            try context.save()
-            print("✅ Alle Last-Used Metriken gespeichert")
-        } catch {
-            print("❌ Fehler beim Speichern der Last-Used Metriken: \(error)")
-        }
+        metricsService.updateLastUsedMetrics(from: session)
     }
 
     func removeSession(with id: UUID) {
@@ -1862,312 +1734,22 @@ extension WorkoutStore {
         analyticsService.workoutsByDay(in: range)
     }
 
-    // MARK: - Workout Generation
+    // MARK: - Workout Generation (Delegated to WorkoutGenerationService)
 
     func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
         let exercises = dataService.exercises()
-        let muscleGroups = selectMuscleGroups(for: preferences)
-        let selectedExercises = selectExercises(
-            for: preferences, targeting: muscleGroups, from: exercises)
-        let workoutExercises = createWorkoutExercises(
-            from: selectedExercises, preferences: preferences)
-
-        return Workout(
-            name: generateWorkoutName(for: preferences),
-            exercises: workoutExercises,
-            defaultRestTime: calculateRestTime(for: preferences),
-            notes: generateWorkoutNotes(for: preferences)
-        )
-    }
-
-    private func selectMuscleGroups(for preferences: WorkoutPreferences) -> [MuscleGroup] {
-        switch preferences.frequency {
-        case 1, 2:
-            // Ganzkörper-Workouts
-            return [.chest, .back, .shoulders, .legs, .abs]
-        case 3:
-            // 3er Split: Push/Pull/Legs
-            return [.chest, .back, .legs, .shoulders, .abs]
-        case 4, 5:
-            // 4-5er Split: mehr Fokus auf spezifische Gruppen
-            return [.chest, .back, .shoulders, .legs, .biceps, .triceps, .abs]
-        default:
-            // 6+ Split: sehr spezifisch
-            return MuscleGroup.allCases
+        do {
+            return try generationService.generateWorkout(from: preferences, using: exercises)
+        } catch {
+            print("⚠️ Fehler bei Workout-Generierung: \(error.localizedDescription)")
+            // Fallback: Minimales Workout zurückgeben
+            return Workout(
+                name: "Fehler beim Generieren",
+                exercises: [],
+                defaultRestTime: 90,
+                notes: "Fehler: \(error.localizedDescription)"
+            )
         }
-    }
-
-    private func selectExercises(
-        for preferences: WorkoutPreferences, targeting muscleGroups: [MuscleGroup],
-        from exercises: [Exercise]
-    ) -> [Exercise] {
-        var selectedExercises: [Exercise] = []
-
-        // Filter nach Equipment UND Difficulty-Level
-        let equipmentFiltered = filterExercisesByEquipment(preferences.equipment, from: exercises)
-        let availableExercises = filterExercisesByDifficulty(
-            equipmentFiltered, for: preferences.experience)
-
-        // Grundübungen basierend auf Erfahrung
-        let compoundExercises = availableExercises.filter { exercise in
-            exercise.muscleGroups.count >= 2
-        }
-
-        let isolationExercises = availableExercises.filter { exercise in
-            exercise.muscleGroups.count == 1
-        }
-
-        // Anzahl Übungen basierend auf Trainingsdauer
-        let targetExerciseCount = calculateExerciseCount(for: preferences)
-
-        // Compound-zu-Isolation Verhältnis basierend auf Erfahrung
-        let compoundRatio: Double
-        switch preferences.experience {
-        case .beginner:
-            compoundRatio = 0.8
-        case .intermediate:
-            compoundRatio = 0.6
-        case .advanced:
-            compoundRatio = 0.4
-        }
-
-        let compoundCount = Int(Double(targetExerciseCount) * compoundRatio)
-        let isolationCount = targetExerciseCount - compoundCount
-
-        // Wähle Compound-Übungen (bevorzuge passende Difficulty)
-        for muscleGroup in muscleGroups.prefix(compoundCount) {
-            // Versuche erst passende Difficulty zu finden
-            if let exercise = compoundExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup)
-                    && !selectedExercises.contains(where: { $0.id == exercise.id })
-                    && matchesDifficultyLevel(exercise, for: preferences.experience)
-            }) {
-                selectedExercises.append(exercise)
-            }
-            // Fallback: Ignoriere Difficulty wenn nichts passendes gefunden
-            else if let exercise = compoundExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup)
-                    && !selectedExercises.contains(where: { $0.id == exercise.id })
-            }) {
-                selectedExercises.append(exercise)
-            }
-        }
-
-        // Fülle mit Isolation-Übungen auf (bevorzuge passende Difficulty)
-        for muscleGroup in muscleGroups.prefix(isolationCount) {
-            // Versuche erst passende Difficulty zu finden
-            if let exercise = isolationExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup)
-                    && !selectedExercises.contains(where: { $0.id == exercise.id })
-                    && matchesDifficultyLevel(exercise, for: preferences.experience)
-            }) {
-                selectedExercises.append(exercise)
-            }
-            // Fallback: Ignoriere Difficulty wenn nichts passendes gefunden
-            else if let exercise = isolationExercises.first(where: { exercise in
-                exercise.muscleGroups.contains(muscleGroup)
-                    && !selectedExercises.contains(where: { $0.id == exercise.id })
-            }) {
-                selectedExercises.append(exercise)
-            }
-        }
-
-        // Stelle sicher, dass wir genug Übungen haben
-        while selectedExercises.count < targetExerciseCount
-            && selectedExercises.count < availableExercises.count
-        {
-            if let nextExercise = availableExercises.first(where: { candidate in
-                !selectedExercises.contains(where: { $0.id == candidate.id })
-            }) {
-                selectedExercises.append(nextExercise)
-            } else {
-                break
-            }
-        }
-
-        return Array(selectedExercises.prefix(targetExerciseCount))
-    }
-
-    /// Filtert Übungen basierend auf dem Erfahrungslevel
-    /// Priorisiert passende Übungen, lässt aber andere als Fallback zu
-    private func filterExercisesByDifficulty(_ exercises: [Exercise], for level: ExperienceLevel)
-        -> [Exercise]
-    {
-        // Sortiere so dass passende Übungen zuerst kommen
-        return exercises.sorted { first, second in
-            let firstMatches = matchesDifficultyLevel(first, for: level)
-            let secondMatches = matchesDifficultyLevel(second, for: level)
-
-            if firstMatches && !secondMatches {
-                return true
-            }
-            if !firstMatches && secondMatches {
-                return false
-            }
-            return false  // Behalte ursprüngliche Reihenfolge bei
-        }
-    }
-
-    private func filterExercisesByEquipment(
-        _ equipment: EquipmentPreference, from exercises: [Exercise]
-    ) -> [Exercise] {
-        switch equipment {
-        case .freeWeights:
-            return exercises.filter { exercise in
-                !exercise.name.lowercased().contains("maschine")
-                    && !exercise.name.lowercased().contains("machine")
-            }
-        case .machines:
-            return exercises.filter { exercise in
-                exercise.name.lowercased().contains("maschine")
-                    || exercise.name.lowercased().contains("machine")
-            }
-        case .mixed:
-            return exercises
-        }
-    }
-
-    /// Prüft ob eine Übung zum Erfahrungslevel des Users passt
-    /// - Parameters:
-    ///   - exercise: Die zu prüfende Übung
-    ///   - level: Das Erfahrungslevel des Users
-    /// - Returns: true wenn die Übung zum Level passt oder nahe dran ist
-    private func matchesDifficultyLevel(_ exercise: Exercise, for level: ExperienceLevel) -> Bool {
-        switch level {
-        case .beginner:
-            // Anfänger: Hauptsächlich Anfänger-Übungen, einige Fortgeschritten
-            return exercise.difficultyLevel == .anfänger
-                || exercise.difficultyLevel == .fortgeschritten
-        case .intermediate:
-            // Fortgeschritten: Alle Levels sind ok (Mix)
-            return true
-        case .advanced:
-            // Experte: Hauptsächlich Fortgeschritten und Profi-Übungen
-            return exercise.difficultyLevel == .fortgeschritten
-                || exercise.difficultyLevel == .profi
-        }
-    }
-
-    private func calculateExerciseCount(for preferences: WorkoutPreferences) -> Int {
-        let baseCount: Int
-        switch preferences.duration {
-        case .short: baseCount = 4
-        case .medium: baseCount = 6
-        case .long: baseCount = 8
-        case .extended: baseCount = 10
-        }
-
-        // Anpassung basierend auf Erfahrung
-        switch preferences.experience {
-        case .beginner:
-            return max(3, baseCount - 1)
-        case .intermediate:
-            return baseCount
-        case .advanced:
-            return baseCount + 1
-        }
-    }
-
-    private func createWorkoutExercises(from exercises: [Exercise], preferences: WorkoutPreferences)
-        -> [WorkoutExercise]
-    {
-        return exercises.map { exercise in
-            let setCount = calculateSetCount(for: exercise, preferences: preferences)
-            let reps = calculateReps(for: exercise, preferences: preferences)
-            let restTime = calculateRestTime(for: preferences)
-
-            let sets = (0..<setCount).map { _ in
-                ExerciseSet(reps: reps, weight: 0, restTime: restTime, completed: false)
-            }
-
-            return WorkoutExercise(exercise: exercise, sets: sets)
-        }
-    }
-
-    private func calculateSetCount(for exercise: Exercise, preferences: WorkoutPreferences) -> Int {
-        let baseSetCount: Int
-        switch preferences.experience {
-        case .beginner: baseSetCount = 2
-        case .intermediate: baseSetCount = 3
-        case .advanced: baseSetCount = 4
-        }
-
-        let isCompound = exercise.muscleGroups.count >= 2
-        return isCompound ? baseSetCount + 1 : baseSetCount
-    }
-
-    private func calculateReps(for exercise: Exercise, preferences: WorkoutPreferences) -> Int {
-        switch preferences.goal {
-        case .strength:
-            return Int.random(in: 3...6)
-        case .muscleBuilding:
-            return Int.random(in: 8...12)
-        case .endurance:
-            return Int.random(in: 15...20)
-        case .weightLoss:
-            return Int.random(in: 12...15)
-        case .general:
-            return Int.random(in: 10...12)
-        }
-    }
-
-    private func calculateRestTime(for preferences: WorkoutPreferences) -> Double {
-        switch preferences.goal {
-        case .strength:
-            return 120
-        case .muscleBuilding:
-            return 90
-        case .endurance:
-            return 60
-        case .weightLoss:
-            return 45
-        case .general:
-            return 75
-        }
-    }
-
-    private func generateWorkoutName(for preferences: WorkoutPreferences) -> String {
-        let goalPrefix: String
-        switch preferences.goal {
-        case .muscleBuilding: goalPrefix = "Muskelaufbau"
-        case .strength: goalPrefix = "Kraft"
-        case .endurance: goalPrefix = "Ausdauer"
-        case .weightLoss: goalPrefix = "Fettverbrennung"
-        case .general: goalPrefix = "Fitness"
-        }
-
-        let equipmentSuffix: String
-        switch preferences.equipment {
-        case .freeWeights: equipmentSuffix = "Freie Gewichte"
-        case .machines: equipmentSuffix = "Maschinen"
-        case .mixed: equipmentSuffix = "Mixed"
-        }
-
-        return "\(goalPrefix) - \(equipmentSuffix)"
-    }
-
-    private func generateWorkoutNotes(for preferences: WorkoutPreferences) -> String {
-        var notes: [String] = []
-
-        notes.append("🎯 Ziel: \(preferences.goal.displayName)")
-        notes.append("📊 Level: \(preferences.experience.displayName)")
-        notes.append("⏱️ Dauer: ~\(preferences.duration.rawValue) Minuten")
-        notes.append("🔄 Frequenz: \(preferences.frequency)x pro Woche")
-
-        switch preferences.goal {
-        case .strength:
-            notes.append("💡 Tipp: Fokus auf schwere Gewichte, längere Pausen")
-        case .muscleBuilding:
-            notes.append("💡 Tipp: Kontrollierte Bewegungen, Muskel-Geist-Verbindung")
-        case .endurance:
-            notes.append("💡 Tipp: Höhere Wiederholungen, kürzere Pausen")
-        case .weightLoss:
-            notes.append("💡 Tipp: Intensität hoch halten, Supersätze möglich")
-        case .general:
-            notes.append("💡 Tipp: Ausgewogenes Training, auf Körper hören")
-        }
-
-        return notes.joined(separator: "\n")
     }
 
     // MARK: - Heart Rate Tracking
