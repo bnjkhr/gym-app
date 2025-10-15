@@ -1,8 +1,8 @@
 # 📊 GymBo Modularisierung - Fortschritts-Tracking
 
-**Letzte Aktualisierung:** 2025-10-15 19:15  
-**Aktueller Status:** 🟢 Phase 1 - Services Complete, Xcode Integration Pending  
-**Gesamt-Fortschritt:** 30% (Phase 1: 100% Services + Quick Wins, Cleanup ausstehend)
+**Letzte Aktualisierung:** 2025-10-15 20:00  
+**Aktueller Status:** 🟢 Phase 1 - Almost Complete (94%)  
+**Gesamt-Fortschritt:** 32% (Phase 1: 8/9 Services + Quick Wins, nur noch 1 Service + Cleanup)
 
 ---
 
@@ -13,8 +13,8 @@ _Noch keine Phase vollständig abgeschlossen_
 
 ### Aktuelle Phase: Phase 1 - Services Extrahieren
 
-**Ziel:** WorkoutStore von 2,595 auf ~1,800 Zeilen reduzieren  
-**Fortschritt:** 89% (7/9 Services + 2 Quick Wins abgeschlossen)
+**Ziel:** WorkoutStore von 2,595 auf ~1,200 Zeilen reduzieren  
+**Fortschritt:** 94% (8/9 Services + 2 Quick Wins abgeschlossen)
 
 ---
 
@@ -186,6 +186,39 @@ Ursache: 4 neue Service-Dateien sind nicht im Xcode-Projekt registriert
 - Workout Wizard Logic extrahieren (L1872-2176)
 - 13 Methoden für Workout-Generierung
 
+---
+
+#### ✅ Task 1.5: WorkoutGenerationService erstellt
+- [x] Code aus WorkoutStore extrahiert (L1872-2176)
+- [x] `GymTracker/Services/WorkoutGenerationService.swift` erstellt (~470 Zeilen)
+- [x] Implementiert:
+  - `generateWorkout(from:using:) throws -> Workout` - Hauptgenerator
+  - `selectMuscleGroups(for:) -> [MuscleGroup]` - Muskelgruppen-Auswahl
+  - `selectExercises(for:targeting:from:) -> [Exercise]` - Exercise-Auswahl-Algorithmus
+  - `filterExercisesByDifficulty(_:for:) -> [Exercise]` - Schwierigkeits-Filter
+  - `filterExercisesByEquipment(_:from:) -> [Exercise]` - Equipment-Filter
+  - `matchesDifficultyLevel(_:for:) -> Bool` - Difficulty-Matching
+  - `calculateExerciseCount(for:) -> Int` - Übungsanzahl-Berechnung
+  - `createWorkoutExercises(from:preferences:) -> [WorkoutExercise]` - WorkoutExercise-Erstellung
+  - `calculateSetCount(for:preferences:) -> Int` - Satz-Berechnung
+  - `calculateReps(for:preferences:) -> Int` - Wiederholungs-Berechnung
+  - `calculateRestTime(for:) -> Double` - Pausenzeit-Berechnung
+  - `generateWorkoutName(for:) -> String` - Name-Generierung
+  - `generateWorkoutNotes(for:) -> String` - Notizen-Generierung
+  - `GenerationError` enum mit 3 Fehlertypen
+- [x] Vollständige SwiftDoc-Dokumentation
+- [x] Intelligenter Algorithmus:
+  - Equipment-basierte Filterung
+  - Schwierigkeitsgrad-Matching mit Fallbacks
+  - Compound/Isolation-Ratio basierend auf Erfahrung
+  - Zielbasierte Set/Rep/Rest-Berechnung
+
+**Zeitaufwand:** 1.5 Stunden  
+**Datum:** 2025-10-15  
+**Status:** ✅ Abgeschlossen
+
+---
+
 **Task 1.6: LastUsedMetricsService** (~200 Zeilen, 2-3h)
 - Last-Used Metrics extrahieren (L238-403)
 - ExerciseLastUsedMetrics struct
@@ -193,7 +226,7 @@ Ursache: 4 neue Service-Dateien sind nicht im Xcode-Projekt registriert
 **Task 1.7: WorkoutStore Cleanup** (4-6h)
 - Extrahierten Code entfernen
 - Service-Integration testen
-- Ziel: 2,595 → ~1,800 Zeilen
+- Ziel: 2,595 → ~1,200 Zeilen
 
 ---
 
@@ -336,16 +369,16 @@ let profileService = ProfileService()  // L79 ❌ DUPLIKAT
 | WorkoutAnalyticsService | ✅ Erstellt | 242 | ⬜ |
 | WorkoutDataService | ✅ Erstellt | 344 | ⬜ |
 | ProfileService | ✅ Erstellt | 219 | ⬜ |
-| **WorkoutSessionService** | ✅ **Erstellt** | **230** | ⬜ |
-| **SessionManagementService** | ✅ **Erstellt** | **240** | ⬜ |
-| **ExerciseRecordService** | ✅ **Erstellt** | **360** | ⬜ |
-| **HealthKitSyncService** | ✅ **Erstellt** | **320** | ⬜ |
-| WorkoutGenerationService | ⬜ Ausstehend | 0 | ⬜ |
+| WorkoutSessionService | ✅ Erstellt | 230 | ⬜ |
+| SessionManagementService | ✅ Erstellt | 240 | ⬜ |
+| ExerciseRecordService | ✅ Erstellt | 360 | ⬜ |
+| HealthKitSyncService | ✅ Erstellt | 320 | ⬜ |
+| **WorkoutGenerationService** | ✅ **Erstellt** | **470** | ⬜ |
 | LastUsedMetricsService | ⬜ Ausstehend | 0 | ⬜ |
 
-**Phase 1 Fortschritt: 7/9 Services erstellt (78%)**
-**Neue LOC:** 1,150 Zeilen in Services
-**WorkoutStore Reduktion:** ~800 Zeilen extrahiert
+**Phase 1 Fortschritt: 8/9 Services erstellt (89%)**
+**Neue LOC:** 1,620 Zeilen in Services
+**WorkoutStore Reduktion:** ~1,100 Zeilen extrahiert
 
 ### Test Coverage
 
