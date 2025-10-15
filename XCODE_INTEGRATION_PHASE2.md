@@ -8,8 +8,9 @@
 
 ## 📋 Zu integrierende Dateien
 
-Die folgenden 2 Coordinator-Dateien müssen zum Xcode-Projekt hinzugefügt werden:
+Die folgenden 4 Coordinator-Dateien müssen zum Xcode-Projekt hinzugefügt werden:
 
+### P0 Coordinators (No Dependencies)
 1. **ProfileCoordinator.swift** (~300 Zeilen)
    - Pfad: `GymTracker/Coordinators/ProfileCoordinator.swift`
    - Verantwortlich für: User profile management
@@ -17,6 +18,15 @@ Die folgenden 2 Coordinator-Dateien müssen zum Xcode-Projekt hinzugefügt werde
 2. **ExerciseCoordinator.swift** (~350 Zeilen)
    - Pfad: `GymTracker/Coordinators/ExerciseCoordinator.swift`
    - Verantwortlich für: Exercise library management
+
+### P1 Coordinators (Depends on P0)
+3. **WorkoutCoordinator.swift** (~350 Zeilen)
+   - Pfad: `GymTracker/Coordinators/WorkoutCoordinator.swift`
+   - Verantwortlich für: Workout CRUD, favorites, generation, session recording
+   
+4. **SessionCoordinator.swift** (~320 Zeilen)
+   - Pfad: `GymTracker/Coordinators/SessionCoordinator.swift`
+   - Verantwortlich für: Active session state, lifecycle, Live Activity, heart rate
 
 ---
 
@@ -37,9 +47,11 @@ open GymBo.xcodeproj
 ### Schritt 3: Dateien hinzufügen
 
 1. **Im Finder:** Navigiere zu `/Users/benkohler/projekte/gym-app/GymTracker/Coordinators/`
-2. **Drag & Drop** beide Dateien in die neue `Coordinators` Gruppe in Xcode:
+2. **Drag & Drop** alle 4 Dateien in die neue `Coordinators` Gruppe in Xcode:
    - ProfileCoordinator.swift
    - ExerciseCoordinator.swift
+   - WorkoutCoordinator.swift
+   - SessionCoordinator.swift
 3. **Im Dialog:**
    - ✅ "Copy items if needed" (NICHT aktivieren, da Dateien schon im Projekt sind)
    - ✅ "Create groups" (aktivieren)
@@ -88,21 +100,26 @@ open GymBo.xcodeproj
 
 ```
 GymTracker/Coordinators/
-├── ProfileCoordinator.swift     (~300 LOC) ✅
-└── ExerciseCoordinator.swift    (~350 LOC) ✅
+├── ProfileCoordinator.swift     (~300 LOC) ✅ P0
+├── ExerciseCoordinator.swift    (~350 LOC) ✅ P0
+├── WorkoutCoordinator.swift     (~350 LOC) ✅ P1
+└── SessionCoordinator.swift     (~320 LOC) ✅ P1
 ```
 
-**Total:** ~650 LOC in 2 Coordinators
+**Total:** ~1,320 LOC in 4 Coordinators
 
 ---
 
 ## 🎉 Erfolg!
 
-Wenn der Build erfolgreich ist, sind die P0 Coordinators (ProfileCoordinator + ExerciseCoordinator) erfolgreich integriert!
+Wenn der Build erfolgreich ist, sind die P0+P1 Coordinators erfolgreich integriert!
 
-**Phase 2 Fortschritt:** 22% (2/9 Coordinators erstellt)
+**Phase 2 Fortschritt:** 44% (4/9 Coordinators erstellt)
 
-**Nächster Coordinator:** WorkoutCoordinator (P1, 5-6h)
+**Nächste Coordinators (P2):**
+- RecordsCoordinator (3-4h)
+- AnalyticsCoordinator (4h)
+- HealthKitCoordinator (4h)
 
 ---
 

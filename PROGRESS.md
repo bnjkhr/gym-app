@@ -1,8 +1,8 @@
 # 📊 GymBo Modularisierung - Fortschritts-Tracking
 
-**Letzte Aktualisierung:** 2025-10-15 23:00  
-**Aktueller Status:** 🚀 PHASE 2 - P0 Coordinators Complete! 🚀  
-**Gesamt-Fortschritt:** 48% (Phase 1: 100% ✅ | Phase 2: 22% 🔄 - 2/9 Coordinators)
+**Letzte Aktualisierung:** 2025-10-15 23:30  
+**Aktueller Status:** 🚀 PHASE 2 - P0+P1 Coordinators Complete! 🚀  
+**Gesamt-Fortschritt:** 52% (Phase 1: 100% ✅ | Phase 2: 44% 🔄 - 4/9 Coordinators)
 
 ---
 
@@ -20,7 +20,7 @@
 ### Aktuelle Phase: Phase 2 - Feature Coordinators
 
 **Ziel:** 9 Coordinators erstellen, WorkoutStore weiter reduzieren  
-**Fortschritt:** 5% (Planning complete, starting P0 coordinators)  
+**Fortschritt:** 44% (P0+P1 complete - 4/9 coordinators, ~1,320 LOC)  
 **Detaillierter Plan:** Siehe PHASE_2_PLAN.md
 
 #### ✅ Abgeschlossene Tasks (Phase 2)
@@ -55,18 +55,51 @@
 - **Datum:** 2025-10-15
 - **Status:** ✅ Abgeschlossen
 
-#### 🔴 MANUELLER SCHRITT: Xcode Integration (P0)
+**Task 2.3: WorkoutCoordinator erstellt (P1)** ✅
+- [x] WorkoutCoordinator.swift erstellt (~350 Zeilen)
+- [x] Implementiert:
+  - Workout CRUD operations
+  - Favorites management (standard + home favorites, max 4)
+  - Workout generation from preferences (Workout Wizard)
+  - Session recording and history
+  - Session statistics (total, duration, recent sessions)
+  - Workout completion tracking
+- [x] Vollständige SwiftDoc-Dokumentation
+- [x] Dependencies: WorkoutDataService, WorkoutGenerationService, WorkoutSessionService, WorkoutAnalyticsService, ExerciseCoordinator
+- **Zeitaufwand:** 1.5 Stunden
+- **Datum:** 2025-10-15
+- **Status:** ✅ Abgeschlossen
+
+**Task 2.4: SessionCoordinator erstellt (P1)** ✅
+- [x] SessionCoordinator.swift erstellt (~320 Zeilen)
+- [x] Implementiert:
+  - Active session state management
+  - Session start/end lifecycle
+  - Live Activity integration
+  - Heart rate tracking (HealthKit integration)
+  - Session restoration after force quit
+  - Heart rate statistics (min/max/avg)
+  - Memory management for long sessions
+- [x] Vollständige SwiftDoc-Dokumentation
+- [x] Dependencies: SessionManagementService, WorkoutSessionService, WorkoutLiveActivityController, HealthKitWorkoutTracker, WorkoutCoordinator
+- **Zeitaufwand:** 1.5 Stunden
+- **Datum:** 2025-10-15
+- **Status:** ✅ Abgeschlossen
+
+#### 🔴 MANUELLER SCHRITT: Xcode Integration (P0+P1)
 **Status:** ⚠️ **BLOCKIERT - Manuelle Aktion nötig**  
 **Priorität:** P0 - KRITISCH  
 **Zeitaufwand:** 2-5 Minuten
 
-**Aufgabe:** Füge 2 Coordinator-Dateien zum Xcode-Projekt hinzu:
-1. ProfileCoordinator.swift
-2. ExerciseCoordinator.swift
+**Aufgabe:** Füge 4 Coordinator-Dateien zum Xcode-Projekt hinzu:
+1. ProfileCoordinator.swift (P0)
+2. ExerciseCoordinator.swift (P0)
+3. WorkoutCoordinator.swift (P1)
+4. SessionCoordinator.swift (P1)
 
 **Anleitung:** Siehe `XCODE_INTEGRATION_PHASE2.md`
 
-**Nächste Phase nach Integration:** Task 2.3 - WorkoutCoordinator (P1)
+**Nächste Phase nach Integration:** Task 2.5 - RecordsCoordinator (P2)
 
 ---
 
