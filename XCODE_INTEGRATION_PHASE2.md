@@ -8,7 +8,7 @@
 
 ## 📋 Zu integrierende Dateien
 
-Die folgenden 4 Coordinator-Dateien müssen zum Xcode-Projekt hinzugefügt werden:
+Die folgenden 7 Coordinator-Dateien müssen zum Xcode-Projekt hinzugefügt werden:
 
 ### P0 Coordinators (No Dependencies)
 1. **ProfileCoordinator.swift** (~300 Zeilen)
@@ -27,6 +27,19 @@ Die folgenden 4 Coordinator-Dateien müssen zum Xcode-Projekt hinzugefügt werde
 4. **SessionCoordinator.swift** (~320 Zeilen)
    - Pfad: `GymTracker/Coordinators/SessionCoordinator.swift`
    - Verantwortlich für: Active session state, lifecycle, Live Activity, heart rate
+
+### P2 Coordinators (Specialized Features)
+5. **RecordsCoordinator.swift** (~300 Zeilen)
+   - Pfad: `GymTracker/Coordinators/RecordsCoordinator.swift`
+   - Verantwortlich für: Personal records, 1RM calculations, leaderboards
+   
+6. **AnalyticsCoordinator.swift** (~300 Zeilen)
+   - Pfad: `GymTracker/Coordinators/AnalyticsCoordinator.swift`
+   - Verantwortlich für: Workout statistics, progress tracking, muscle volume analysis
+   
+7. **HealthKitCoordinator.swift** (~280 Zeilen)
+   - Pfad: `GymTracker/Coordinators/HealthKitCoordinator.swift`
+   - Verantwortlich für: HealthKit integration, sync, health data queries
 
 ---
 
@@ -47,11 +60,14 @@ open GymBo.xcodeproj
 ### Schritt 3: Dateien hinzufügen
 
 1. **Im Finder:** Navigiere zu `/Users/benkohler/projekte/gym-app/GymTracker/Coordinators/`
-2. **Drag & Drop** alle 4 Dateien in die neue `Coordinators` Gruppe in Xcode:
+2. **Drag & Drop** alle 7 Dateien in die neue `Coordinators` Gruppe in Xcode:
    - ProfileCoordinator.swift
    - ExerciseCoordinator.swift
    - WorkoutCoordinator.swift
    - SessionCoordinator.swift
+   - RecordsCoordinator.swift
+   - AnalyticsCoordinator.swift
+   - HealthKitCoordinator.swift
 3. **Im Dialog:**
    - ✅ "Copy items if needed" (NICHT aktivieren, da Dateien schon im Projekt sind)
    - ✅ "Create groups" (aktivieren)
@@ -100,26 +116,28 @@ open GymBo.xcodeproj
 
 ```
 GymTracker/Coordinators/
-├── ProfileCoordinator.swift     (~300 LOC) ✅ P0
-├── ExerciseCoordinator.swift    (~350 LOC) ✅ P0
-├── WorkoutCoordinator.swift     (~350 LOC) ✅ P1
-└── SessionCoordinator.swift     (~320 LOC) ✅ P1
+├── ProfileCoordinator.swift      (~300 LOC) ✅ P0
+├── ExerciseCoordinator.swift     (~350 LOC) ✅ P0
+├── WorkoutCoordinator.swift      (~350 LOC) ✅ P1
+├── SessionCoordinator.swift      (~320 LOC) ✅ P1
+├── RecordsCoordinator.swift      (~300 LOC) ✅ P2
+├── AnalyticsCoordinator.swift    (~300 LOC) ✅ P2
+└── HealthKitCoordinator.swift    (~280 LOC) ✅ P2
 ```
 
-**Total:** ~1,320 LOC in 4 Coordinators
+**Total:** ~2,200 LOC in 7 Coordinators
 
 ---
 
 ## 🎉 Erfolg!
 
-Wenn der Build erfolgreich ist, sind die P0+P1 Coordinators erfolgreich integriert!
+Wenn der Build erfolgreich ist, sind die P0+P1+P2 Coordinators erfolgreich integriert!
 
-**Phase 2 Fortschritt:** 44% (4/9 Coordinators erstellt)
+**Phase 2 Fortschritt:** 78% (7/9 Coordinators erstellt)
 
-**Nächste Coordinators (P2):**
-- RecordsCoordinator (3-4h)
-- AnalyticsCoordinator (4h)
-- HealthKitCoordinator (4h)
+**Nächste Coordinators (P3):**
+- RestTimerCoordinator (3h)
+- WorkoutStoreCoordinator (3-4h) - Backward compatibility facade
 
 ---
 
