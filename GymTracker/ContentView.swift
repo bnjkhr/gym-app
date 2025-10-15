@@ -290,7 +290,7 @@ struct ContentView: View {
         {
             // Verify workout still exists
             let descriptor = FetchDescriptor<WorkoutEntity>(
-                predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
+                predicate: #Predicate<WorkoutEntity> { workout in workout.id == workoutID }
             )
             if (try? modelContext.fetch(descriptor).first) != nil {
                 print("✅ Restoring active workout from persisted state: \(workoutID)")

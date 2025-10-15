@@ -154,7 +154,7 @@ class BackupManager: ObservableObject {
         // Merge exercises first (they are referenced by workouts/sessions)
         for backupExercise in backup.exercises {
             let existing = try context.fetch(FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { $0.id == backupExercise.id }
+                predicate: #Predicate<ExerciseEntity> { exercise in exercise.id == backupExercise.id }
             )).first
             
             if let existing = existing {
@@ -171,7 +171,7 @@ class BackupManager: ObservableObject {
         // Merge workouts
         for backupWorkout in backup.workouts {
             let existing = try context.fetch(FetchDescriptor<WorkoutEntity>(
-                predicate: #Predicate<WorkoutEntity> { $0.id == backupWorkout.id }
+                predicate: #Predicate<WorkoutEntity> { workout in workout.id == backupWorkout.id }
             )).first
             
             if let existing = existing {
@@ -187,7 +187,7 @@ class BackupManager: ObservableObject {
         // Merge sessions
         for backupSession in backup.sessions {
             let existing = try context.fetch(FetchDescriptor<WorkoutSessionEntity>(
-                predicate: #Predicate<WorkoutSessionEntity> { $0.id == backupSession.id }
+                predicate: #Predicate<WorkoutSessionEntity> { session in session.id == backupSession.id }
             )).first
             
             if existing == nil {
@@ -200,7 +200,7 @@ class BackupManager: ObservableObject {
         // Merge profiles
         for backupProfile in backup.profiles {
             let existing = try context.fetch(FetchDescriptor<UserProfileEntity>(
-                predicate: #Predicate<UserProfileEntity> { $0.id == backupProfile.id }
+                predicate: #Predicate<UserProfileEntity> { profile in profile.id == backupProfile.id }
             )).first
             
             if let existing = existing {
@@ -347,7 +347,7 @@ class BackupManager: ObservableObject {
         // Create exercises
         for backupExercise in backup.exercises {
             if let exerciseEntity = try context.fetch(FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { $0.id == backupExercise.exerciseId }
+                predicate: #Predicate<ExerciseEntity> { exercise in exercise.id == backupExercise.exerciseId }
             )).first {
                 let workoutExercise = WorkoutExerciseEntity(
                     exercise: exerciseEntity,
@@ -376,7 +376,7 @@ class BackupManager: ObservableObject {
         // Create exercises
         for backupExercise in backup.exercises {
             if let exerciseEntity = try context.fetch(FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { $0.id == backupExercise.exerciseId }
+                predicate: #Predicate<ExerciseEntity> { exercise in exercise.id == backupExercise.exerciseId }
             )).first {
                 let workoutExercise = WorkoutExerciseEntity(
                     exercise: exerciseEntity,
@@ -435,7 +435,7 @@ class BackupManager: ObservableObject {
         
         for backupExercise in backup.exercises {
             if let exerciseEntity = try context.fetch(FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { $0.id == backupExercise.exerciseId }
+                predicate: #Predicate<ExerciseEntity> { exercise in exercise.id == backupExercise.exerciseId }
             )).first {
                 let workoutExercise = WorkoutExerciseEntity(
                     exercise: exerciseEntity,

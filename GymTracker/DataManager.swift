@@ -347,7 +347,7 @@ class DataManager: ObservableObject {
     func saveWorkout(_ workout: Workout, to context: ModelContext) throws {
         // Check if workout already exists
         let descriptor = FetchDescriptor<WorkoutEntity>(
-            predicate: #Predicate<WorkoutEntity> { $0.id == workout.id }
+            predicate: #Predicate<WorkoutEntity> { workout in workout.id == workout.id }
         )
         
         if let existing = try context.fetch(descriptor).first {
@@ -458,7 +458,7 @@ class DataManager: ObservableObject {
     
     func deleteWorkout(withId id: UUID, from context: ModelContext) throws {
         let descriptor = FetchDescriptor<WorkoutEntity>(
-            predicate: #Predicate<WorkoutEntity> { $0.id == id }
+            predicate: #Predicate<WorkoutEntity> { workout in workout.id == id }
         )
         
         if let entity = try context.fetch(descriptor).first {

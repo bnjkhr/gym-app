@@ -65,15 +65,19 @@ class WorkoutStore: ObservableObject {
     /// In-app overlay manager (Phase 2)
     weak var overlayManager: InAppOverlayManager?
 
-    // MARK: - Legacy Rest Timer State (DEPRECATED - Phase 5)
+    // MARK: - Profile & UI State
 
     @Published var profileUpdateTrigger: UUID = UUID()  // Triggers UI updates when profile changes
 
     // Herzfrequenz-Tracking
     private var heartRateTracker: HealthKitWorkoutTracker?
 
-    private var exerciseStatsCache: [UUID: ExerciseStats] = [:]
-    private var weekStreakCache: (date: Date, value: Int)?
+    private let analyticsService = WorkoutAnalyticsService()
+    private let dataService = WorkoutDataService()
+    private let profileService = ProfileService()
+    private let sessionService = WorkoutSessionService()
+    typealias ExerciseStats = WorkoutAnalyticsService.ExerciseStats
+
     @AppStorage("weeklyGoal") var weeklyGoal: Int = 5
     @AppStorage("restNotificationsEnabled") var restNotificationsEnabled: Bool = true
     @AppStorage("exercisesTranslatedToGerman") private var exercisesTranslatedToGerman: Bool = false
@@ -81,6 +85,10 @@ class WorkoutStore: ObservableObject {
     // SwiftData context reference (wird von ContentView gesetzt)
     var modelContext: ModelContext? {
         didSet {
+            analyticsService.setContext(modelContext)
+            dataService.setContext(modelContext)
+            sessionService.setContext(modelContext)
+
             if let context = modelContext {
                 // Phase 8: Automatische Markdown-Migration beim ersten App-Start
                 checkAndPerformAutomaticMigration(context: context)
@@ -95,87 +103,25 @@ class WorkoutStore: ObservableObject {
     @Published var healthKitManager = HealthKitManager.shared
 
     var activeWorkout: Workout? {
-        guard let activeSessionID, let context = modelContext else {
-            return nil
+        if let workout = dataService.activeWorkout(with: activeSessionID) {
+            return workout
         }
 
-        do {
-            let descriptor = FetchDescriptor<WorkoutEntity>(
-                predicate: #Predicate<WorkoutEntity> { $0.id == activeSessionID })
-            if let entity = try context.fetch(descriptor).first {
-                return mapWorkoutEntity(entity)
-            } else {
-                print("⚠️ Aktives Workout mit ID \(activeSessionID) nicht gefunden")
-                // Clear the invalid activeSessionID
-                self.activeSessionID = nil
-                WorkoutLiveActivityController.shared.end()
-                return nil
-            }
-        } catch {
-            print("❌ Fehler beim Laden des aktiven Workouts: \(error)")
-            return nil
+        if let staleId = activeSessionID {
+            print("⚠️ Aktives Workout mit ID \(staleId.uuidString) nicht gefunden")
+            activeSessionID = nil
+            WorkoutLiveActivityController.shared.end()
         }
+
+        return nil
     }
 
     var homeWorkouts: [Workout] {
-        guard let context = modelContext else { return [] }
-
-        do {
-            // Performance: Optimize favorites query
-            var descriptor = FetchDescriptor<WorkoutEntity>(
-                predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true },
-                sortBy: [SortDescriptor(\.name)]
-            )
-            descriptor.fetchLimit = 50  // Reasonable limit for home screen
-            descriptor.includePendingChanges = false
-            let entities = try context.fetch(descriptor)
-            return entities.map { mapWorkoutEntity($0) }
-        } catch {
-            print("❌ Fehler beim Laden der Home-Favoriten: \(error)")
-            return []
-        }
+        dataService.homeWorkouts()
     }
 
     var userProfile: UserProfile {
-        guard let context = modelContext else {
-            // Fallback: Load from UserDefaults if SwiftData isn't available
-            return ProfilePersistenceHelper.loadFromUserDefaults()
-        }
-
-        do {
-            let descriptor = FetchDescriptor<UserProfileEntity>()
-            if let entity = try context.fetch(descriptor).first {
-                let profile = UserProfile(entity: entity)
-                ProfilePersistenceHelper.saveToUserDefaults(profile)
-                return profile
-            }
-        } catch {
-            print("⚠️ Fehler beim Laden des Profils aus SwiftData: \(error)")
-            return ProfilePersistenceHelper.loadFromUserDefaults()
-        }
-
-        // Try to restore from UserDefaults backup
-        let backupProfile = ProfilePersistenceHelper.loadFromUserDefaults()
-        if !backupProfile.name.isEmpty || backupProfile.weight != nil {
-            // Restore to SwiftData - pass profileImageData to prevent recursion
-            updateProfile(
-                name: backupProfile.name,
-                birthDate: backupProfile.birthDate,
-                weight: backupProfile.weight,
-                height: backupProfile.height,
-                biologicalSex: backupProfile.biologicalSex,
-                goal: backupProfile.goal,
-                experience: backupProfile.experience,
-                equipment: backupProfile.equipment,
-                preferredDuration: backupProfile.preferredDuration,
-                healthKitSyncEnabled: backupProfile.healthKitSyncEnabled,
-                profileImageData: backupProfile.profileImageData
-            )
-            print("✅ Profil aus UserDefaults-Backup wiederhergestellt")
-            return backupProfile
-        }
-
-        return UserProfile()
+        profileService.loadProfile(context: modelContext)
     }
 
     // MARK: - Active Session Management
@@ -195,42 +141,19 @@ class WorkoutStore: ObservableObject {
     }
 
     func startSession(for workoutId: UUID) {
-        guard let context = modelContext else {
-            print("❌ WorkoutStore: ModelContext ist nil beim Starten einer Session")
-            return
-        }
-
-        // Verify workout exists and reset its sets
-        let descriptor = FetchDescriptor<WorkoutEntity>(
-            predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
-        )
-
         do {
-            if let workout = try context.fetch(descriptor).first {
-                // Reset all sets as not completed and update the date
-                workout.date = Date()
-                workout.duration = nil
-
-                // Sort exercises by order to maintain correct sequence
-                let sortedExercises = workout.exercises.sorted { $0.order < $1.order }
-                for exercise in sortedExercises {
-                    for set in exercise.sets {
-                        set.completed = false
-                    }
-                }
-
-                try context.save()
-                activeSessionID = workoutId
-
-                // Persistiere Workout-State für Wiederherstellung nach Force Quit
-                UserDefaults.standard.set(workoutId.uuidString, forKey: "activeWorkoutID")
-                print("✅ Session gestartet für Workout: \(workout.name)")
-
-                // Starte Herzfrequenz-Tracking
-                startHeartRateTracking(workoutId: workoutId, workoutName: workout.name)
-            } else {
+            guard let workoutEntity = try sessionService.prepareSessionStart(for: workoutId) else {
                 print("❌ Workout mit ID \(workoutId) nicht gefunden")
+                return
             }
+
+            activeSessionID = workoutId
+            UserDefaults.standard.set(workoutId.uuidString, forKey: "activeWorkoutID")
+            print("✅ Session gestartet für Workout: \(workoutEntity.name)")
+
+            startHeartRateTracking(workoutId: workoutId, workoutName: workoutEntity.name)
+        } catch WorkoutSessionService.SessionError.missingModelContext {
+            print("❌ WorkoutStore: ModelContext ist nil beim Starten einer Session")
         } catch {
             print("❌ Fehler beim Starten der Session: \(error)")
         }
@@ -255,125 +178,11 @@ class WorkoutStore: ObservableObject {
     // MARK: - Data Access Helpers
 
     var exercises: [Exercise] {
-        getExercises()
+        dataService.exercises()
     }
 
     var workouts: [Workout] {
-        getWorkouts()
-    }
-
-    private func getWorkouts() -> [Workout] {
-        guard let context = modelContext else {
-            print("⚠️ WorkoutStore: ModelContext ist nil beim Abrufen von Workouts")
-            return []
-        }
-
-        // Performance: Optimize query for large datasets
-        var descriptor = FetchDescriptor<WorkoutEntity>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        // Limit to most recent 200 workouts for initial load
-        descriptor.fetchLimit = 200
-        descriptor.includePendingChanges = false
-
-        do {
-            let entities = try context.fetch(descriptor)
-            return entities.map { mapWorkoutEntity($0) }
-        } catch {
-            print("❌ Fehler beim Abrufen der Workouts: \(error)")
-            return []
-        }
-    }
-
-    private func mapExerciseEntity(_ entity: ExerciseEntity) -> Exercise {
-        // Safely refetch by id from the current ModelContext to avoid invalid snapshot access
-        let id = entity.id
-        let name = entity.name
-        let muscleGroupsRaw = entity.muscleGroupsRaw
-        let equipmentTypeRaw = entity.equipmentTypeRaw
-        let descriptionText = entity.descriptionText
-        let instructions = entity.instructions
-        let createdAt = entity.createdAt
-
-        // Try to get a fresh reference if possible
-        var source: ExerciseEntity? = entity
-        if let context = modelContext {
-            let descriptor = FetchDescriptor<ExerciseEntity>(predicate: #Predicate { $0.id == id })
-            if let fresh = try? context.fetch(descriptor).first {
-                source = fresh
-            }
-        }
-
-        guard let validSource = source else {
-            // Return a placeholder exercise to avoid crash
-            return Exercise(
-                id: UUID(),
-                name: "Übung nicht verfügbar",
-                muscleGroups: [],
-                equipmentType: .mixed,
-                description: "",
-                instructions: [],
-                createdAt: Date()
-            )
-        }
-
-        let groups: [MuscleGroup] = validSource.muscleGroupsRaw.compactMap {
-            MuscleGroup(rawValue: $0)
-        }
-        let equipmentType = EquipmentType(rawValue: validSource.equipmentTypeRaw) ?? .mixed
-        let difficultyLevel = DifficultyLevel(rawValue: validSource.difficultyLevelRaw) ?? .anfänger
-
-        return Exercise(
-            id: validSource.id,
-            name: validSource.name,
-            muscleGroups: groups,
-            equipmentType: equipmentType,
-            difficultyLevel: difficultyLevel,
-            description: validSource.descriptionText,
-            instructions: validSource.instructions,
-            createdAt: validSource.createdAt
-        )
-    }
-
-    private func mapWorkoutEntity(_ entity: WorkoutEntity) -> Workout {
-        // Sort exercises by order to maintain correct sequence
-        let sortedExercises = entity.exercises.sorted { $0.order < $1.order }
-        let exercises: [WorkoutExercise] = sortedExercises.compactMap { we in
-            guard let exerciseEntity = we.exercise else { return nil }
-            let ex = mapExerciseEntity(exerciseEntity)
-            let sets: [ExerciseSet] = we.sets.map { set in
-                ExerciseSet(
-                    reps: set.reps,
-                    weight: set.weight,
-                    restTime: set.restTime,
-                    completed: set.completed
-                )
-            }
-            return WorkoutExercise(exercise: ex, sets: sets)
-        }
-        return Workout(
-            id: entity.id,
-            name: entity.name,
-            date: entity.date,
-            exercises: exercises,
-            defaultRestTime: entity.defaultRestTime,
-            duration: entity.duration,
-            notes: entity.notes,
-            isFavorite: entity.isFavorite
-        )
-    }
-
-    private func getExercises() -> [Exercise] {
-        guard let context = modelContext else { return [] }
-        // Performance: Limit query results and disable pending changes tracking
-        var descriptor = FetchDescriptor<ExerciseEntity>(
-            sortBy: [SortDescriptor(\.name)]
-        )
-        // No fetchLimit here - we need all exercises for filtering
-        // But we optimize by not tracking pending changes
-        descriptor.includePendingChanges = false
-        let entities = (try? context.fetch(descriptor)) ?? []
-        return entities.map { mapExerciseEntity($0) }
+        dataService.allWorkouts()
     }
 
     /// Findet ähnliche Übungen basierend auf Muskelgruppen, Equipment und Schwierigkeit
@@ -385,185 +194,37 @@ class WorkoutStore: ObservableObject {
     func getSimilarExercises(
         to exercise: Exercise, count: Int = 10, userLevel: ExperienceLevel? = nil
     ) -> [Exercise] {
-        let allExercises = getExercises()
-
-        // Filtere die aktuelle Übung aus und nur Übungen mit gemeinsamen Muskelgruppen
-        let candidates = allExercises.filter { candidate in
-            candidate.id != exercise.id && exercise.hasSimilarMuscleGroups(to: candidate)
-        }
-
-        // Berechne Similarity-Scores für alle Kandidaten
-        let scoredExercises = candidates.compactMap {
-            candidate -> (exercise: Exercise, score: Int, matchesLevel: Bool, sharesPrimary: Bool)?
-            in
-            let score = exercise.similarityScore(to: candidate)
-            guard score > 0 else { return nil }
-
-            let matchesLevel =
-                userLevel != nil ? matchesDifficultyLevel(candidate, for: userLevel!) : true
-            let sharesPrimary = exercise.sharesPrimaryMuscleGroup(with: candidate)
-            return (candidate, score, matchesLevel, sharesPrimary)
-        }
-
-        // Sortiere nach:
-        // 1. Gleiche primäre Muskelgruppe (wichtig!)
-        // 2. Passendes Level
-        // 3. Similarity Score
-        let sorted = scoredExercises.sorted { first, second in
-            // Bevorzuge gleiche primäre Muskelgruppe
-            if first.sharesPrimary && !second.sharesPrimary {
-                return true
-            }
-            if !first.sharesPrimary && second.sharesPrimary {
-                return false
-            }
-
-            // Wenn ein userLevel angegeben ist, bevorzuge passende Level
-            if userLevel != nil {
-                if first.matchesLevel && !second.matchesLevel {
-                    return true
-                }
-                if !first.matchesLevel && second.matchesLevel {
-                    return false
-                }
-            }
-
-            return first.score > second.score
-        }
-
-        // Nimm die Top N Übungen
-        return Array(sorted.prefix(count).map { $0.exercise })
+        dataService.similarExercises(to: exercise, count: count, userLevel: userLevel)
     }
 
-    private func getSessionHistory() -> [WorkoutSession] {
-        guard let context = modelContext else { return [] }
-        // Performance: Limit session history to recent 100 sessions
-        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        descriptor.fetchLimit = 100
-        descriptor.includePendingChanges = false
-        let entities = (try? context.fetch(descriptor)) ?? []
-        return entities.map { WorkoutSession(entity: $0) }
-    }
-
-    private func getHomeFavoritesCount() -> Int {
-        guard let context = modelContext else { return 0 }
-
-        do {
-            let descriptor = FetchDescriptor<WorkoutEntity>(
-                predicate: #Predicate<WorkoutEntity> { $0.isFavorite == true }
-            )
-            let entities = try context.fetch(descriptor)
-            return entities.count
-        } catch {
-            print("❌ Fehler beim Zählen der Home-Favoriten: \(error)")
-            return 0
-        }
+    func getSessionHistory(limit: Int = 100) -> [WorkoutSession] {
+        analyticsService.getSessionHistory(limit: limit)
     }
 
     func addExercise(_ exercise: Exercise) {
-        guard let context = modelContext else { return }
-
-        // Check if exercise already exists by ID first
-        let idDescriptor = FetchDescriptor<ExerciseEntity>(
-            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
-        )
-
-        if (try? context.fetch(idDescriptor).first) != nil {
-            return  // Exercise already exists
-        }
-
-        // Check by name using case-insensitive comparison
-        let nameDescriptor = FetchDescriptor<ExerciseEntity>()
-        let allExercises = (try? context.fetch(nameDescriptor)) ?? []
-
-        if allExercises.contains(where: {
-            $0.name.localizedCaseInsensitiveCompare(exercise.name) == .orderedSame
-        }) {
-            return  // Exercise with same name already exists
-        }
-
-        let entity = ExerciseEntity.make(from: exercise)
-        context.insert(entity)
-        try? context.save()
+        dataService.addExercise(exercise)
         invalidateCaches()
     }
 
     func updateExercise(_ exercise: Exercise) {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<ExerciseEntity>(
-            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
-        )
-
-        guard let entity = try? context.fetch(descriptor).first else { return }
-
-        entity.name = exercise.name
-        entity.muscleGroupsRaw = exercise.muscleGroups.map { $0.rawValue }
-        entity.equipmentTypeRaw = exercise.equipmentType.rawValue
-        entity.difficultyLevelRaw = exercise.difficultyLevel.rawValue
-        entity.descriptionText = exercise.description
-        entity.instructions = exercise.instructions
-
-        try? context.save()
-
-        // Invalidate cache for this exercise id
-        exerciseStatsCache[exercise.id] = nil
+        dataService.updateExercise(exercise)
+        analyticsService.invalidateExerciseCache(for: exercise.id)
     }
 
     func addWorkout(_ workout: Workout) {
-        guard let context = modelContext else {
-            print("❌ WorkoutStore: ModelContext ist nil beim Speichern eines Workouts")
-            return
-        }
-
-        do {
-            try DataManager.shared.saveWorkout(workout, to: context)
-            print("✅ Workout erfolgreich gespeichert: \(workout.name)")
-        } catch {
-            print("❌ Fehler beim Speichern des Workouts: \(error)")
-        }
+        dataService.addWorkout(workout)
     }
 
     func updateWorkout(_ workout: Workout) {
-        guard let context = modelContext else {
-            print("❌ WorkoutStore: ModelContext ist nil beim Aktualisieren eines Workouts")
-            return
-        }
-
-        do {
-            try DataManager.shared.saveWorkout(workout, to: context)
-            print("✅ Workout erfolgreich aktualisiert: \(workout.name)")
-        } catch {
-            print("❌ Fehler beim Aktualisieren des Workouts: \(error)")
-        }
+        dataService.updateWorkout(workout)
     }
 
     func exercise(named name: String) -> Exercise {
-        guard let context = modelContext else {
-            return Exercise(name: name, muscleGroups: [], equipmentType: .mixed, description: "")
-        }
-
-        // Fetch all exercises and find by case-insensitive name comparison
-        let descriptor = FetchDescriptor<ExerciseEntity>()
-        let allExercises = (try? context.fetch(descriptor)) ?? []
-
-        if let existing = allExercises.first(where: {
-            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
-        }) {
-            return mapExerciseEntity(existing)
-        }
-
-        let newExercise = Exercise(
-            name: name, muscleGroups: [], equipmentType: .mixed, description: "")
-        let entity = ExerciseEntity.make(from: newExercise)
-        context.insert(entity)
-        try? context.save()
-        return newExercise
+        dataService.exercise(named: name)
     }
 
     func previousWorkout(before workout: Workout) -> Workout? {
-        let sessionHistory = getSessionHistory()
+        let sessionHistory = analyticsService.getSessionHistory()
         return
             sessionHistory
             .filter { $0.templateId == workout.id }
@@ -577,7 +238,7 @@ class WorkoutStore: ObservableObject {
         guard let context = modelContext else { return nil }
 
         let descriptor = FetchDescriptor<ExerciseEntity>(
-            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+            predicate: #Predicate<ExerciseEntity> { entity in entity.id == exercise.id }
         )
 
         guard let exerciseEntity = try? context.fetch(descriptor).first,
@@ -596,7 +257,7 @@ class WorkoutStore: ObservableObject {
         guard let context = modelContext else { return nil }
 
         let descriptor = FetchDescriptor<ExerciseEntity>(
-            predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
+            predicate: #Predicate<ExerciseEntity> { entity in entity.id == exercise.id }
         )
 
         guard let exerciseEntity = try? context.fetch(descriptor).first else { return nil }
@@ -629,39 +290,12 @@ class WorkoutStore: ObservableObject {
     }
 
     func deleteExercise(at indexSet: IndexSet) {
-        guard let context = modelContext else { return }
-        let exercises = getExercises()
-        let removedExercises = indexSet.map { exercises[$0] }
-
-        for exercise in removedExercises {
-            let descriptor = FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { $0.id == exercise.id }
-            )
-
-            if let entity = try? context.fetch(descriptor).first {
-                context.delete(entity)
-            }
-
-            // Invalidate caches for removed exercise IDs
-            exerciseStatsCache[exercise.id] = nil
-        }
-
-        try? context.save()
+        let removedIDs = dataService.deleteExercises(at: indexSet)
+        removedIDs.forEach { analyticsService.invalidateExerciseCache(for: $0) }
     }
 
     func deleteWorkout(at indexSet: IndexSet) {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<WorkoutEntity>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        let entities = (try? context.fetch(descriptor)) ?? []
-
-        for index in indexSet {
-            guard index < entities.count else { continue }
-            context.delete(entities[index])
-        }
-
-        try? context.save()
+        dataService.deleteWorkouts(at: indexSet)
     }
 
     func recordSession(from workout: Workout) {
@@ -670,37 +304,30 @@ class WorkoutStore: ObservableObject {
             return
         }
 
+        let sortedExercises = workout.exercises
+
+        let session = WorkoutSession(
+            templateId: workout.id,
+            name: workout.name,
+            date: workout.date,
+            exercises: sortedExercises,
+            defaultRestTime: workout.defaultRestTime,
+            duration: workout.duration,
+            notes: workout.notes
+        )
+
         do {
-            // Ensure exercises are sorted by order before recording session
-            // Note: workout.exercises should already be sorted from mapWorkoutEntity,
-            // but we sort again here to be absolutely certain
-            let sortedExercises = workout.exercises  // Already sorted from UI
+            let savedEntity = try sessionService.recordSession(session)
 
-            let session = WorkoutSession(
-                templateId: workout.id,
-                name: workout.name,
-                date: workout.date,
-                exercises: sortedExercises,
-                defaultRestTime: workout.defaultRestTime,
-                duration: workout.duration,
-                notes: workout.notes
-            )
-
-            let savedEntity = try DataManager.shared.recordSession(session, to: context)
-
-            // 🆕 NEU: Update Last-Used Metrics für alle Übungen
             updateLastUsedMetrics(from: session)
 
-            // Update ExerciseRecords with new personal bests
-            // Memory: Capture only what's needed, not self
             Task {
                 await ExerciseRecordMigration.updateRecords(from: savedEntity, context: context)
             }
 
-            invalidateCaches()  // stats/streak may change
+            invalidateCaches()
             print("✅ Workout-Session erfolgreich gespeichert: \(workout.name)")
 
-            // Sync to HealthKit if enabled
             if userProfile.healthKitSyncEnabled && healthKitManager.isAuthorized {
                 Task { [weak self] in
                     guard let self = self else { return }
@@ -716,6 +343,8 @@ class WorkoutStore: ObservableObject {
                     }
                 }
             }
+        } catch WorkoutSessionService.SessionError.missingModelContext {
+            print("❌ WorkoutStore: ModelContext ist nil beim Speichern einer Session")
         } catch {
             print("❌ Fehler beim Speichern der Workout-Session: \(error)")
         }
@@ -730,7 +359,9 @@ class WorkoutStore: ObservableObject {
         for workoutExercise in session.exercises {
             // Hole die ExerciseEntity frisch aus dem Context
             let descriptor = FetchDescriptor<ExerciseEntity>(
-                predicate: #Predicate<ExerciseEntity> { $0.id == workoutExercise.exercise.id }
+                predicate: #Predicate<ExerciseEntity> { entity in
+                    entity.id == workoutExercise.exercise.id
+                }
             )
 
             guard let exerciseEntity = try? context.fetch(descriptor).first else {
@@ -768,18 +399,17 @@ class WorkoutStore: ObservableObject {
     }
 
     func removeSession(with id: UUID) {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<WorkoutSessionEntity>(
-            predicate: #Predicate<WorkoutSessionEntity> { $0.id == id }
-        )
-
-        if let entity = try? context.fetch(descriptor).first {
-            context.delete(entity)
-            try? context.save()
+        do {
+            try sessionService.removeSession(with: id)
+            invalidateCaches()
+        } catch WorkoutSessionService.SessionError.missingModelContext {
+            print("❌ WorkoutStore: ModelContext ist nil beim Entfernen einer Session")
+        } catch {
+            print("❌ Fehler beim Entfernen der Session: \(error)")
         }
-
-        invalidateCaches()
     }
+
+    // MARK: - Profile Management
 
     // MARK: - Profile Management
     func updateProfile(
@@ -788,122 +418,42 @@ class WorkoutStore: ObservableObject {
         equipment: EquipmentPreference, preferredDuration: WorkoutDuration,
         healthKitSyncEnabled: Bool = false, profileImageData: Data? = nil
     ) {
-        // Preserve existing profile image if not provided
-        let imageData =
-            profileImageData ?? ProfilePersistenceHelper.loadFromUserDefaults().profileImageData
-
-        // Create updated profile
-        let updatedProfile = UserProfile(
+        let profile = profileService.updateProfile(
+            context: modelContext,
             name: name,
             birthDate: birthDate,
             weight: weight,
             height: height,
             biologicalSex: biologicalSex,
             goal: goal,
-            profileImageData: imageData,
             experience: experience,
             equipment: equipment,
             preferredDuration: preferredDuration,
-            healthKitSyncEnabled: healthKitSyncEnabled
+            healthKitSyncEnabled: healthKitSyncEnabled,
+            profileImageData: profileImageData
         )
 
-        // Always save to UserDefaults as backup
-        ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-
-        // Save to SwiftData if available
-        if let context = modelContext {
-            let descriptor = FetchDescriptor<UserProfileEntity>()
-
-            let entity: UserProfileEntity
-            if let existing = try? context.fetch(descriptor).first {
-                entity = existing
-            } else {
-                entity = UserProfileEntity()
-                context.insert(entity)
-            }
-
-            entity.name = name
-            entity.birthDate = birthDate
-            entity.weight = weight
-            entity.height = height
-            entity.biologicalSexRaw = Int16(
-                biologicalSex?.rawValue ?? HKBiologicalSex.notSet.rawValue)
-            entity.healthKitSyncEnabled = healthKitSyncEnabled
-            entity.goalRaw = goal.rawValue
-            entity.experienceRaw = experience.rawValue
-            entity.equipmentRaw = equipment.rawValue
-            entity.preferredDurationRaw = preferredDuration.rawValue
-            entity.updatedAt = Date()
-
-            try? context.save()
-        }
-
-        // Trigger UI update
         profileUpdateTrigger = UUID()
-        print("✅ Profil gespeichert: \(name) - \(goal.displayName)")
+        print("✅ Profil gespeichert: \(profile.name) - \(profile.goal.displayName)")
     }
 
     func updateProfileImage(_ image: UIImage?) {
-        // Create updated profile with new image
-        var updatedProfile = userProfile
-        updatedProfile.updateProfileImage(image)
-
-        // Always save to UserDefaults as backup
-        ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-
-        // Save to SwiftData if available
-        if let context = modelContext {
-            let descriptor = FetchDescriptor<UserProfileEntity>()
-
-            let entity: UserProfileEntity
-            if let existing = try? context.fetch(descriptor).first {
-                entity = existing
-            } else {
-                entity = UserProfileEntity()
-                context.insert(entity)
-            }
-
-            entity.profileImageData = image?.jpegData(compressionQuality: 0.8)
-            entity.updatedAt = Date()
-
-            try? context.save()
+        let data: Data?
+        if let image {
+            let targetSize = CGSize(width: 200, height: 200)
+            let resizedImage = image.resized(to: targetSize)
+            data = resizedImage.jpegData(compressionQuality: 0.8)
+        } else {
+            data = nil
         }
 
-        // Trigger UI update
+        _ = profileService.updateProfileImageData(data, context: modelContext)
         profileUpdateTrigger = UUID()
         print("✅ Profilbild gespeichert")
     }
 
     func updateLockerNumber(_ lockerNumber: String) {
-        // Save to SwiftData if available
-        if let context = modelContext {
-            let descriptor = FetchDescriptor<UserProfileEntity>()
-
-            let entity: UserProfileEntity
-            if let existing = try? context.fetch(descriptor).first {
-                entity = existing
-            } else {
-                entity = UserProfileEntity()
-                context.insert(entity)
-            }
-
-            entity.lockerNumber = lockerNumber.isEmpty ? nil : lockerNumber
-            entity.updatedAt = Date()
-
-            try? context.save()
-
-            // Save updated profile to UserDefaults as backup
-            let updatedProfile = UserProfile(entity: entity)
-            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-        } else {
-            // Fallback: Update UserDefaults directly
-            var updatedProfile = userProfile
-            updatedProfile.lockerNumber = lockerNumber.isEmpty ? nil : lockerNumber
-            updatedProfile.updatedAt = Date()
-            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-        }
-
-        // Trigger UI update
+        _ = profileService.updateLockerNumber(lockerNumber, context: modelContext)
         profileUpdateTrigger = UUID()
         print("✅ Spintnummer gespeichert: \(lockerNumber)")
     }
@@ -914,55 +464,17 @@ class WorkoutStore: ObservableObject {
         hasExploredWorkouts: Bool? = nil, hasCreatedFirstWorkout: Bool? = nil,
         hasSetupProfile: Bool? = nil
     ) {
-        // Save to SwiftData if available
-        if let context = modelContext {
-            let descriptor = FetchDescriptor<UserProfileEntity>()
+        _ = profileService.markOnboardingStep(
+            context: modelContext,
+            hasExploredWorkouts: hasExploredWorkouts,
+            hasCreatedFirstWorkout: hasCreatedFirstWorkout,
+            hasSetupProfile: hasSetupProfile
+        )
 
-            let entity: UserProfileEntity
-            if let existing = try? context.fetch(descriptor).first {
-                entity = existing
-            } else {
-                entity = UserProfileEntity()
-                context.insert(entity)
-            }
-
-            // Update entity
-            if let hasExploredWorkouts = hasExploredWorkouts {
-                entity.hasExploredWorkouts = hasExploredWorkouts
-            }
-            if let hasCreatedFirstWorkout = hasCreatedFirstWorkout {
-                entity.hasCreatedFirstWorkout = hasCreatedFirstWorkout
-            }
-            if let hasSetupProfile = hasSetupProfile {
-                entity.hasSetupProfile = hasSetupProfile
-            }
-            entity.updatedAt = Date()
-
-            try? context.save()
-
-            // Also save to UserDefaults as backup
-            let updatedProfile = UserProfile(entity: entity)
-            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-        } else {
-            // Fallback: Update UserDefaults directly
-            var updatedProfile = userProfile
-
-            if let hasExploredWorkouts = hasExploredWorkouts {
-                updatedProfile.hasExploredWorkouts = hasExploredWorkouts
-            }
-            if let hasCreatedFirstWorkout = hasCreatedFirstWorkout {
-                updatedProfile.hasCreatedFirstWorkout = hasCreatedFirstWorkout
-            }
-            if let hasSetupProfile = hasSetupProfile {
-                updatedProfile.hasSetupProfile = hasSetupProfile
-            }
-            updatedProfile.updatedAt = Date()
-
-            ProfilePersistenceHelper.saveToUserDefaults(updatedProfile)
-        }
-
-        // Trigger UI update
         profileUpdateTrigger = UUID()
+        print(
+            "✅ Onboarding-Status aktualisiert: exploredWorkouts=\(hasExploredWorkouts?.description ?? "-") createdFirstWorkout=\(hasCreatedFirstWorkout?.description ?? "-") setupProfile=\(hasSetupProfile?.description ?? "-")"
+        )
     }
 
     // MARK: - HealthKit Integration
@@ -1087,49 +599,11 @@ class WorkoutStore: ObservableObject {
     // MARK: - Favorites
 
     func toggleFavorite(for workoutID: UUID) {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<WorkoutEntity>(
-            predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
-        )
-
-        guard let entity = try? context.fetch(descriptor).first else { return }
-        entity.isFavorite.toggle()
-        try? context.save()
+        dataService.toggleFavorite(for: workoutID)
     }
 
     func toggleHomeFavorite(workoutID: UUID) -> Bool {
-        guard let context = modelContext else { return false }
-
-        let descriptor = FetchDescriptor<WorkoutEntity>(
-            predicate: #Predicate<WorkoutEntity> { $0.id == workoutID }
-        )
-
-        guard let entity = try? context.fetch(descriptor).first else { return false }
-
-        // Check if we're trying to add to home favorites
-        if !entity.isFavorite {
-            // Adding to favorites - check 4-workout limit
-            let currentCount = getHomeFavoritesCount()
-            if currentCount >= 4 {
-                print("⚠️ Home-Favoriten Limit erreicht: \(currentCount)/4")
-                return false
-            }
-        }
-
-        // Toggle the favorite status
-        entity.isFavorite.toggle()
-
-        do {
-            try context.save()
-            // Force SwiftData to process changes immediately
-            context.processPendingChanges()
-            let action = entity.isFavorite ? "hinzugefügt" : "entfernt"
-            print("✅ Home-Favorit für Workout '\(entity.name)' \(action)")
-            return true
-        } catch {
-            print("❌ Fehler beim Speichern des Home-Favoriten: \(error)")
-            return false
-        }
+        dataService.toggleHomeFavorite(workoutID: workoutID)
     }
 
     // MARK: - Zentrale Rest-Timer Steuerung
@@ -1269,8 +743,7 @@ class WorkoutStore: ObservableObject {
     // MARK: - Cache Management
 
     func invalidateCaches() {
-        exerciseStatsCache.removeAll()
-        weekStreakCache = nil
+        analyticsService.invalidateCaches()
     }
 
     // MARK: - Exercise Database Update
@@ -1895,7 +1368,7 @@ class WorkoutStore: ObservableObject {
         print("🧪 Starte Test des Übungsaustauschs...")
 
         // Zeige aktuelle Statistiken
-        let currentExercises = getExercises()
+        let currentExercises = dataService.exercises()
         print("📊 Aktuelle Übungen: \(currentExercises.count)")
 
         if !currentExercises.isEmpty {
@@ -2174,7 +1647,7 @@ class WorkoutStore: ObservableObject {
 
         // Test 3: Datenbank-Status
         print("\n💾 Test 3: Aktuelle Datenbank-Statistiken")
-        let currentExercises = getExercises()
+        let currentExercises = dataService.exercises()
         print("   Übungen in DB: \(currentExercises.count)")
 
         if !currentExercises.isEmpty {
@@ -2202,7 +1675,7 @@ class WorkoutStore: ObservableObject {
 
     /// Validiert die Qualität der aktuellen Übungsdaten
     private func validateExerciseData() {
-        let exercises = getExercises()
+        let exercises = dataService.exercises()
 
         var issues: [String] = []
 
@@ -2361,214 +1834,38 @@ class WorkoutStore: ObservableObject {
 // MARK: - Analytics Helpers
 
 extension WorkoutStore {
-    struct ExerciseStats: Identifiable {
-        struct HistoryPoint: Identifiable {
-            let id = UUID()
-            let date: Date
-            let volume: Double
-            let estimatedOneRepMax: Double
-        }
-
-        let id = UUID()
-        let exercise: Exercise
-        let totalVolume: Double
-        let totalReps: Int
-        let maxWeight: Double
-        let estimatedOneRepMax: Double
-        let history: [HistoryPoint]
-    }
-
     var totalWorkoutCount: Int {
-        let sessions = getSessionHistory()
-        let importedCount = sessions.filter { $0.notes.contains("Importiert aus") }.count
-        let regularCount = sessions.count - importedCount
-        print(
-            "📊 Workout-Statistik: Gesamt: \(sessions.count), Importiert: \(importedCount), Regulär: \(regularCount)"
-        )
-        return sessions.count
+        analyticsService.totalWorkoutCount()
     }
 
     var averageWorkoutsPerWeek: Double {
-        let sessionHistory = getSessionHistory()
-        guard let earliestDate = sessionHistory.min(by: { $0.date < $1.date })?.date else {
-            return 0
-        }
-        let span = max(Date().timeIntervalSince(earliestDate), 1)
-        let weeks = max(span / (7 * 24 * 60 * 60), 1)
-        return Double(sessionHistory.count) / weeks
+        analyticsService.averageWorkoutsPerWeek()
     }
 
     var currentWeekStreak: Int {
-        let today = Date()
-        let calendar = Calendar.current
-
-        // Cache prüfen
-        if let cached = weekStreakCache,
-            calendar.isDate(cached.date, equalTo: today, toGranularity: .day)
-        {
-            return cached.value
-        }
-
-        let sessionHistory = getSessionHistory()
-        guard !sessionHistory.isEmpty else {
-            weekStreakCache = (today, 0)
-            return 0
-        }
-
-        let weekStarts: Set<Date> = Set(
-            sessionHistory.compactMap { session in
-                calendar.date(
-                    from: calendar.dateComponents(
-                        [.yearForWeekOfYear, .weekOfYear], from: session.date))
-            })
-
-        guard
-            var cursor = calendar.date(
-                from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))
-        else {
-            weekStreakCache = (today, 0)
-            return 0
-        }
-
-        var streak = 0
-        while weekStarts.contains(cursor) {
-            streak += 1
-            guard let previous = calendar.date(byAdding: .weekOfYear, value: -1, to: cursor) else {
-                break
-            }
-            cursor = previous
-        }
-
-        // Cache aktualisieren
-        weekStreakCache = (today, streak)
-        return streak
+        analyticsService.currentWeekStreak()
     }
 
     var averageDurationMinutes: Int {
-        let sessionHistory = getSessionHistory()
-        let durations = sessionHistory.compactMap { $0.duration }
-
-        // Debug information for imported workouts
-        let importedSessions = sessionHistory.filter { $0.notes.contains("Importiert aus") }
-        let importedDurations = importedSessions.compactMap { $0.duration }
-
-        if !importedSessions.isEmpty {
-            print(
-                "📊 Dauer-Statistik: Gesamt: \(sessionHistory.count) Sessions, Importiert: \(importedSessions.count)"
-            )
-            print(
-                "   Durationen verfügbar: Gesamt: \(durations.count), Importiert: \(importedDurations.count)"
-            )
-        }
-
-        guard !durations.isEmpty else { return 0 }
-        let total = durations.reduce(0, +)
-        return Int(total / Double(durations.count) / 60)
+        analyticsService.averageDurationMinutes()
     }
 
     func muscleVolume(byGroupInLastWeeks weeks: Int) -> [(MuscleGroup, Double)] {
-        let calendar = Calendar.current
-        let threshold = calendar.date(byAdding: .weekOfYear, value: -weeks, to: Date()) ?? Date()
-
-        let sessionHistory = getSessionHistory()
-        let filtered = sessionHistory.filter { $0.date >= threshold }
-
-        // Debug information
-        let importedFiltered = filtered.filter { $0.notes.contains("Importiert aus") }
-        if !importedFiltered.isEmpty {
-            print("📊 Muskelvolumen-Statistik (letzte \(weeks) Wochen):")
-            print(
-                "   Gefilterte Sessions: \(filtered.count), davon importiert: \(importedFiltered.count)"
-            )
-        }
-
-        var totals: [MuscleGroup: Double] = [:]
-
-        for workout in filtered {
-            for exercise in workout.exercises {
-                let volume = exercise.sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
-                for muscle in exercise.exercise.muscleGroups {
-                    totals[muscle, default: 0] += volume
-                }
-            }
-        }
-
-        return totals.sorted { $0.value > $1.value }
+        analyticsService.muscleVolume(byGroupInLastWeeks: weeks)
     }
 
     func exerciseStats(for exercise: Exercise) -> ExerciseStats? {
-        if let cached = exerciseStatsCache[exercise.id] {
-            return cached
-        }
-
-        let sessionHistory = getSessionHistory()
-        let relevantSessions = sessionHistory.filter { workout in
-            workout.exercises.contains { $0.exercise.id == exercise.id }
-        }
-
-        guard !relevantSessions.isEmpty else { return nil }
-
-        var totalVolume: Double = 0
-        var totalReps: Int = 0
-        var maxWeight: Double = 0
-        var history: [ExerciseStats.HistoryPoint] = []
-
-        for workout in relevantSessions.sorted(by: { $0.date < $1.date }) {
-            let sets = workout.exercises
-                .filter { $0.exercise.id == exercise.id }
-                .flatMap { $0.sets }
-
-            let volume = sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
-            let reps = sets.reduce(0) { $0 + $1.reps }
-            let maxSetWeight = sets.map { $0.weight }.max() ?? 0
-            let oneRepMax =
-                sets.map { estimateOneRepMax(weight: $0.weight, reps: $0.reps) }.max()
-                ?? maxSetWeight
-
-            totalVolume += volume
-            totalReps += reps
-            maxWeight = max(maxWeight, maxSetWeight)
-
-            history.append(
-                ExerciseStats.HistoryPoint(
-                    date: workout.date,
-                    volume: volume,
-                    estimatedOneRepMax: oneRepMax
-                )
-            )
-        }
-
-        let bestOneRepMax = history.map { $0.estimatedOneRepMax }.max() ?? maxWeight
-
-        let stats = ExerciseStats(
-            exercise: exercise,
-            totalVolume: totalVolume,
-            totalReps: totalReps,
-            maxWeight: maxWeight,
-            estimatedOneRepMax: bestOneRepMax,
-            history: history
-        )
-        exerciseStatsCache[exercise.id] = stats
-        return stats
+        analyticsService.exerciseStats(for: exercise)
     }
 
     func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
-        let calendar = Calendar.current
-        let sessionHistory = getSessionHistory()
-        return Dictionary(grouping: sessionHistory.filter { range.contains($0.date) }) { workout in
-            calendar.startOfDay(for: workout.date)
-        }
-    }
-
-    private func estimateOneRepMax(weight: Double, reps: Int) -> Double {
-        guard reps > 0 else { return weight }
-        return weight * (1 + Double(reps) / 30.0)
+        analyticsService.workoutsByDay(in: range)
     }
 
     // MARK: - Workout Generation
 
     func generateWorkout(from preferences: WorkoutPreferences) -> Workout {
-        let exercises = getExercises()
+        let exercises = dataService.exercises()
         let muscleGroups = selectMuscleGroups(for: preferences)
         let selectedExercises = selectExercises(
             for: preferences, targeting: muscleGroups, from: exercises)
@@ -2933,8 +2230,7 @@ extension WorkoutStore {
         print("[Memory] 🧹 Performing WorkoutStore cleanup")
 
         // Clear caches
-        exerciseStatsCache.removeAll()
-        weekStreakCache = nil
+        analyticsService.invalidateCaches()
 
         // Stop rest timer if no active session
         if activeSessionID == nil {
@@ -3130,15 +2426,7 @@ class WorkoutStoreCoordinator: ObservableObject {
     }
 
     func getSessionHistory() -> [WorkoutSession] {
-        // Access private method via modelContext directly
-        guard let context = legacyStore.modelContext else { return [] }
-        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        descriptor.fetchLimit = 100
-        descriptor.includePendingChanges = false
-        let entities = (try? context.fetch(descriptor)) ?? []
-        return entities.map { WorkoutSession(entity: $0) }
+        legacyStore.getSessionHistory()
     }
 
     // MARK: - Profile Methods

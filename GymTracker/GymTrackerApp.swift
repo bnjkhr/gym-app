@@ -409,7 +409,7 @@ struct GymTrackerApp: App {
 
                 // Verify workout exists in database
                 let descriptor = FetchDescriptor<WorkoutEntity>(
-                    predicate: #Predicate<WorkoutEntity> { $0.id == workoutId }
+                    predicate: #Predicate<WorkoutEntity> { workout in workout.id == workoutId }
                 )
 
                 do {
