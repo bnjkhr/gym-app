@@ -27,8 +27,21 @@
 ### Aktuelle Phase: Phase 3 - Views Modularisieren
 
 **Ziel:** 20+ View-Komponenten aus großen Views extrahieren  
-**Fortschritt:** 0% (Nicht gestartet)  
+**Fortschritt:** 2% (1/20+ components extracted)  
 **Detaillierter Plan:** Siehe MODULARIZATION_PLAN.md
+
+#### 🔄 Laufende Tasks (Phase 3)
+
+**Task 3.1: StatisticsView Component Extraction**
+- Status: 🔄 In Progress
+- Target: 3,159 → ~1,000 Zeilen
+- Components to extract: 6-8 major components
+- [x] MostUsedExercisesView extracted (~65 LOC)
+- [ ] RecentActivityView
+- [ ] HeartRateInsightsView
+- [ ] BodyMetricsInsightsView
+- [ ] DayStripView
+- [ ] CalendarSessionsView
 
 #### ✅ Abgeschlossene Tasks (Phase 2)
 
