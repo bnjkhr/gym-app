@@ -1,13 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Ein Protokoll, um sicherzustellen, dass alle Enum-Typen für den Workout-Assistenten
-/// die benötigten Eigenschaften für die Auswahl-UI haben.
-protocol WizardSelectableOption: CaseIterable, Identifiable, Equatable where AllCases: RandomAccessCollection {
-    var displayName: String { get }
-    var description: String { get }
-}
-
 enum ExperienceLevel: String, Identifiable, Codable, WizardSelectableOption {
     case beginner = "beginner"
     case intermediate = "intermediate"
@@ -60,12 +53,12 @@ enum FitnessGoal: String, Identifiable, Codable, CaseIterable, WizardSelectableO
         case .general: return "Gesundheit und allgemeine Fitness verbessern"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .muscleBuilding: return .customOrange
         case .strength: return .purple
-        case .endurance: return Color(red: 0/255, green: 95/255, blue: 86/255)
+        case .endurance: return Color(red: 0 / 255, green: 95 / 255, blue: 86 / 255)
         case .weightLoss: return .red
         case .general: return .customBlue
         }
@@ -131,11 +124,14 @@ enum WorkoutDuration: Int, Identifiable, Codable, WizardSelectableOption {
 struct WorkoutPreferences: Codable {
     let experience: ExperienceLevel
     let goal: FitnessGoal
-    let frequency: Int // Trainings pro Woche
+    let frequency: Int  // Trainings pro Woche
     let equipment: EquipmentPreference
     let duration: WorkoutDuration
 
-    init(experience: ExperienceLevel, goal: FitnessGoal, frequency: Int, equipment: EquipmentPreference, duration: WorkoutDuration) {
+    init(
+        experience: ExperienceLevel, goal: FitnessGoal, frequency: Int,
+        equipment: EquipmentPreference, duration: WorkoutDuration
+    ) {
         self.experience = experience
         self.goal = goal
         self.frequency = frequency

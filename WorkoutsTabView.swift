@@ -590,12 +590,6 @@ struct WorkoutsTabView: View {
     }
 }
 
-// MARK: - Supporting Types
-
-private struct WorkoutSelection: Identifiable, Hashable {
-    let id: UUID
-}
-
 // MARK: - FolderGridSection
 
 private struct FolderGridSection: View {
