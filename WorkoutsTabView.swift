@@ -100,19 +100,7 @@ struct WorkoutsTabView: View {
                             }
 
                             if displayWorkouts.isEmpty && folders.isEmpty {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "figure.strengthtraining.functional")
-                                        .font(.system(size: 40))
-                                        .foregroundColor(.secondary)
-                                    Text("Noch keine Workouts erstellt")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Text("Erstelle dein erstes Workout oben.")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 40)
+                                EmptyWorkoutsView()
                             } else if !workoutsWithoutFolder.isEmpty {
                                 LazyVGrid(
                                     columns: [
@@ -176,7 +164,26 @@ struct WorkoutsTabView: View {
                 }
             }
             .sheet(isPresented: $showingAddWorkout) {
-                createAddWorkoutSheet()
+                AddWorkoutOptionsSheet(
+                    workoutStore: workoutStore,
+                    onWorkoutWizard: {
+                        navigateToWorkoutWizard = true
+                    },
+                    onManualCreate: {
+                        navigateToManualAdd = true
+                    },
+                    onQuickWorkout: { workout, name in
+                        quickGeneratedWorkout = workout
+                        quickWorkoutName = name
+                        navigateToQuickWorkout = true
+                    },
+                    onDismiss: {
+                        showingAddWorkout = false
+                    },
+                    onShowProfileAlert: {
+                        showingProfileAlert = true
+                    }
+                )
             }
             .sheet(isPresented: $showingAddFolder) {
                 AddFolderView()
@@ -332,176 +339,6 @@ struct WorkoutsTabView: View {
             .sorted { $0.orderInFolder < $1.orderInFolder }
     }
 
-    private func createWorkoutAssistantButton() -> some View {
-        Button {
-            showingAddWorkout = false  // Schließe erst das Sheet
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                navigateToWorkoutWizard = true  // Dann navigiere
-            }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Workout-Assistent")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Text("Personalisiertes Workout basierend auf deinen Zielen")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: "wand.and.stars")
-                    .font(.title2)
-                    .foregroundColor(.customBlue)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.customBlue.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.customBlue.opacity(0.3), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func createManualWorkoutButton() -> some View {
-        Button {
-            showingAddWorkout = false  // Schließe erst das Sheet
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                navigateToManualAdd = true  // Dann navigiere
-            }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Manuell erstellen")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Text("Selbst zusammengestelltes Workout")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: "plus.circle")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func createQuickWorkoutButton() -> some View {
-        Button {
-            let profile = workoutStore.userProfile
-            let isProfileMissing =
-                profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && profile.weight == nil && profile.birthDate == nil
-            if isProfileMissing {
-                showingProfileAlert = true
-                return
-            }
-            let goal = profile.goal
-            let freq = max(1, min(workoutStore.weeklyGoal, 7))
-            let preferences = WorkoutPreferences(
-                experience: profile.experience,
-                goal: goal,
-                frequency: freq,
-                equipment: profile.equipment,
-                duration: profile.preferredDuration
-            )
-            quickGeneratedWorkout = workoutStore.generateWorkout(from: preferences)
-            quickWorkoutName = "Mein \(goal.displayName) Workout"
-
-            // Navigation statt Sheet
-            showingAddWorkout = false  // Schließe erst das Sheet
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                navigateToQuickWorkout = true  // Dann navigiere
-            }
-        } label: {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("1-Klick-Workout mit Profil erstellen")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    if workoutStore.userProfile.name.isEmpty
-                        && workoutStore.userProfile.weight == nil
-                        && workoutStore.userProfile.birthDate == nil
-                    {
-                        Text(
-                            "Hinweis: Lege zuerst dein Profil an, um optimale Ergebnisse zu erhalten."
-                        )
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                    } else {
-                        Text("Ziel und Trainingsfrequenz werden aus deinem Profil übernommen.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                Spacer()
-                Image(systemName: "bolt.badge.a.fill")
-                    .font(.title2)
-                    .foregroundColor(AppTheme.mossGreen)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill((AppTheme.mossGreen).opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke((AppTheme.mossGreen).opacity(0.3), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func createAddWorkoutSheet() -> some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text("Neues Workout erstellen")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.top)
-
-                VStack(spacing: 16) {
-                    createWorkoutAssistantButton()
-                    createManualWorkoutButton()
-                    createQuickWorkoutButton()
-                }
-                .padding()
-
-                Spacer()
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showingAddWorkout = false
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
-                            .background(Color(.systemGray5))
-                            .clipShape(Circle())
-                    }
-                }
-            }
-        }
-    }
-
     private func startWorkout(with id: UUID) {
         do {
             try modelContext.save()
@@ -587,105 +424,6 @@ struct WorkoutsTabView: View {
         entity.orderInFolder = maxOrder + 1
 
         try? modelContext.save()
-    }
-}
-
-// MARK: - FolderGridSection
-
-private struct FolderGridSection: View {
-    let folder: WorkoutFolderEntity
-    let workouts: [WorkoutEntity]
-    let isExpanded: Bool
-    let onToggle: () -> Void
-    let onTap: (UUID) -> Void
-    let onEdit: (UUID) -> Void
-    let onDelete: (Workout) -> Void
-    let onToggleHome: (UUID) -> Void
-    let onDuplicate: (UUID) -> Void
-    let onShare: (UUID) -> Void
-    let onRemoveFromFolder: (WorkoutEntity) -> Void
-    let onDeleteFolder: () -> Void
-
-    @Environment(\.modelContext) private var modelContext
-    @State private var showingFolderOptions = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Folder Header
-            Button(action: onToggle) {
-                HStack {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(hex: folder.color))
-                        .frame(width: 20)
-
-                    Image(systemName: "folder.fill")
-                        .foregroundColor(Color(hex: folder.color))
-
-                    Text(folder.name)
-                        .font(.title2)
-                        .fontWeight(.bold)
-
-                    Text("(\(workouts.count))")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    Button {
-                        showingFolderOptions = true
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.title3)
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 16)
-            }
-            .buttonStyle(.plain)
-
-            // Workouts Grid
-            if isExpanded && !workouts.isEmpty {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 8),
-                        GridItem(.flexible(), spacing: 8),
-                    ],
-                    spacing: 12
-                ) {
-                    ForEach(workouts.compactMap { Workout(entity: $0, in: modelContext) }, id: \.id)
-                    { workout in
-                        WorkoutTileCard(
-                            workout: workout,
-                            isHomeFavorite: workout.isFavorite,
-                            onTap: { onTap(workout.id) },
-                            onEdit: { onEdit(workout.id) },
-                            onStart: { onTap(workout.id) },
-                            onDelete: { onDelete(workout) },
-                            onToggleHome: { onToggleHome(workout.id) },
-                            onDuplicate: { onDuplicate(workout.id) },
-                            onShare: { onShare(workout.id) },
-                            onRemoveFromFolder: {
-                                if let entity = workouts.first(where: { $0.id == workout.id }) {
-                                    onRemoveFromFolder(entity)
-                                }
-                            },
-                            isInFolder: true
-                        )
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-        }
-        .confirmationDialog("Ordner verwalten", isPresented: $showingFolderOptions) {
-            Button("Ordner löschen", role: .destructive) {
-                onDeleteFolder()
-            }
-            Button("Abbrechen", role: .cancel) {}
-        } message: {
-            Text("Die Workouts in diesem Ordner werden nicht gelöscht.")
-        }
     }
 }
 
