@@ -103,7 +103,7 @@ struct EditExerciseView: View {
                             .foregroundStyle(.primary)
                         Spacer()
                     }
-                    .padding(10)
+                    .padding(AppLayout.Spacing.mediumSmall)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(group.color.opacity(selectedMuscleGroups.contains(group) ? 0.2 : 0.08))

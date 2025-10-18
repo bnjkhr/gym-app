@@ -220,7 +220,7 @@ struct ExerciseDetailCard: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))
@@ -265,7 +265,7 @@ struct VolumeChart: View {
                                 endPoint: .top
                             )
                         )
-                        .cornerRadius(8)
+                        .cornerRadius(AppLayout.CornerRadius.small)
                     }
                 }
                 .chartYAxis {
@@ -297,7 +297,7 @@ struct VolumeChart: View {
                 .frame(height: 240)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))

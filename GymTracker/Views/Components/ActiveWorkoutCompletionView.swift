@@ -74,7 +74,7 @@ struct ActiveWorkoutCompletionView: View {
                     StatRow(label: "Abgeschlossene Sätze", value: "\(completedSets) / \(totalSets)")
                     StatRow(label: "Gesamtvolumen", value: "\(Int(totalVolume)) kg")
                 }
-                .padding(20)
+                .padding(AppLayout.Spacing.large)
                 .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
 
@@ -108,7 +108,7 @@ struct ActiveWorkoutCompletionView: View {
                             .frame(maxWidth: .infinity)
                         }
                     }
-                    .padding(20)
+                    .padding(AppLayout.Spacing.large)
                     .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
                     .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                 } else {

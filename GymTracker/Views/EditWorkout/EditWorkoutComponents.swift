@@ -48,7 +48,7 @@ struct CollapsedExerciseRow: View {
                 }
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(AppTheme.cardBackground)
@@ -83,7 +83,7 @@ struct QuickEditView: View {
                         .multilineTextAlignment(.center)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
-                        .padding(12)
+                        .padding(AppLayout.Spacing.medium)
                         .frame(width: 80)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
@@ -102,7 +102,7 @@ struct QuickEditView: View {
                         .multilineTextAlignment(.center)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
-                        .padding(12)
+                        .padding(AppLayout.Spacing.medium)
                         .frame(width: 80)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
@@ -122,7 +122,7 @@ struct QuickEditView: View {
                             .multilineTextAlignment(.center)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.white)
-                            .padding(12)
+                            .padding(AppLayout.Spacing.medium)
                             .frame(width: 80)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
@@ -147,7 +147,7 @@ struct QuickEditView: View {
                 .foregroundStyle(AppTheme.turquoiseBoost)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.05))
@@ -201,7 +201,7 @@ struct ExpandedSetListView: View {
                             .multilineTextAlignment(.center)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.white)
-                            .padding(8)
+                            .padding(AppLayout.Spacing.smallMedium)
                             .frame(width: 60)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
@@ -219,7 +219,7 @@ struct ExpandedSetListView: View {
                             .multilineTextAlignment(.center)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.white)
-                            .padding(8)
+                            .padding(AppLayout.Spacing.smallMedium)
                             .frame(width: 70)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
@@ -246,7 +246,7 @@ struct ExpandedSetListView: View {
                 .padding(.vertical, 8)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.05))
@@ -314,7 +314,7 @@ struct ReorderModeOverlay: View {
                 .environment(\.editMode, .constant(.active))
             }
             .background(AppTheme.background)
-            .cornerRadius(20)
+            .cornerRadius(AppLayout.CornerRadius.extraLarge)
             .padding(.horizontal, 20)
             .padding(.vertical, 60)
         }

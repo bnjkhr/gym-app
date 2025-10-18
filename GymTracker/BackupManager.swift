@@ -52,9 +52,7 @@ class BackupManager: ObservableObject {
         let data = try encoder.encode(backup)
 
         // Create filename with timestamp
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        let timestamp = dateFormatter.string(from: Date())
+        let timestamp = DateFormatters.backupFilename.string(from: Date())
         let filename = "workout_backup_\(timestamp).json"
 
         // Security: Use Documents directory with file protection instead of temp

@@ -40,7 +40,7 @@ struct WorkoutWizardView: View {
                         }
                         Spacer()
                     }
-                    .padding(12)
+                    .padding(AppLayout.Spacing.medium)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
                             .fill(AppTheme.turquoiseBoost.opacity(0.08))

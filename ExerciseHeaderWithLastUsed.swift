@@ -172,7 +172,7 @@ struct LastUsedDetailsSheet: View {
                                     }
                                     .padding()
                                     .background(Color(.secondarySystemBackground))
-                                    .cornerRadius(8)
+                                    .cornerRadius(AppLayout.CornerRadius.small)
                                 }
                                 .buttonStyle(.plain)
 
@@ -217,7 +217,7 @@ struct LastUsedDetailsSheet: View {
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(8)
+                .cornerRadius(AppLayout.CornerRadius.small)
             }
             .buttonStyle(.plain)
 
@@ -236,7 +236,7 @@ struct LastUsedDetailsSheet: View {
                     }
                     .padding()
                     .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
+                    .cornerRadius(AppLayout.CornerRadius.small)
                 }
                 .buttonStyle(.plain)
             }

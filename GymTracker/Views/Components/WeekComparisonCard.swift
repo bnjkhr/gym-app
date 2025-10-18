@@ -180,7 +180,7 @@ struct WeekComparisonCard: View {
                     .padding(.vertical, 16)
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))
@@ -303,7 +303,7 @@ private struct ComparisonStatCard: View {
                 }
             }
         }
-        .padding(12)
+        .padding(AppLayout.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)

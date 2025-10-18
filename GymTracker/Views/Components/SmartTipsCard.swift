@@ -44,7 +44,7 @@ struct SmartTipsCard: View {
                 emptyStateView
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 20)
                 .fill(.ultraThinMaterial)
@@ -319,7 +319,7 @@ struct TipCardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.systemBackground))

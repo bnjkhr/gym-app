@@ -94,7 +94,7 @@ struct WorkoutTileCard: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
+            .padding(AppLayout.Spacing.standard)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)

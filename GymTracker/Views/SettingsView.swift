@@ -235,7 +235,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 }
             }
-            .padding(20)
+            .padding(AppLayout.Spacing.large)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -469,7 +469,7 @@ struct SettingsView: View {
                 .font(.footnote)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .frame(minWidth: 300, idealWidth: 360)
     }
 
@@ -770,9 +770,6 @@ struct SettingsView: View {
                 exercises: [String: [ExerciseSet]]
             )] = [:]
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-
         let totalRows = rows.count
         var processedRows = 0
 
@@ -798,7 +795,7 @@ struct SettingsView: View {
 
             // Parse Datum
             let dateString = row[0].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let workoutDate = dateFormatter.date(from: dateString) else { continue }
+            guard let workoutDate = DateFormatters.debugDateTime.date(from: dateString) else { continue }
 
             let workoutName = row[1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !workoutName.isEmpty else { continue }
@@ -1007,8 +1004,7 @@ struct SettingsView: View {
         var workoutsDict:
             [String: (title: String, startTime: Date?, exercises: [String: [ExerciseSet]])] = [:]
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "d MMM yyyy, HH:mm"
+        let dateFormatter = DateFormatters.userFriendlyDateTime
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
 
         let totalRows = rows.count
@@ -1162,8 +1158,7 @@ struct SettingsView: View {
         // Hevy Measurement CSV Format:
         // date,weight_kg,fat_percent,neck_cm,shoulder_cm,chest_cm,left_bicep_cm,right_bicep_cm,left_forearm_cm,right_forearm_cm,abdomen_cm,waist_cm,hips_cm,left_thigh_cm,right_thigh_cm,left_calf_cm,right_calf_cm
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "d MMM yyyy, HH:mm"
+        let dateFormatter = DateFormatters.userFriendlyDateTime
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
 
         var importedMeasurements = 0
@@ -1426,7 +1421,7 @@ struct SettingsCard: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(16)
+            .padding(AppLayout.Spacing.standard)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)

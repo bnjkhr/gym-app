@@ -80,7 +80,7 @@ struct HealthKitSetupView: View {
                 }
                 .padding(.bottom, 8)
             }
-            .padding(24)
+            .padding(AppLayout.Spacing.extraLarge)
             .navigationTitle("HealthKit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

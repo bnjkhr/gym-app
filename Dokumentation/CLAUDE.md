@@ -4,6 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Documentation Structure
+
+All project documentation is located in the `/Dokumentation` folder:
+
+```
+gym-app/
+├── README.md                      ← User-facing project overview (root only)
+└── Dokumentation/                 ← All technical documentation
+    ├── CLAUDE.md                  ← This file (AI assistant guide)
+    ├── DOCUMENTATION.md           ← Complete technical documentation
+    ├── CODE_REVIEW_REPORT.md      ← Code review findings & recommendations
+    ├── PROGRESS.md                ← Live progress tracking
+    ├── BUGFIXES.md                ← Bug documentation
+    ├── MODULARIZATION_PLAN.md     ← Refactoring plan (Phases 1-6)
+    ├── TESTFLIGHT_UPDATE_GUIDE.md ← Deployment guide
+    ├── SECURITY.md                ← Security considerations
+    └── ... (39 total documentation files)
+```
+
+**Important:** When creating new documentation files, always save them in the `/Dokumentation` folder.
+
+---
+
 ## Project Overview
 
 **GymBo (GymTracker)** is a native iOS fitness tracking app built with SwiftUI and SwiftData. The app features AI-powered workout coaching, HealthKit integration, Live Activities, and comprehensive workout tracking with 161 predefined exercises.
@@ -602,16 +625,55 @@ When adding new features:
 
 ## Relevant Documentation Files
 
-- **README.md**: User-facing documentation, features overview
+All documentation files are located in `/Dokumentation/`:
+
+### Core Documentation
+- **CLAUDE.md**: This file - AI assistant guide for working with this codebase
 - **DOCUMENTATION.md**: Complete technical documentation (architecture, views, services)
-- **DATABASE_VERSION_CONTROL.md**: Migration system details
-- **VIEWS_DOCUMENTATION.md**: Views catalog
-- **TESTFLIGHT_UPDATE_GUIDE.md**: App Store deployment
-- **SECURITY.md**: Security considerations
-- **MODULARIZATION_PLAN.md**: Complete refactoring plan (Phase 1-6, 13-14 weeks)
-- **PHASE_2_PLAN.md**: Detailed Phase 2 implementation plan (9 coordinators, 35-45h)
+- **CODE_REVIEW_REPORT.md**: Comprehensive code review with findings & prioritized recommendations
 - **PROGRESS.md**: Live progress tracking across all refactoring phases
 - **BUGFIXES.md**: Documentation of all errors encountered during refactoring
+
+### Architecture & Planning
+- **MODULARIZATION_PLAN.md**: Complete refactoring plan (Phase 1-6, 13-14 weeks)
+- **PHASE_2_PLAN.md**: Detailed Phase 2 implementation plan (9 coordinators)
+- **CODE_OPTIMIZATION_PLAN.md**: Performance optimization strategies
+- **IMPLEMENTIERUNGSPLAN.md**: Implementation roadmap
+
+### Technical Guides
+- **DATABASE_VERSION_CONTROL.md**: Migration system details
+- **VERSION_CONTROL_QUICK_GUIDE.md**: Quick reference for versioning
+- **TESTFLIGHT_UPDATE_GUIDE.md**: App Store deployment guide
+- **SECURITY.md**: Security considerations
+- **VIEWS_DOCUMENTATION.md**: Views catalog
+
+### Phase Summaries
+- **PHASE_5_ABSCHLUSS.md**: Phase 5 completion summary
+- **PHASE_6_ABSCHLUSS.md**: Phase 6 completion summary
+- **PHASE3_LIVE_ACTIVITY_SUMMARY.md**: Live Activity implementation
+- **PHASE4_NOTIFICATIONS_SUMMARY.md**: Notification system implementation
+- **PHASE5_INTEGRATION_SUMMARY.md**: Integration phase summary
+
+### System Documentation
+- **NOTIFICATION_SYSTEM_KONZEPT.md**: Notification system concept
+- **NOTIFICATION_SYSTEM_IMPLEMENTIERUNGSPLAN.md**: Notification implementation plan
+- **TEST_NOTIFICATION_SYSTEM.md**: Testing guide for notifications
+- **STATISTICS_CALCULATIONS_AUDIT.md**: Statistics calculations validation
+- **STATISTICS_PERFORMANCE_OPTIMIZATION.md**: Performance optimization for statistics
+- **WEEK_COMPARISON_VALIDATION.md**: Week comparison logic validation
+
+### Xcode Integration
+- **XCODE_INTEGRATION.md**: General Xcode integration guide
+- **XCODE_SETUP_PHASE2.md**: Phase 2 Xcode setup
+- **ADD_FILES_TO_XCODE.md**: Guide for adding files to Xcode project
+- **XCODE_TEST_TARGET_SETUP.md**: Test target configuration
+
+### Concept Documents
+- **SMART_GYM_KONZEPT.md**: Smart gym features concept
+- **APP_VERBESSERUNGS_KONZEPT.md**: App improvement concepts
+- **SESSION_SUMMARY_2025-10-15.md**: Development session summary
+
+**Note:** The README.md in the project root is the only MD file outside `/Dokumentation/` and serves as the user-facing project overview.
 
 ---
 

@@ -118,7 +118,7 @@ struct ProgressionScoreCard: View {
                 }
             }
         }
-        .padding(24)
+        .padding(AppLayout.Spacing.extraLarge)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(

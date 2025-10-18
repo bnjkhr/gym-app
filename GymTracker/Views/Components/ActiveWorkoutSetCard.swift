@@ -246,7 +246,7 @@ struct ActiveWorkoutSetCard: View {
             }
 
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: set.completed)
         .overlay(alignment: .bottom) {
             // Add separator between sets (except for last set)

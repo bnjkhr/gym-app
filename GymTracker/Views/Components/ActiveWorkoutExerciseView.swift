@@ -95,7 +95,7 @@ struct ActiveWorkoutExerciseView: View {
                             Spacer()
                         }
                     }
-                    .padding(20)
+                    .padding(AppLayout.Spacing.large)
 
                     // Separator after progress
                     Rectangle()
@@ -177,7 +177,7 @@ struct ActiveWorkoutExerciseView: View {
                         .frame(maxWidth: .infinity)
                         .background(AppTheme.mossGreen, in: RoundedRectangle(cornerRadius: 12))
                     }
-                    .padding(20)
+                    .padding(AppLayout.Spacing.large)
                 }
                 .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)

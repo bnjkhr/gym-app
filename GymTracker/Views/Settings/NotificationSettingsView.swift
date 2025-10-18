@@ -56,7 +56,7 @@ struct NotificationSettingsView: View {
                                 }
                             }
                         }
-                        .padding(20)
+                        .padding(AppLayout.Spacing.large)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -175,7 +175,7 @@ struct NotificationSettingsView: View {
                                     )
                                 )
                                 .foregroundColor(.white)
-                                .cornerRadius(12)
+                                .cornerRadius(AppLayout.CornerRadius.medium)
                             }
                             .buttonStyle(.plain)
                             .padding(.horizontal, 20)
@@ -329,7 +329,7 @@ struct NotificationToggleCard: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)

@@ -151,7 +151,7 @@ struct RestTimerExpiredOverlay: View {
                 )
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.secondarySystemBackground))
@@ -202,7 +202,7 @@ struct RestTimerExpiredOverlay: View {
                     endPoint: .trailing
                 )
             )
-            .cornerRadius(16)
+            .cornerRadius(AppLayout.CornerRadius.large)
         }
         .buttonStyle(ScaleButtonStyle())
     }

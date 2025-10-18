@@ -247,7 +247,7 @@ struct SessionDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(24)
+        .padding(AppLayout.Spacing.extraLarge)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
@@ -363,14 +363,14 @@ struct SessionDetailView: View {
             Text(session.notes)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
-                .padding(16)
+                .padding(AppLayout.Spacing.standard)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color(.systemBackground))
                 )
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))

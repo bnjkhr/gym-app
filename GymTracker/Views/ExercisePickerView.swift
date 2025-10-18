@@ -54,7 +54,7 @@ struct ExercisePickerView: View {
                                 .padding(.vertical, 6)
                                 .background(selectedMuscleGroup == nil ? Color.accentColor : Color.secondary.opacity(0.2))
                                 .foregroundColor(selectedMuscleGroup == nil ? .white : .primary)
-                                .cornerRadius(8)
+                                .cornerRadius(AppLayout.CornerRadius.small)
                         }
                         .buttonStyle(.plain)
 
@@ -69,7 +69,7 @@ struct ExercisePickerView: View {
                                     .padding(.vertical, 6)
                                     .background(selectedMuscleGroup == muscleGroup ? muscleGroup.color : Color.secondary.opacity(0.2))
                                     .foregroundColor(selectedMuscleGroup == muscleGroup ? .white : .primary)
-                                    .cornerRadius(8)
+                                    .cornerRadius(AppLayout.CornerRadius.small)
                             }
                             .buttonStyle(.plain)
                         }

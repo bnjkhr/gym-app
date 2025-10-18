@@ -97,7 +97,7 @@ struct HeartRateInsightsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppLayout.CornerRadius.medium)
             } else if !workoutStore.healthKitManager.isAuthorized {
                 VStack(spacing: 12) {
                     Image(systemName: "heart.text.square")
@@ -117,7 +117,7 @@ struct HeartRateInsightsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppLayout.CornerRadius.medium)
             } else {
                 VStack(spacing: 12) {
                     // Time Range Picker
@@ -181,7 +181,7 @@ struct HeartRateInsightsView: View {
                             }
                         }
                         .background(Color(.systemBackground))
-                        .cornerRadius(8)
+                        .cornerRadius(AppLayout.CornerRadius.small)
                     } else if !isLoading {
                         VStack(spacing: 8) {
                             Image(systemName: "heart")
@@ -209,9 +209,9 @@ struct HeartRateInsightsView: View {
                         }
                     }
                 }
-                .padding(12)
+                .padding(AppLayout.Spacing.medium)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppLayout.CornerRadius.medium)
                 .onAppear {
                     loadHeartRateData()
                 }
@@ -222,7 +222,7 @@ struct HeartRateInsightsView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
 
     // MARK: - Private Helpers

@@ -53,7 +53,7 @@ struct WorkoutCompletionSummaryView: View {
                     summaryRow(title: "Veränderung", value: progressText)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                .padding(AppLayout.Spacing.large)
 
                 Button("Zur Übersicht") {
                     dismissAction()
@@ -62,7 +62,7 @@ struct WorkoutCompletionSummaryView: View {
                 .tint(AppTheme.mossGreen)
                 .frame(maxWidth: .infinity)
             }
-            .padding(24)
+            .padding(AppLayout.Spacing.extraLarge)
             .toolbar(.hidden)
         }
     }

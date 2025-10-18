@@ -163,7 +163,7 @@ struct ExerciseSwapView: View {
                         .padding(.vertical, 8)
                         .background(filterOption == option ? Color.customBlue : Color(.tertiarySystemBackground))
                         .foregroundColor(filterOption == option ? .white : .primary)
-                        .cornerRadius(8)
+                        .cornerRadius(AppLayout.CornerRadius.small)
                     }
                 }
             }
@@ -298,7 +298,7 @@ struct ExerciseSimilarityCard: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(Color.customBlue)
-                            .cornerRadius(8)
+                            .cornerRadius(AppLayout.CornerRadius.small)
                     }
                 }
             }
@@ -320,7 +320,7 @@ struct ExerciseSimilarityCard: View {
             }
         }
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(AppLayout.CornerRadius.medium)
     }
 
     private var scoreColor: Color {

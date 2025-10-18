@@ -115,7 +115,7 @@ struct ProfileEditView: View {
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 8)
                                         .background(Color(.systemGray6))
-                                        .cornerRadius(8)
+                                        .cornerRadius(AppLayout.CornerRadius.small)
                                 }
                                 .buttonStyle(.plain)
                             }

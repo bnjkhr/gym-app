@@ -69,6 +69,57 @@ enum DateFormatters {
         formatter.locale = Locale(identifier: "de_DE")
         return formatter.veryShortWeekdaySymbols
     }
+
+    // MARK: - Backup & Export Formats
+
+    /// Format: "yyyy-MM-dd_HH-mm-ss"
+    /// Used for: Backup filenames
+    /// Example: "2025-10-18_14-30-45"
+    static let backupFilename: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        return formatter
+    }()
+
+    // MARK: - Display Formats
+
+    /// Format: "d MMM yyyy, HH:mm"
+    /// Used for: User-facing timestamps (Hevy imports)
+    /// Example: "18 Oct 2025, 14:30"
+    static let userFriendlyDateTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM yyyy, HH:mm"
+        return formatter
+    }()
+
+    /// Format: "yyyy-MM-dd HH:mm:ss"
+    /// Used for: Debug logs, technical displays, Strong app imports
+    /// Example: "2025-10-18 14:30:45"
+    static let debugDateTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter
+    }()
+
+    /// Format: "HH:mm:ss"
+    /// Used for: Time-only displays
+    /// Example: "14:30:45"
+    static let timeOnly: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
+
+    // MARK: - Analysis Formats
+
+    /// Format: "EEEE"
+    /// Used for: Day of week analysis
+    /// Example: "Monday", "Tuesday"
+    static let weekdayName: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        return formatter
+    }()
 }
 
 struct ContentView: View {
@@ -450,7 +501,7 @@ struct WorkoutHighlightCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 140)
-        .padding(24)
+        .padding(AppLayout.Spacing.extraLarge)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.customBlue)
@@ -523,7 +574,7 @@ struct OnboardingCard: View {
                         }
                     }
                     .foregroundStyle(.white)
-                    .padding(16)
+                    .padding(AppLayout.Spacing.standard)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
                             .fill(Color.white.opacity(0.15))
@@ -559,7 +610,7 @@ struct OnboardingCard: View {
                         }
                     }
                     .foregroundStyle(.white)
-                    .padding(16)
+                    .padding(AppLayout.Spacing.standard)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
                             .fill(Color.white.opacity(0.15))
@@ -595,7 +646,7 @@ struct OnboardingCard: View {
                         }
                     }
                     .foregroundStyle(.white)
-                    .padding(16)
+                    .padding(AppLayout.Spacing.standard)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
                             .fill(Color.white.opacity(0.15))
@@ -1191,7 +1242,7 @@ struct WeeklyProgressCard: View {
                     .foregroundStyle(.white)
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(AppTheme.cardBackground)
@@ -1307,7 +1358,7 @@ struct WorkoutTile: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
@@ -1396,7 +1447,7 @@ struct WorkoutTileWithMenu: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
+            .padding(AppLayout.Spacing.standard)
             .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)

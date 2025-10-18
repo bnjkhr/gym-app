@@ -204,7 +204,7 @@ struct HeartRateView: View {
             }
             .padding()
             .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
+            .cornerRadius(AppLayout.CornerRadius.medium)
         }
     }
     
@@ -285,7 +285,7 @@ struct StatCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(8)
+        .cornerRadius(AppLayout.CornerRadius.small)
     }
 }
 

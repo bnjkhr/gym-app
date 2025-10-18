@@ -258,13 +258,11 @@ final class AnalyticsCoordinator: ObservableObject {
 
         let sessions = coordinator.sessionHistory
         let calendar = Calendar.current
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"
 
         var workoutsByDay: [String: Int] = [:]
 
         for session in sessions {
-            let dayName = dateFormatter.string(from: session.date)
+            let dayName = DateFormatters.weekdayName.string(from: session.date)
             workoutsByDay[dayName, default: 0] += 1
         }
 

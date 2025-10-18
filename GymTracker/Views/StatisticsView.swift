@@ -278,7 +278,7 @@ private struct HeroStreakCard: View {
                 }
             }
         }
-        .padding(24)
+        .padding(AppLayout.Spacing.extraLarge)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -499,7 +499,7 @@ private struct QuickStatCard: View, Equatable {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .frame(height: 120)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -614,7 +614,7 @@ private struct VolumeChartCard: View {
                 .chartYAxis(.hidden)
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))
@@ -731,7 +731,7 @@ private struct CompactPersonalRecordsCard: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))
@@ -875,7 +875,7 @@ private struct CompactHealthCard: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))
@@ -1006,7 +1006,7 @@ private struct ConsistencyCardView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
 }
 
@@ -1122,7 +1122,7 @@ private struct PersonalRecordCardView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .background(
             LinearGradient(
                 colors: [AppTheme.deepBlue.opacity(0.1), AppTheme.mossGreen.opacity(0.1)],
@@ -1241,7 +1241,7 @@ private struct WeeklyVolumeCardView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
 }
 
@@ -1352,7 +1352,7 @@ private struct MuscleGroupBalanceCardView: View {
                 .font(.caption)
                 .foregroundStyle(muscleBalance.isBalanced ? AppTheme.mossGreen : .gray)
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
     
     private func balanceBar(title: String, ratio: Double, color: Color) -> some View {
@@ -1468,7 +1468,7 @@ private struct AverageWeightCardView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
     
     private func exerciseRow(exercise: (name: String, avgWeight: Double, change: Double), isLast: Bool) -> some View {
@@ -1575,7 +1575,7 @@ private struct SessionIntensityCardView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
 }
 
@@ -1653,7 +1653,7 @@ private struct PlateauCheckCardView: View {
                 Spacer()
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
         .overlay(
             Rectangle()
                 .stroke(plateauAlert != nil ? Color.gray.opacity(0.3) : Color.clear, lineWidth: 2)
@@ -1820,7 +1820,7 @@ private struct ProgressDeltaInfoCardView: View {
                         .contentTransition(.numericText())
                 }
             }
-            .padding(12)
+            .padding(AppLayout.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color(.secondarySystemGroupedBackground))

@@ -210,7 +210,7 @@ struct BodyMetricsInsightsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppLayout.CornerRadius.medium)
             } else if !workoutStore.healthKitManager.isAuthorized {
                 VStack(spacing: 12) {
                     Image(systemName: "figure.stand.line.dotted.figure.stand")
@@ -230,7 +230,7 @@ struct BodyMetricsInsightsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppLayout.CornerRadius.medium)
             } else {
                 VStack(spacing: 12) {
                     // Time Range Picker
@@ -319,7 +319,7 @@ struct BodyMetricsInsightsView: View {
                             }
                             .padding()
                             .background(Color(.systemBackground))
-                            .cornerRadius(8)
+                            .cornerRadius(AppLayout.CornerRadius.small)
                         }
 
                         // Body Fat Chart
@@ -373,7 +373,7 @@ struct BodyMetricsInsightsView: View {
                             }
                             .padding()
                             .background(Color(.systemBackground))
-                            .cornerRadius(8)
+                            .cornerRadius(AppLayout.CornerRadius.small)
                         }
 
                     } else if !isLoading {
@@ -403,9 +403,9 @@ struct BodyMetricsInsightsView: View {
                         }
                     }
                 }
-                .padding(12)
+                .padding(AppLayout.Spacing.medium)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .cornerRadius(AppLayout.CornerRadius.medium)
                 .onAppear {
                     loadBodyMetricsData()
                 }
@@ -416,7 +416,7 @@ struct BodyMetricsInsightsView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(AppLayout.Spacing.large)
     }
 
     // MARK: - Private Helpers

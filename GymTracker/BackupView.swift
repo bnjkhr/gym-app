@@ -334,9 +334,7 @@ struct BackupView: View {
     }
     
     private func generateBackupFilename() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        let timestamp = formatter.string(from: Date())
+        let timestamp = DateFormatters.backupFilename.string(from: Date())
         return "workout_backup_\(timestamp).json"
     }
     

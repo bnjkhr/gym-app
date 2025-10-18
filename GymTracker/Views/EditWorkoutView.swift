@@ -203,7 +203,7 @@ struct EditWorkoutView: View {
                                 }
                             }
                         }
-                        .padding(20)
+                        .padding(AppLayout.Spacing.large)
                         .background(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
@@ -643,7 +643,7 @@ struct ExerciseCard: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(16)
+            .padding(AppLayout.Spacing.standard)
             .background(AppTheme.cardBackground)
 
             if isExpanded {
@@ -883,7 +883,7 @@ struct CollapsedExerciseRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(AppTheme.cardBackground)
@@ -918,7 +918,7 @@ struct QuickEditView: View {
                         .multilineTextAlignment(.center)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
-                        .padding(12)
+                        .padding(AppLayout.Spacing.medium)
                         .frame(width: 80)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
@@ -937,7 +937,7 @@ struct QuickEditView: View {
                         .multilineTextAlignment(.center)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
-                        .padding(12)
+                        .padding(AppLayout.Spacing.medium)
                         .frame(width: 80)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
@@ -957,7 +957,7 @@ struct QuickEditView: View {
                             .multilineTextAlignment(.center)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.primary)
-                            .padding(12)
+                            .padding(AppLayout.Spacing.medium)
                             .frame(width: 80)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
@@ -982,7 +982,7 @@ struct QuickEditView: View {
                 .foregroundStyle(AppTheme.turquoiseBoost)
             }
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.05))
@@ -1004,7 +1004,7 @@ struct ExpandedSetListView: View {
             setListView
             addSetButton
         }
-        .padding(16)
+        .padding(AppLayout.Spacing.standard)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.05))
@@ -1127,7 +1127,7 @@ struct SetRowEditView: View {
             .multilineTextAlignment(.center)
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.primary)
-            .padding(6)
+            .padding(AppLayout.Spacing.small)
             .frame(width: 55)
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -1141,7 +1141,7 @@ struct SetRowEditView: View {
             .multilineTextAlignment(.center)
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.primary)
-            .padding(6)
+            .padding(AppLayout.Spacing.small)
             .frame(width: 60)
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -1155,7 +1155,7 @@ struct SetRowEditView: View {
             .multilineTextAlignment(.center)
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.primary)
-            .padding(6)
+            .padding(AppLayout.Spacing.small)
             .frame(width: 55)
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -1235,7 +1235,7 @@ struct ReorderModeOverlay: View {
                 .environment(\.editMode, .constant(.active))
             }
             .background(AppTheme.background)
-            .cornerRadius(20)
+            .cornerRadius(AppLayout.CornerRadius.extraLarge)
             .padding(.horizontal, 20)
             .padding(.vertical, 60)
         }

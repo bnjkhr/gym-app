@@ -279,7 +279,7 @@ struct FolderSectionView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .foregroundColor(.secondary)
-                        .padding(8)  // Larger tap target
+                        .padding(AppLayout.Spacing.smallMedium)  // Larger tap target
                 }
                 .buttonStyle(.plain)
             }

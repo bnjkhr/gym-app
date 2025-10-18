@@ -136,7 +136,7 @@ struct MetricCard: View {
         }
         .padding()
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(8)
+        .cornerRadius(AppLayout.CornerRadius.small)
     }
 }
 
