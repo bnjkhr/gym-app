@@ -19,8 +19,8 @@ final class RestTimerPersistenceTests: XCTestCase {
     let testWorkout = Workout(
         id: UUID(),
         name: "Test Workout",
-        exercises: [],
-        date: Date()
+        date: Date(),
+        exercises: []
     )
 
     override func setUp() async throws {
