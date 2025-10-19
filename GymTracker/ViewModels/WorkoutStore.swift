@@ -629,179 +629,10 @@ class WorkoutStore: ObservableObject {
             guard let self = self else { return }
 
             do {
-                print("🔄 Starte sichere Übungsdatenbank-Aktualisierung...")
-
-                // Get all existing exercises
-                let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-                print("📚 Gefunden: \(existingExercises.count) bestehende Übungen")
-
-                // Get all new German exercises
-                let germanExercises = ExerciseSeeder.createRealisticExercises()
-                print("🇩🇪 Erstelle Mapping für \(germanExercises.count) deutsche Übungen")
-
-                // Create comprehensive mapping from English to German names
-                let nameMapping: [String: String] = [
-                    // === BRUST ===
-                    "Hammer Strength Chest Press": "Brustpresse Hammer",
-                    "Pec Deck Flys": "Butterfly Maschine",
-                    "Incline Chest Press Maschine": "Schrägbankdrücken Maschine",
-                    "Decline Chest Press Maschine": "Negativbankdrücken Maschine",
-                    "Chest Supported Dips Maschine": "Assistierte Barrenstütze",
-                    "Dips an Barren": "Barrenstütze",
-                    "Kabelzug Crossover": "Kabelzug Überkreuz",
-                    "Negativ Schrägbankdrücken": "Negativbankdrücken",
-                    "Fliegende Kurzhanteln": "Fliegende Bewegung",
-                    "Kurzhantel Fliegende schräg": "Schrägbank Fliegende",
-
-                    // === RÜCKEN ===
-                    "Lat Pulldown breit": "Latzug breit",
-                    "Lat Pulldown eng": "Latzug eng",
-                    "Assisted Pull-up Maschine": "Assistierte Klimmzüge",
-                    "Low Row Maschine": "Tiefes Rudern Maschine",
-                    "High Row Maschine": "Hohes Rudern Maschine",
-                    "Lat Pullover Maschine": "Latzug Überzug Maschine",
-                    "Back Extension Maschine": "Rückenstrecker Maschine",
-                    "Shrugs Kurzhanteln": "Schulterheben Kurzhanteln",
-                    "Shrugs Langhantel": "Schulterheben Langhantel",
-                    "T-Bar Rudern": "T-Hantel Rudern",
-                    "Hyperextensions": "Rückenstrecker",
-
-                    // === BEINE ===
-                    "Front Squats": "Frontkniebeugen",
-                    "Goblet Squats": "Goblet Kniebeugen",
-                    "Hack Squats": "Hackenschmidt Kniebeugen",
-                    "Ausfallschritte rückwärts": "Rückwärts Ausfallschritte",
-                    "Walking Lunges": "Gehende Ausfallschritte",
-                    "Bulgarische Split Squats": "Bulgarische Kniebeuge",
-                    "Sumo Deadlift": "Sumo Kreuzheben",
-                    "Stiff Leg Deadlift": "Gestrecktes Kreuzheben",
-                    "Single Leg Press": "Einbeinige Beinpresse",
-                    "Step-ups": "Aufstiege",
-                    "Leg Press 45°": "Beinpresse 45°",
-                    "Smith Machine Squats": "Smith Maschine Kniebeugen",
-                    "Glute Ham Raise": "Glute Ham Entwicklung",
-
-                    // === SCHULTERN ===
-                    "Arnold Press": "Arnold Drücken",
-                    "Upright Rows": "Aufrechtes Rudern",
-                    "Face Pulls": "Gesichtszüge",
-                    "Pike Push-ups": "Pike Liegestütze",
-                    "Reverse Pec Deck": "Reverse Butterfly",
-                    "Front Raise Maschine": "Frontheben Maschine",
-                    "Shrug Maschine": "Schulterheben Maschine",
-
-                    // === BIZEPS ===
-                    "Bizep Curls": "Bizeps Curls",
-                    "Bizep Curls Langhantel": "Bizeps Curls Langhantel",
-                    "Konzentration Curls": "Konzentrations Curls",
-                    "21s Bizep Curls": "21er Bizeps Curls",
-                    "Kabel Bizep Curls": "Kabel Bizeps Curls",
-                    "Preacher Curls": "Prediger Curls",
-                    "Spider Curls": "Spinnen Curls",
-                    "Bizep Curls Maschine": "Bizeps Curls Maschine",
-
-                    // === TRIZEPS ===
-                    "Trizep Dips": "Trizeps Dips",
-                    "French Press": "Französisches Drücken",
-                    "French Press Kurzhantel": "Französisches Drücken Kurzhantel",
-                    "Trizeps Pushdown": "Trizeps Drücken",
-                    "Trizeps Pushdown Seil": "Trizeps Drücken Seil",
-                    "Overhead Trizep Extension": "Trizeps Überkopfstreckung",
-                    "Diamond Push-ups": "Diamant Liegestütze",
-                    "Close Grip Bench Press": "Enges Bankdrücken",
-                    "Trizeps Extension Maschine": "Trizeps Streckung Maschine",
-
-                    // === BAUCH ===
-                    "Plank": "Unterarmstütz",
-                    "Side Plank": "Seitlicher Unterarmstütz",
-                    "Bicycle Crunches": "Fahrrad Crunches",
-                    "Russian Twists": "Russische Drehungen",
-                    "Mountain Climbers": "Bergsteiger",
-                    "Dead Bug": "Toter Käfer",
-                    "Hanging Knee Raises": "Hängendes Knieheben",
-                    "Hanging Leg Raises": "Hängendes Beinheben",
-                    "Ab Wheel Rollout": "Bauchroller",
-                    "Flutter Kicks": "Beinflattern",
-                    "Leg Raises": "Beinheben",
-                    "Wood Choppers": "Holzhacker",
-                    "Captain's Chair Knee Raises": "Kapitänsstuhl Knieheben",
-                    "Ab Crunch Maschine": "Bauchpresse Maschine",
-                    "Torso Rotation Maschine": "Rumpfdrehung Maschine",
-
-                    // === FUNKTIONELLE ÜBUNGEN ===
-                    "Turkish Get-up": "Türkisches Aufstehen",
-                    "Kettlebell Swings": "Kettlebell Schwünge",
-                    "Kettlebell Goblet Squats": "Kettlebell Goblet Kniebeugen",
-                    "Box Jumps": "Kastensprünge",
-                    "Bear Crawl": "Bärengang",
-                    "Wall Sit": "Wandsitz",
-                    "Jump Squats": "Sprungkniebeugen",
-                    "Single Leg Deadlift": "Einbeiniges Kreuzheben",
-                    "Hindu Push-ups": "Hindu Liegestütze",
-                    "Pistol Squats": "Pistolen Kniebeugen",
-                    "Archer Push-ups": "Bogenschützen Liegestütze",
-                    "Clean and Press": "Umsetzen und Drücken",
-                    "Sled Push": "Schlitten schieben",
-                    "Sled Pull": "Schlitten ziehen",
-                    "Farmer's Walk": "Farmers Walk",
-                ]
-
-                var updatedCount = 0
-
-                // Update existing exercises with German names
-                for existingExercise in existingExercises {
-                    if let germanName = nameMapping[existingExercise.name] {
-                        print("🔄 Aktualisiere: '\(existingExercise.name)' → '\(germanName)'")
-                        existingExercise.name = germanName
-                        updatedCount += 1
-                    } else {
-                        // Check if we can find a corresponding German exercise by similar name
-                        if let germanExercise = germanExercises.first(where: {
-                            $0.name == existingExercise.name
-                        }) {
-                            // Exercise already has German name, update description etc.
-                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map {
-                                $0.rawValue
-                            }
-                            existingExercise.equipmentTypeRaw =
-                                germanExercise.equipmentType.rawValue
-                            existingExercise.descriptionText = germanExercise.description
-                            existingExercise.instructions = germanExercise.instructions
-                        }
-                    }
-                }
-
-                // Add any missing German exercises
-                let existingNames = Set(existingExercises.map { $0.name })
-                var addedCount = 0
-
-                for germanExercise in germanExercises {
-                    if !existingNames.contains(germanExercise.name)
-                        && !nameMapping.values.contains(germanExercise.name)
-                    {
-                        let entity = ExerciseEntity(
-                            id: germanExercise.id,
-                            name: germanExercise.name,
-                            muscleGroupsRaw: germanExercise.muscleGroups.map { $0.rawValue },
-                            equipmentTypeRaw: germanExercise.equipmentType.rawValue,
-                            descriptionText: germanExercise.description,
-                            instructions: germanExercise.instructions,
-                            createdAt: germanExercise.createdAt
-                        )
-                        context.insert(entity)
-                        addedCount += 1
-                        print("➕ Neue Übung hinzugefügt: '\(germanExercise.name)'")
-                    }
-                }
-
-                // Save changes
-                try context.save()
+                let service = ExerciseTranslationService()
+                let count = try await service.performTranslation(context: context)
 
                 await MainActor.run {
-                    print("✅ Übungsdatenbank erfolgreich aktualisiert!")
-                    print("   - \(updatedCount) Übungen auf Deutsch aktualisiert")
-                    print("   - \(addedCount) neue Übungen hinzugefügt")
-
                     // Trigger UI refresh
                     self.invalidateCaches()
                     self.objectWillChange.send()
@@ -843,190 +674,16 @@ class WorkoutStore: ObservableObject {
                     "📚 Gefunden: \(existingExercises.count) bestehende Übungen - starte Übersetzung..."
                 )
 
-                // Get all new German exercises
-                let germanExercises = ExerciseSeeder.createRealisticExercises()
-
-                // Create comprehensive mapping from English to German names
-                let nameMapping: [String: String] = [
-                    // === BRUST ===
-                    "Hammer Strength Chest Press": "Brustpresse Hammer",
-                    "Pec Deck Flys": "Butterfly Maschine",
-                    "Incline Chest Press Maschine": "Schrägbankdrücken Maschine",
-                    "Decline Chest Press Maschine": "Negativbankdrücken Maschine",
-                    "Chest Supported Dips Maschine": "Assistierte Barrenstütze",
-                    "Dips an Barren": "Barrenstütze",
-                    "Kabelzug Crossover": "Kabelzug Überkreuz",
-                    "Negativ Schrägbankdrücken": "Negativbankdrücken",
-                    "Fliegende Kurzhanteln": "Fliegende Bewegung",
-                    "Kurzhantel Fliegende schräg": "Schrägbank Fliegende",
-
-                    // === RÜCKEN ===
-                    "Lat Pulldown breit": "Latzug breit",
-                    "Lat Pulldown eng": "Latzug eng",
-                    "Assisted Pull-up Maschine": "Assistierte Klimmzüge",
-                    "Low Row Maschine": "Tiefes Rudern Maschine",
-                    "High Row Maschine": "Hohes Rudern Maschine",
-                    "Lat Pullover Maschine": "Latzug Überzug Maschine",
-                    "Back Extension Maschine": "Rückenstrecker Maschine",
-                    "Shrugs Kurzhanteln": "Schulterheben Kurzhanteln",
-                    "Shrugs Langhantel": "Schulterheben Langhantel",
-                    "T-Bar Rudern": "T-Hantel Rudern",
-                    "Hyperextensions": "Rückenstrecker",
-
-                    // === BEINE ===
-                    "Front Squats": "Frontkniebeugen",
-                    "Goblet Squats": "Goblet Kniebeugen",
-                    "Hack Squats": "Hackenschmidt Kniebeugen",
-                    "Ausfallschritte rückwärts": "Rückwärts Ausfallschritte",
-                    "Walking Lunges": "Gehende Ausfallschritte",
-                    "Bulgarische Split Squats": "Bulgarische Kniebeuge",
-                    "Sumo Deadlift": "Sumo Kreuzheben",
-                    "Stiff Leg Deadlift": "Gestrecktes Kreuzheben",
-                    "Single Leg Press": "Einbeinige Beinpresse",
-                    "Step-ups": "Aufstiege",
-                    "Leg Press 45°": "Beinpresse 45°",
-                    "Smith Machine Squats": "Smith Maschine Kniebeugen",
-                    "Glute Ham Raise": "Glute Ham Entwicklung",
-
-                    // === SCHULTERN ===
-                    "Arnold Press": "Arnold Drücken",
-                    "Upright Rows": "Aufrechtes Rudern",
-                    "Face Pulls": "Gesichtszüge",
-                    "Pike Push-ups": "Pike Liegestütze",
-                    "Reverse Pec Deck": "Reverse Butterfly",
-                    "Front Raise Maschine": "Frontheben Maschine",
-                    "Shrug Maschine": "Schulterheben Maschine",
-
-                    // === BIZEPS ===
-                    "Bizep Curls": "Bizeps Curls",
-                    "Bizep Curls Langhantel": "Bizeps Curls Langhantel",
-                    "Konzentration Curls": "Konzentrations Curls",
-                    "21s Bizep Curls": "21er Bizeps Curls",
-                    "Kabel Bizep Curls": "Kabel Bizeps Curls",
-                    "Preacher Curls": "Prediger Curls",
-                    "Spider Curls": "Spinnen Curls",
-                    "Bizep Curls Maschine": "Bizeps Curls Maschine",
-
-                    // === TRIZEPS ===
-                    "Trizep Dips": "Trizeps Dips",
-                    "French Press": "Französisches Drücken",
-                    "French Press Kurzhantel": "Französisches Drücken Kurzhantel",
-                    "Trizeps Pushdown": "Trizeps Drücken",
-                    "Trizeps Pushdown Seil": "Trizeps Drücken Seil",
-                    "Overhead Trizep Extension": "Trizeps Überkopfstreckung",
-                    "Diamond Push-ups": "Diamant Liegestütze",
-                    "Close Grip Bench Press": "Enges Bankdrücken",
-                    "Trizeps Extension Maschine": "Trizeps Streckung Maschine",
-
-                    // === BAUCH ===
-                    "Plank": "Unterarmstütz",
-                    "Side Plank": "Seitlicher Unterarmstütz",
-                    "Bicycle Crunches": "Fahrrad Crunches",
-                    "Russian Twists": "Russische Drehungen",
-                    "Mountain Climbers": "Bergsteiger",
-                    "Dead Bug": "Toter Käfer",
-                    "Hanging Knee Raises": "Hängendes Knieheben",
-                    "Hanging Leg Raises": "Hängendes Beinheben",
-                    "Ab Wheel Rollout": "Bauchroller",
-                    "Flutter Kicks": "Beinflattern",
-                    "Leg Raises": "Beinheben",
-                    "Wood Choppers": "Holzhacker",
-                    "Captain's Chair Knee Raises": "Kapitänsstuhl Knieheben",
-                    "Ab Crunch Maschine": "Bauchpresse Maschine",
-                    "Torso Rotation Maschine": "Rumpfdrehung Maschine",
-
-                    // === FUNKTIONELLE ÜBUNGEN ===
-                    "Turkish Get-up": "Türkisches Aufstehen",
-                    "Kettlebell Swings": "Kettlebell Schwünge",
-                    "Kettlebell Goblet Squats": "Kettlebell Goblet Kniebeugen",
-                    "Box Jumps": "Kastensprünge",
-                    "Bear Crawl": "Bärengang",
-                    "Wall Sit": "Wandsitz",
-                    "Jump Squats": "Sprungkniebeugen",
-                    "Single Leg Deadlift": "Einbeiniges Kreuzheben",
-                    "Hindu Push-ups": "Hindu Liegestütze",
-                    "Pistol Squats": "Pistolen Kniebeugen",
-                    "Archer Push-ups": "Bogenschützen Liegestütze",
-                    "Clean and Press": "Umsetzen und Drücken",
-                    "Sled Push": "Schlitten schieben",
-                    "Sled Pull": "Schlitten ziehen",
-                    "Farmer's Walk": "Farmers Walk",
-                ]
-
-                var updatedCount = 0
-
-                // Update existing exercises with German names
-                for existingExercise in existingExercises {
-                    if let germanName = nameMapping[existingExercise.name] {
-                        print(
-                            "🔄 Automatische Übersetzung: '\(existingExercise.name)' → '\(germanName)'"
-                        )
-                        existingExercise.name = germanName
-
-                        // Aktualisiere auch andere Eigenschaften wenn möglich
-                        if let germanExercise = germanExercises.first(where: {
-                            $0.name == germanName
-                        }) {
-                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map {
-                                $0.rawValue
-                            }
-                            existingExercise.equipmentTypeRaw =
-                                germanExercise.equipmentType.rawValue
-                            existingExercise.descriptionText = germanExercise.description
-                            existingExercise.instructions = germanExercise.instructions
-                        }
-
-                        updatedCount += 1
-                    } else {
-                        // Check if we can find a corresponding German exercise by similar name
-                        if let germanExercise = germanExercises.first(where: {
-                            $0.name == existingExercise.name
-                        }) {
-                            // Exercise already has German name, update description etc.
-                            existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map {
-                                $0.rawValue
-                            }
-                            existingExercise.equipmentTypeRaw =
-                                germanExercise.equipmentType.rawValue
-                            existingExercise.descriptionText = germanExercise.description
-                            existingExercise.instructions = germanExercise.instructions
-                        }
-                    }
-                }
-
-                // Add any missing German exercises
-                let existingNames = Set(existingExercises.map { $0.name })
-                var addedCount = 0
-
-                for germanExercise in germanExercises {
-                    if !existingNames.contains(germanExercise.name)
-                        && !nameMapping.values.contains(germanExercise.name)
-                    {
-                        let entity = ExerciseEntity(
-                            id: germanExercise.id,
-                            name: germanExercise.name,
-                            muscleGroupsRaw: germanExercise.muscleGroups.map { $0.rawValue },
-                            equipmentTypeRaw: germanExercise.equipmentType.rawValue,
-                            descriptionText: germanExercise.description,
-                            instructions: germanExercise.instructions,
-                            createdAt: germanExercise.createdAt
-                        )
-                        context.insert(entity)
-                        addedCount += 1
-                        print("➕ Automatisch hinzugefügt: '\(germanExercise.name)'")
-                    }
-                }
-
-                // Save changes
-                try context.save()
+                // Verwende ExerciseTranslationService
+                let service = ExerciseTranslationService()
+                let count = try await service.performTranslation(context: context)
 
                 await MainActor.run {
                     // Markiere als abgeschlossen
                     self.exercisesTranslatedToGerman = true
 
                     print("✅ Automatische Deutsche Übersetzung abgeschlossen!")
-                    print("   - \(updatedCount) Übungen auf Deutsch aktualisiert")
-                    print("   - \(addedCount) neue Übungen hinzugefügt")
+                    print("   - \(count) Übungen verarbeitet")
                     print("   - Translation-Flag gesetzt: Diese Aktion wird nicht wiederholt")
 
                     // Trigger UI refresh
@@ -1792,5 +1449,199 @@ class WorkoutStoreCoordinator: ObservableObject {
 
     func resetAllData() async throws {
         try await legacyStore.resetAllData()
+    }
+}
+import Foundation
+import SwiftData
+
+/// Service für die Übersetzung von Übungen von Englisch nach Deutsch
+/// Enthält Mapping-Dictionary und Translation-Logik
+final class ExerciseTranslationService {
+
+    // MARK: - Translation Mapping
+
+    /// Comprehensive mapping from English to German exercise names
+    static let translationMapping: [String: String] = [
+        // === BRUST ===
+        "Hammer Strength Chest Press": "Brustpresse Hammer",
+        "Pec Deck Flys": "Butterfly Maschine",
+        "Incline Chest Press Maschine": "Schrägbankdrücken Maschine",
+        "Decline Chest Press Maschine": "Negativbankdrücken Maschine",
+        "Chest Supported Dips Maschine": "Assistierte Barrenstütze",
+        "Dips an Barren": "Barrenstütze",
+        "Kabelzug Crossover": "Kabelzug Überkreuz",
+        "Negativ Schrägbankdrücken": "Negativbankdrücken",
+        "Fliegende Kurzhanteln": "Fliegende Bewegung",
+        "Kurzhantel Fliegende schräg": "Schrägbank Fliegende",
+
+        // === RÜCKEN ===
+        "Lat Pulldown breit": "Latzug breit",
+        "Lat Pulldown eng": "Latzug eng",
+        "Assisted Pull-up Maschine": "Assistierte Klimmzüge",
+        "Low Row Maschine": "Tiefes Rudern Maschine",
+        "High Row Maschine": "Hohes Rudern Maschine",
+        "Lat Pullover Maschine": "Latzug Überzug Maschine",
+        "Back Extension Maschine": "Rückenstrecker Maschine",
+        "Shrugs Kurzhanteln": "Schulterheben Kurzhanteln",
+        "Shrugs Langhantel": "Schulterheben Langhantel",
+        "T-Bar Rudern": "T-Hantel Rudern",
+        "Hyperextensions": "Rückenstrecker",
+
+        // === BEINE ===
+        "Front Squats": "Frontkniebeugen",
+        "Goblet Squats": "Goblet Kniebeugen",
+        "Hack Squats": "Hackenschmidt Kniebeugen",
+        "Ausfallschritte rückwärts": "Rückwärts Ausfallschritte",
+        "Walking Lunges": "Gehende Ausfallschritte",
+        "Bulgarische Split Squats": "Bulgarische Kniebeuge",
+        "Sumo Deadlift": "Sumo Kreuzheben",
+        "Stiff Leg Deadlift": "Gestrecktes Kreuzheben",
+        "Single Leg Press": "Einbeinige Beinpresse",
+        "Step-ups": "Aufstiege",
+        "Leg Press 45°": "Beinpresse 45°",
+        "Smith Machine Squats": "Smith Maschine Kniebeugen",
+        "Glute Ham Raise": "Glute Ham Entwicklung",
+
+        // === SCHULTERN ===
+        "Arnold Press": "Arnold Drücken",
+        "Upright Rows": "Aufrechtes Rudern",
+        "Face Pulls": "Gesichtszüge",
+        "Pike Push-ups": "Pike Liegestütze",
+        "Reverse Pec Deck": "Reverse Butterfly",
+        "Front Raise Maschine": "Frontheben Maschine",
+        "Shrug Maschine": "Schulterheben Maschine",
+
+        // === BIZEPS ===
+        "Bizep Curls": "Bizeps Curls",
+        "Bizep Curls Langhantel": "Bizeps Curls Langhantel",
+        "Konzentration Curls": "Konzentrations Curls",
+        "21s Bizep Curls": "21er Bizeps Curls",
+        "Kabel Bizep Curls": "Kabel Bizeps Curls",
+        "Preacher Curls": "Prediger Curls",
+        "Spider Curls": "Spinnen Curls",
+        "Bizep Curls Maschine": "Bizeps Curls Maschine",
+
+        // === TRIZEPS ===
+        "Trizep Dips": "Trizeps Dips",
+        "French Press": "Französisches Drücken",
+        "French Press Kurzhantel": "Französisches Drücken Kurzhantel",
+        "Trizeps Pushdown": "Trizeps Drücken",
+        "Trizeps Pushdown Seil": "Trizeps Drücken Seil",
+        "Overhead Trizep Extension": "Trizeps Überkopfstreckung",
+        "Diamond Push-ups": "Diamant Liegestütze",
+        "Close Grip Bench Press": "Enges Bankdrücken",
+        "Trizeps Extension Maschine": "Trizeps Streckung Maschine",
+
+        // === BAUCH ===
+        "Plank": "Unterarmstütz",
+        "Side Plank": "Seitlicher Unterarmstütz",
+        "Bicycle Crunches": "Fahrrad Crunches",
+        "Russian Twists": "Russische Drehungen",
+        "Mountain Climbers": "Bergsteiger",
+        "Dead Bug": "Toter Käfer",
+        "Hanging Knee Raises": "Hängendes Knieheben",
+        "Hanging Leg Raises": "Hängendes Beinheben",
+        "Ab Wheel Rollout": "Bauchroller",
+        "Flutter Kicks": "Beinflattern",
+        "Leg Raises": "Beinheben",
+        "Wood Choppers": "Holzhacker",
+        "Captain's Chair Knee Raises": "Kapitänsstuhl Knieheben",
+        "Ab Crunch Maschine": "Bauchpresse Maschine",
+        "Torso Rotation Maschine": "Rumpfdrehung Maschine",
+
+        // === FUNKTIONELLE ÜBUNGEN ===
+        "Turkish Get-up": "Türkisches Aufstehen",
+        "Kettlebell Swings": "Kettlebell Schwünge",
+        "Kettlebell Goblet Squats": "Kettlebell Goblet Kniebeugen",
+        "Box Jumps": "Kastensprünge",
+        "Bear Crawl": "Bärengang",
+        "Wall Sit": "Wandsitz",
+        "Jump Squats": "Sprungkniebeugen",
+        "Single Leg Deadlift": "Einbeiniges Kreuzheben",
+        "Hindu Push-ups": "Hindu Liegestütze",
+        "Pistol Squats": "Pistolen Kniebeugen",
+        "Archer Push-ups": "Bogenschützen Liegestütze",
+        "Clean and Press": "Umsetzen und Drücken",
+        "Sled Push": "Schlitten schieben",
+        "Sled Pull": "Schlitten ziehen",
+        "Farmer's Walk": "Farmers Walk",
+    ]
+
+    // MARK: - Translation Methods
+
+    /// Übersetzt alle Übungen in einem ModelContext von Englisch nach Deutsch
+    /// - Parameter context: Der SwiftData ModelContext
+    /// - Returns: Anzahl der übersetzten Übungen
+    @MainActor
+    func performTranslation(context: ModelContext) async throws -> Int {
+        print("🔄 Starte Übersetzung der Übungen...")
+
+        // Hole alle bestehenden Übungen
+        let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
+        print("📚 Gefunden: \(existingExercises.count) bestehende Übungen")
+
+        // Hole deutsche Übungen für zusätzliche Metadaten
+        let germanExercises = ExerciseSeeder.createRealisticExercises()
+
+        var updatedCount = 0
+
+        // Übersetze bestehende Übungen
+        for existingExercise in existingExercises {
+            if let germanName = Self.translationMapping[existingExercise.name] {
+                print("🔄 Übersetze: '\(existingExercise.name)' → '\(germanName)'")
+                existingExercise.name = germanName
+
+                // Aktualisiere auch andere Eigenschaften wenn möglich
+                if let germanExercise = germanExercises.first(where: { $0.name == germanName }) {
+                    existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map { $0.rawValue }
+                    existingExercise.equipmentTypeRaw = germanExercise.equipmentType.rawValue
+                    existingExercise.descriptionText = germanExercise.description
+                    existingExercise.instructions = germanExercise.instructions
+                }
+
+                updatedCount += 1
+            } else {
+                // Prüfe ob Übung bereits deutschen Namen hat
+                if let germanExercise = germanExercises.first(where: { $0.name == existingExercise.name }) {
+                    // Aktualisiere Metadaten
+                    existingExercise.muscleGroupsRaw = germanExercise.muscleGroups.map { $0.rawValue }
+                    existingExercise.equipmentTypeRaw = germanExercise.equipmentType.rawValue
+                    existingExercise.descriptionText = germanExercise.description
+                    existingExercise.instructions = germanExercise.instructions
+                }
+            }
+        }
+
+        // Füge fehlende deutsche Übungen hinzu
+        let existingNames = Set(existingExercises.map { $0.name })
+        var addedCount = 0
+
+        for germanExercise in germanExercises {
+            if !existingNames.contains(germanExercise.name)
+                && !Self.translationMapping.values.contains(germanExercise.name)
+            {
+                let entity = ExerciseEntity(
+                    id: germanExercise.id,
+                    name: germanExercise.name,
+                    muscleGroupsRaw: germanExercise.muscleGroups.map { $0.rawValue },
+                    equipmentTypeRaw: germanExercise.equipmentType.rawValue,
+                    descriptionText: germanExercise.description,
+                    instructions: germanExercise.instructions,
+                    createdAt: germanExercise.createdAt
+                )
+                context.insert(entity)
+                addedCount += 1
+                print("➕ Neue Übung hinzugefügt: '\(germanExercise.name)'")
+            }
+        }
+
+        // Speichere Änderungen
+        try context.save()
+
+        print("✅ Übersetzung abgeschlossen!")
+        print("   - \(updatedCount) Übungen übersetzt")
+        print("   - \(addedCount) neue Übungen hinzugefügt")
+
+        return updatedCount + addedCount
     }
 }
