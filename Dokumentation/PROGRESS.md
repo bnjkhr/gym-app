@@ -1,8 +1,8 @@
 # 📊 GymBo Modularisierung - Fortschritts-Tracking
 
-**Letzte Aktualisierung:** 2025-10-18
-**Aktueller Status:** 🎉 QUICK WINS SESSION ABGESCHLOSSEN! CODE QUALITY BOOST! 🎉
-**Gesamt-Fortschritt:** 90% (Phase 1-3: 100% ✅ | Quick Wins: 100% ✅)
+**Letzte Aktualisierung:** 2025-10-19
+**Aktueller Status:** 🧪 TEST COVERAGE INITIATIVE GESTARTET! 🧪
+**Gesamt-Fortschritt:** 92% (Phase 1-3: 100% ✅ | Quick Wins: 100% ✅ | Tests: 15% ✅)
 
 ---
 
@@ -81,7 +81,80 @@
 - Created: Dokumentation/QUICK_WINS_SESSION_SUMMARY.md
 - Updated: Dokumentation/INDEX.md
 
-### Aktuelle Phase: Phase 4 - Migration zu Coordinators
+---
+
+## 🧪 Test Coverage Initiative (2025-10-19)
+
+**Status:** 🚧 IN PROGRESS - Day 1 Complete
+**Ziel:** 60-70% Test Coverage (aktuell <5%)
+**Priorität:** ⚠️ KRITISCH (aus CODE_REVIEW_REPORT.md)
+
+### Day 1 Achievements (2025-10-19) ✅
+
+**Infrastructure Setup (3.5h):**
+- ✅ TEST_COVERAGE_PLAN.md erstellt (3-Phasen Strategie, 18-23h)
+- ✅ TEST_INFRASTRUCTURE_STATUS.md (Status & Blocker)
+- ✅ TestHelpers.swift (Test Fixtures & Utilities)
+- ✅ MockModelContext.swift (In-Memory SwiftData Testing)
+- ✅ WorkoutDataServiceTests.swift (Stub erstellt)
+- ✅ Alte Tests gefixt (Workout init Parameter-Reihenfolge)
+
+**Commits:**
+- `b881f72` - feat(tests): Add test infrastructure and coverage plan
+
+### Blocker & Next Steps ⚠️
+
+**Blocking Issues:**
+- ❌ Alte RestTimer Tests kompilieren nicht (API geändert)
+  - `timerEngine` ist jetzt `private`
+  - `exerciseIndex` ist jetzt `let` constant
+  - Optional Int handling fehlt
+
+**Tomorrow's Plan (4-7h):**
+1. Fix RestTimerPersistenceTests & RestTimerStateManagerTests (1-2h)
+2. Implement WorkoutDataServiceTests mit korrekter API (2-3h)
+3. Run tests & measure coverage (30min)
+4. Start ProfileServiceTests (1-2h)
+
+**Related Docs:**
+- Dokumentation/TEST_COVERAGE_PLAN.md
+- Dokumentation/TEST_INFRASTRUCTURE_STATUS.md
+- Dokumentation/CODE_REVIEW_REPORT.md (Critical Issue #20)
+
+---
+
+### WorkoutStore Modularization (2025-10-19) ✅
+
+**Status:** ✅ PHASE 1 & 2 COMPLETE
+**Commits:** `a195d99`, `5c96c7c`
+
+**Phase 1.1:** Test Code Extraction
+- ✅ WorkoutStore+Testing.swift Extension erstellt (~570 Zeilen)
+- ✅ Build: SUCCESS
+
+**Phase 1.2:** Translation Service Integration
+- ✅ ExerciseTranslationService integriert (~350 Zeilen dedupliziert)
+- ✅ Service-Delegation Pattern
+- ✅ Build: SUCCESS
+
+**Phase 2:** Migration Coordinator
+- ❌ CANCELLED - Zu riskant (@Published Properties)
+- Dokumentiert in WORKOUTSTORE_MODULARISIERUNG.md
+
+**Results:**
+- WorkoutStore: 2178 → 1647 Zeilen (-531 Zeilen, -24%)
+- Code-Duplikate eliminiert
+- Bessere Code-Struktur
+- 0 Breaking Changes
+
+**Documentation:**
+- Dokumentation/WORKOUTSTORE_MODULARISIERUNG.md
+
+---
+
+### Aktuelle Phase: Test Coverage (Priority)
+
+**Nach Tests:** Phase 4 - Migration zu Coordinators
 
 **Ziel:** 29 Views von WorkoutStore auf neue Coordinators migrieren
 **Fortschritt:** 0% (0/29 Views migriert)
