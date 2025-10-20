@@ -1,5 +1,5 @@
 //
-//  NotificationManager.swift
+//  InAppNotificationManager.swift
 //  GymTracker
 //
 //  Universal in-app notification system
@@ -8,19 +8,19 @@
 import Combine
 import SwiftUI
 
-/// Universal notification manager for showing in-app notifications
+/// Universal notification manager for showing in-app notifications (pills)
 ///
 /// Usage:
 /// ```swift
-/// @EnvironmentObject var notificationManager: NotificationManager
+/// @StateObject var notificationManager = InAppNotificationManager.shared
 ///
 /// // Show notification
 /// notificationManager.show("Workout gespeichert", type: .success)
 /// notificationManager.show("Fehler aufgetreten", type: .error)
 /// notificationManager.show("Nächste Übung", type: .info)
 /// ```
-class NotificationManager: ObservableObject {
-    static let shared = NotificationManager()
+class InAppNotificationManager: ObservableObject {
+    static let shared = InAppNotificationManager()
 
     @Published var currentNotification: InAppNotification?
     @Published var isShowing: Bool = false

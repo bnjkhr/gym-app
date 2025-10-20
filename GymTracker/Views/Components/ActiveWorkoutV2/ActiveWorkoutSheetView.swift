@@ -60,7 +60,7 @@ struct ActiveWorkoutSheetView: View {
     @State private var exerciseSheetDetent: PresentationDetent = .large
     @State private var currentExerciseIndex: Int = 0  // Track current exercise for counter
     @State private var showAllExercises: Bool = false  // Toggle to show completed exercises
-    @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var notificationManager = InAppNotificationManager.shared
 
     // MARK: - Computed Properties
 

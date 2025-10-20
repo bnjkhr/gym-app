@@ -2,21 +2,30 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Wir benötigen Zugriff auf deine Fotobibliothek, um ein Profilbild auszuwählen.</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>GymTracker Workout</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.gymtracker.workout</string>
+			</array>
+		</dict>
+	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.gymtracker.workout</string>
-			<key>UTTypeDescription</key>
-			<string>GymTracker Workout</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.json</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>GymTracker Workout</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.gymtracker.workout</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -26,22 +35,5 @@
 			</dict>
 		</dict>
 	</array>
-	<key>CFBundleDocumentTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>GymTracker Workout</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.gymtracker.workout</string>
-			</array>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-		</dict>
-	</array>
-	<key>UISupportsDocumentBrowser</key>
-	<false/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<false/>
 </dict>
 </plist>

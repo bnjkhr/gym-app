@@ -4,6 +4,8 @@
 <dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>GymTracker nutzt Alarme, um dich an das Ende deiner Pause zu erinnern und sicherzustellen, dass du dein Training fortsetzt – auch im Silent Mode oder Focus.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
