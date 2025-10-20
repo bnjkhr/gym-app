@@ -619,7 +619,6 @@ extension RestTimerStateManager {
         return """
             RestTimerStateManager:
               \(state.description)
-              TimerEngine: \(timerEngine.isRunning ? "running" : "stopped")
             """
     }
 }
