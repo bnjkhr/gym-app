@@ -7,6 +7,7 @@ struct Workout: Identifiable, Codable {
     var exercises: [WorkoutExercise]
     var defaultRestTime: TimeInterval
     var duration: TimeInterval?
+    var startDate: Date?  // ✅ NEU: Wann wurde die aktive Session gestartet?
     var notes: String
     var isFavorite: Bool
     var level: String?
@@ -21,6 +22,7 @@ struct Workout: Identifiable, Codable {
         exercises: [WorkoutExercise] = [],
         defaultRestTime: TimeInterval = 90,
         duration: TimeInterval? = nil,
+        startDate: Date? = nil,  // ✅ NEU
         notes: String = "",
         isFavorite: Bool = false,
         level: String? = nil,
@@ -34,12 +36,30 @@ struct Workout: Identifiable, Codable {
         self.exercises = exercises
         self.defaultRestTime = defaultRestTime
         self.duration = duration
+        self.startDate = startDate  // ✅ NEU
         self.notes = notes
         self.isFavorite = isFavorite
         self.level = level
         self.workoutType = workoutType
         self.estimatedDuration = estimatedDuration
         self.frequency = frequency
+    }
+
+    /// Computed Property: Aktuelle Dauer der laufenden Session
+    /// - Returns: Live-Dauer seit startDate oder gespeicherte duration
+    var currentDuration: TimeInterval {
+        guard let start = startDate else {
+            return duration ?? 0
+        }
+        return Date().timeIntervalSince(start)
+    }
+
+    /// Formatierte Darstellung der aktuellen Dauer (MM:SS)
+    var formattedCurrentDuration: String {
+        let totalSeconds = Int(currentDuration)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -49,6 +69,7 @@ struct Workout: Identifiable, Codable {
         case exercises
         case defaultRestTime
         case duration
+        case startDate  // ✅ NEU
         case notes
         case isFavorite
         case level
@@ -63,13 +84,16 @@ struct Workout: Identifiable, Codable {
         self.name = try container.decode(String.self, forKey: .name)
         self.date = try container.decode(Date.self, forKey: .date)
         self.exercises = try container.decode([WorkoutExercise].self, forKey: .exercises)
-        self.defaultRestTime = try container.decodeIfPresent(TimeInterval.self, forKey: .defaultRestTime) ?? 90
+        self.defaultRestTime =
+            try container.decodeIfPresent(TimeInterval.self, forKey: .defaultRestTime) ?? 90
         self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        self.startDate = try container.decodeIfPresent(Date.self, forKey: .startDate)  // ✅ NEU
         self.notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         self.isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
         self.level = try container.decodeIfPresent(String.self, forKey: .level)
         self.workoutType = try container.decodeIfPresent(String.self, forKey: .workoutType)
-        self.estimatedDuration = try container.decodeIfPresent(String.self, forKey: .estimatedDuration)
+        self.estimatedDuration = try container.decodeIfPresent(
+            String.self, forKey: .estimatedDuration)
         self.frequency = try container.decodeIfPresent(String.self, forKey: .frequency)
     }
 
@@ -81,6 +105,7 @@ struct Workout: Identifiable, Codable {
         try container.encode(exercises, forKey: .exercises)
         try container.encode(defaultRestTime, forKey: .defaultRestTime)
         try container.encodeIfPresent(duration, forKey: .duration)
+        try container.encodeIfPresent(startDate, forKey: .startDate)  // ✅ NEU
         try container.encode(notes, forKey: .notes)
         try container.encode(isFavorite, forKey: .isFavorite)
         try container.encodeIfPresent(level, forKey: .level)
@@ -94,11 +119,30 @@ struct WorkoutExercise: Identifiable, Codable {
     let id: UUID
     var exercise: Exercise
     var sets: [ExerciseSet]
+    var notes: String?  // ✅ NEU: Notizen zur Übung (z.B. "Felt heavy today")
+    var restTimeToNext: TimeInterval?  // ✅ NEU: Pause bis zur nächsten Übung (z.B. 03:00)
 
-    init(id: UUID = UUID(), exercise: Exercise, sets: [ExerciseSet] = []) {
+    init(
+        id: UUID = UUID(),
+        exercise: Exercise,
+        sets: [ExerciseSet] = [],
+        notes: String? = nil,  // ✅ NEU
+        restTimeToNext: TimeInterval? = nil  // ✅ NEU
+    ) {
         self.id = id
         self.exercise = exercise
         self.sets = sets
+        self.notes = notes  // ✅ NEU
+        self.restTimeToNext = restTimeToNext  // ✅ NEU
+    }
+
+    /// Formatierte Darstellung der Pause zur nächsten Übung (MM:SS)
+    var formattedRestTimeToNext: String? {
+        guard let restTime = restTimeToNext, restTime > 0 else { return nil }
+        let totalSeconds = Int(restTime)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
 
@@ -114,11 +158,14 @@ struct ExerciseSet: Identifiable, Codable {
     var reps: Int
     var weight: Double
     var duration: TimeInterval?  // Für Cardio/zeitbasierte Übungen
-    var unit: SetUnit?           // Einheit (kg, min, etc.)
+    var unit: SetUnit?  // Einheit (kg, min, etc.)
     var restTime: TimeInterval
     var completed: Bool
 
-    init(id: UUID = UUID(), reps: Int, weight: Double, duration: TimeInterval? = nil, unit: SetUnit? = nil, restTime: TimeInterval = 90, completed: Bool = false) {
+    init(
+        id: UUID = UUID(), reps: Int, weight: Double, duration: TimeInterval? = nil,
+        unit: SetUnit? = nil, restTime: TimeInterval = 90, completed: Bool = false
+    ) {
         self.id = id
         self.reps = reps
         self.weight = weight
