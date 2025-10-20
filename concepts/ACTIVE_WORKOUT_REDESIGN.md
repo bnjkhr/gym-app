@@ -91,11 +91,48 @@
 
 **Build Status:** ✅ Kompiliert erfolgreich
 
-**Nächster Schritt:** Phase 4 - TimerSection
+**Nächster Schritt:** Phase 5 - ActiveWorkoutSheetView
 
 ---
 
-### ⏳ Phase 4-8: (AUSSTEHEND)
+### ⏱️ Phase 4: TimerSection ✅
+
+**Status:** ABGESCHLOSSEN
+
+**Komponenten erstellt:**
+- `TimerSection.swift` - Haupt-Container mit TabView
+- `TimerPageView` - Seite 1: Timer Display
+- `RestTimerDisplay` - Rest Timer Anzeige (große Zeit)
+- `WorkoutDurationDisplay` - Workout Dauer (ohne aktiven Rest)
+- `TimerControls` - [-15s] [Skip] [+15s] Buttons
+- `InsightsPageView` - Seite 2: Placeholder
+
+**Features:**
+- TabView mit 2 Seiten (Pagination Dots)
+- Conditional Rendering: Rest Timer ODER Workout Duration
+- Integration mit `RestTimerStateManager`
+- Timer-Anpassung: ±15 Sekunden
+- Skip-Button: Cancelt Timer, sendet Notification
+- Immer schwarzer Hintergrund
+
+**Timer-Logik:**
+- -15s/+15s: Verschiebt `endDate` um ±15 Sekunden
+- Skip: `cancelRest()` + NotificationCenter Post
+- Remaining Time: Berechnet aus `endDate - Date()`
+
+**Previews:** 3 Szenarien (Mit Rest Timer, Ohne Timer, Insights)
+
+**TODO für Integration:**
+- `RestTimerStateManager` braucht `adjustTimer(by:)` Methode
+- Parent View muss `SkipRestTimer` Notification abonnieren
+
+**Build Status:** ✅ Kompiliert erfolgreich
+
+**Zeit:** ~45min (est. 3-4h) 🎉
+
+---
+
+### ⏳ Phase 5-8: (AUSSTEHEND)
 Siehe Implementierungs-Plan unten
 
 ---
