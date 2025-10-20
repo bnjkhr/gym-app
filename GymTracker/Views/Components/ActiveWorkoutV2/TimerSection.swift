@@ -41,7 +41,7 @@ struct TimerSection: View {
     // MARK: - Dependencies
 
     @ObservedObject var restTimerManager: RestTimerStateManager
-    let workoutDuration: TimeInterval
+    let workoutStartDate: Date?
 
     // MARK: - State
 
@@ -56,7 +56,7 @@ struct TimerSection: View {
                 // Page 1: Timer
                 TimerPageView(
                     restTimerManager: restTimerManager,
-                    workoutDuration: workoutDuration
+                    workoutStartDate: workoutStartDate
                 )
                 .tag(0)
 
@@ -91,7 +91,7 @@ struct TimerSection: View {
 
 struct TimerPageView: View {
     @ObservedObject var restTimerManager: RestTimerStateManager
-    let workoutDuration: TimeInterval
+    let workoutStartDate: Date?
 
     var body: some View {
         VStack(spacing: TimerSection.Spacing.pageSpacing) {
@@ -103,7 +103,7 @@ struct TimerPageView: View {
                 RestTimerDisplay(restState: restState)
             } else {
                 // Workout Duration (no active rest)
-                WorkoutDurationDisplay(duration: workoutDuration)
+                WorkoutDurationDisplay(startDate: workoutStartDate)
             }
 
             Spacer()
@@ -122,8 +122,12 @@ struct TimerPageView: View {
 struct RestTimerDisplay: View {
     let restState: RestTimerState
 
+    @State private var currentTime = Date()
+
     private var remainingTime: String {
-        let seconds = restState.remainingSeconds
+        // Calculate remaining time from current time to end date
+        let timeInterval = restState.endDate.timeIntervalSince(currentTime)
+        let seconds = max(0, Int(timeInterval))
         let mins = seconds / 60
         let secs = seconds % 60
         return String(format: "%02d:%02d", mins, secs)
@@ -143,16 +147,30 @@ struct RestTimerDisplay: View {
                 )
                 .monospacedDigit()
         }
+        .onAppear {
+            // Start timer that updates every second
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                currentTime = Date()
+            }
+        }
     }
 }
 
 // MARK: - Workout Duration Display
 
 struct WorkoutDurationDisplay: View {
-    let duration: TimeInterval
+    let startDate: Date?
+
+    @State private var currentTime = Date()
 
     private var formattedDuration: String {
-        let totalSeconds = Int(duration)
+        guard let startDate = startDate else {
+            return "00:00"
+        }
+
+        // Calculate live duration from start date to current time
+        let duration = currentTime.timeIntervalSince(startDate)
+        let totalSeconds = max(0, Int(duration))
         let mins = totalSeconds / 60
         let secs = totalSeconds % 60
         return String(format: "%02d:%02d", mins, secs)
@@ -171,6 +189,12 @@ struct WorkoutDurationDisplay: View {
                         weight: TimerSection.Typography.timerFontWeight)
                 )
                 .monospacedDigit()
+        }
+        .onAppear {
+            // Start timer that updates every second
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                currentTime = Date()
+            }
         }
     }
 }
@@ -307,7 +331,7 @@ struct InsightsPageView: View {
 
     TimerSection(
         restTimerManager: mockManager,
-        workoutDuration: 240  // 4 minutes
+        workoutStartDate: Date().addingTimeInterval(-240)  // Started 4 minutes ago
     )
     .frame(height: 350)
 }
@@ -318,7 +342,7 @@ struct InsightsPageView: View {
 
     TimerSection(
         restTimerManager: mockManager,
-        workoutDuration: 847  // 14:07
+        workoutStartDate: Date().addingTimeInterval(-847)  // Started 14:07 ago
     )
     .frame(height: 350)
 }

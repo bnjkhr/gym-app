@@ -60,6 +60,7 @@ struct ActiveWorkoutSheetView: View {
     @State private var exerciseSheetDetent: PresentationDetent = .large
     @State private var currentExerciseIndex: Int = 0  // Track current exercise for counter
     @State private var showAllExercises: Bool = false  // Toggle to show completed exercises
+    @StateObject private var notificationManager = NotificationManager.shared
 
     // MARK: - Computed Properties
 
@@ -93,7 +94,7 @@ struct ActiveWorkoutSheetView: View {
                 // Timer Section (ALWAYS visible - shows rest timer OR workout duration)
                 TimerSection(
                     restTimerManager: workoutStore.restTimerStateManager,
-                    workoutDuration: workoutDuration
+                    workoutStartDate: workout.startDate
                 )
 
                 Spacer()
@@ -129,6 +130,8 @@ struct ActiveWorkoutSheetView: View {
                     )
                 }
             }
+            // Overlay: Universal In-App Notification
+            NotificationPill(manager: notificationManager)
         }
         .background(Color.black)
         .presentationDetents([.large])
@@ -154,7 +157,7 @@ struct ActiveWorkoutSheetView: View {
 
     private var headerView: some View {
         HStack {
-            // Left side: Back button + Menu
+            // Left side: Back button + Show/Hide Toggle
             HStack(spacing: 16) {
                 // Back Button
                 Button {
@@ -165,49 +168,22 @@ struct ActiveWorkoutSheetView: View {
                         .foregroundStyle(.white)
                 }
 
-                // Menu
-                Menu {
-                    Button("Reorder Exercises") {
-                        handleReorder()
-                    }
-                    Button("Add Exercise") {
-                        handleAddExercise()
-                    }
+                // Show/Hide completed exercises toggle
+                Button {
+                    showAllExercises.toggle()
                 } label: {
-                    Image(systemName: "ellipsis")
+                    Image(systemName: showAllExercises ? "eye.fill" : "eye.slash.fill")
                         .font(.title3)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(showAllExercises ? .orange : .white)
                 }
             }
 
             Spacer()
 
-            // Center: Exercise counter (1/14, 2/14, etc.) or "Alle anzeigen" toggle
-            if showAllExercises {
-                Button {
-                    showAllExercises = false
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "eye.slash.fill")
-                            .font(.caption)
-                        Text("Nur aktuelle")
-                            .font(.subheadline)
-                    }
-                    .foregroundStyle(.orange)
-                }
-            } else {
-                Button {
-                    showAllExercises = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(exerciseCounterText)
-                            .font(.headline)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(.white)
-                }
-            }
+            // Center: Exercise counter (1/14, 2/14, etc.)
+            Text(exerciseCounterText)
+                .font(.headline)
+                .foregroundStyle(.white)
 
             Spacer()
 
@@ -308,6 +284,14 @@ struct ActiveWorkoutSheetView: View {
         let isCompleted = workout.exercises[exerciseIndex].sets[setIndex].completed
 
         if isCompleted {
+            // Check if this is the last set of the exercise
+            let isLastSet = (setIndex == workout.exercises[exerciseIndex].sets.count - 1)
+
+            // Show completion notification only for last set
+            if isLastSet {
+                notificationManager.show("Nächste Übung", type: .success)
+            }
+
             // Get rest time for this set
             let restTime = workout.exercises[exerciseIndex].sets[setIndex].restTime
 
