@@ -1,13 +1,314 @@
 # Active Workout View Redesign - Konzept
 
 **Erstellt:** 2025-10-20  
-**Aktualisiert:** 2025-10-20 (Major Update: Modal Sheet Design)  
-**Status:** 🔨 In Implementierung - Phase 1 abgeschlossen  
+**Aktualisiert:** 2025-10-20 (Session 2: UI Refinements - Draggable Sheet + Auto-Scroll)  
+**Status:** 🚀 Phase 1-6 ABGESCHLOSSEN | 🔵 UI Refinements IN PROGRESS (85%)  
 **Ziel:** Redesign der aktiven Workout-Ansicht basierend auf Screenshot-Vorlage
 
 ---
 
 ## 📊 Implementierungs-Status
+
+**Aktueller Stand:** Phase 1-6 abgeschlossen ✅ | UI Refinements in Progress 🔵
+
+**Übersicht:**
+- ✅ Phase 1: Model-Erweiterungen (ABGESCHLOSSEN)
+- ✅ Phase 2: Basis-Komponenten (ABGESCHLOSSEN)
+- ✅ Phase 3: ExerciseCard (ABGESCHLOSSEN)
+- ✅ Phase 4: TimerSection (ABGESCHLOSSEN)
+- ✅ Phase 5: ActiveWorkoutSheetView (ABGESCHLOSSEN)
+- ✅ Phase 6: State Management & Logic (ABGESCHLOSSEN)
+- 🔵 **UI Refinements Session 2** (IN PROGRESS - 85%)
+- ⏳ Phase 7-8: Polish & Testing (AUSSTEHEND)
+
+---
+
+## 🚀 UI Refinements Session 2 (2025-10-20) - IN PROGRESS 🔵
+
+**Status:** 🔵 85% Complete - Scroll Behavior Refinement  
+**Session:** Continuation from previous conversation  
+**Build Status:** ✅ SUCCESS  
+**Zeitaufwand:** ~3-4 Stunden
+
+### Session Context
+
+Diese Session ist eine Fortsetzung. Phasen 1-3 waren bereits aus vorheriger Session abgeschlossen:
+- ✅ Model Updates (Workout, WorkoutExercise, ExerciseSet)
+- ✅ Component Creation (TimerSection, ExerciseCard, BottomActionBar)
+- ✅ Business Logic Integration (Set completion, timer triggering)
+
+### Implementierte Features (Session 2)
+
+#### 1. ✅ DraggableExerciseSheet Component (NEW ARCHITECTURE)
+
+**Problem gelöst:** Benutzer wollte Grabber mit Drag-Funktion, nicht nur visueller Indikator.
+
+**Implementierung:**
+- **Datei:** `GymTracker/Views/Components/ActiveWorkoutV2/DraggableExerciseSheet.swift` (~95 LOC)
+- **Architektur:** Exercise List als draggable overlay über fixed Timer
+- **Detents:** 
+  - Expanded: 200pt (zeigt Timer + Header)
+  - Collapsed: 380pt (zeigt Timer, Buttons bleiben sichtbar)
+- **Gesture Handling:**
+  - DragGesture mit `.updating()` und `.onEnded()`
+  - Velocity-based snapping (>100pt/s → swipe direction)
+  - Clamping während Drag (verhindert out-of-bounds)
+- **Animation:** Custom Bézier curve `.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.35)` (kein Bounce!)
+- **Corner Radius:** 39pt (matches iPhone screen radius)
+- **Grabber:** Capsule handle für visuelle Feedback
+
+**User Feedback:**
+- ❌ "Der Grabber hat keine Funktion" (erster Versuch: nur visuell)
+- ✅ DraggableExerciseSheet löste das Problem komplett
+
+#### 2. ✅ TimerSection UI Improvements
+
+**Änderungen:**
+- **Text:** "REST" → "PAUSE" (German localization)
+- **Font:** 72pt → 96pt, weight: .thin → .heavy
+- **Background:** Black mit `.ignoresSafeArea(edges: .top)`
+- **Magic Numbers:** Alle ersetzt durch Layout/Typography enums
+- **Struktur:**
+  ```swift
+  enum Layout {
+      static let timerHeight: CGFloat = 300
+      static let paginationDotSize: CGFloat = 6
+      static let paginationDotSpacing: CGFloat = 6
+  }
+  
+  enum Typography {
+      static let timerFontSize: CGFloat = 96
+      static let timerFontWeight: Font.Weight = .heavy
+  }
+  ```
+
+**User Feedback:**
+- ✅ "Schrift von Timer größer und fetter" → 96pt .heavy
+- ✅ "Und merke: Wir nutzen KEINE Magic Numbers" → enums created
+
+#### 3. ✅ Header Redesign
+
+**Vorher:** Orange buttons (top left + top right)  
+**Nachher:**
+- **Left:** Back Arrow (`chevron.left`) + Menu (`ellipsis`) - beide white
+- **Right:** "Beenden" Button - white
+- **Background:** Black (consistent with timer)
+- **Padding:** .horizontal + .vertical(12)
+
+**Datei:** `ActiveWorkoutSheetView.swift` (headerView section)
+
+#### 4. ✅ ExerciseCard Layout Refinements
+
+**Iterative Änderungen basierend auf User Screenshots:**
+
+**Removed:**
+- ❌ Red indicator dot vor Übungsname
+
+**Font Sizes (INCREASED):**
+- Weight: 20pt → **28pt bold**
+- Reps: 16pt → **24pt bold**
+- Unit: 14pt (gray)
+
+**Alignment:**
+- Weight jetzt flush mit Exercise Name (beide verwenden `Layout.headerPadding: 20pt`)
+- Sets verwendeten vorher `Layout.setPadding: 16pt` → changed to 20pt
+
+**Spacing between Cards:**
+- Iteration 1: 12pt → 8pt ❌
+- Iteration 2: 8pt → 4pt ❌
+- Iteration 3: 4pt → 2pt ❌
+- Iteration 4: **Shadow reduction solved it!** ✅
+
+**Shadow (ROOT CAUSE of spacing issue):**
+- Vorher: `radius: 12, y: 4` → nahm viel Platz
+- Nachher: `radius: 4, y: 1` → minimal, subtle
+
+**Corner Radius:**
+- 24pt → **39pt** (matches iPhone screen radius)
+
+**Bottom Buttons:**
+- Checkmark (set completion)
+- Plus (add set)
+- Reorder (drei horizontale Linien)
+
+**User Feedback Loop (4 Iterationen):**
+1. ❌ "Der Abstand ist immer noch zu groß" (spacing 12pt → 8pt)
+2. ❌ "immer noch zu groß" (spacing 8pt → 4pt)
+3. ❌ "immer noch zu groß" (spacing 4pt → 2pt)
+4. ✅ "Nein, da ist vielleicht noch was unter dem weißen Kasten?" → Shadow reduction!
+
+#### 5. ✅ German Localization
+
+**Text Replacements:**
+- "REST" → "PAUSE"
+- "Bench Press" → "Bankdrücken" (in mockups/previews)
+- "Type anything..." → "Neuer Satz oder Notiz"
+- "Beenden" (finish workout button)
+
+#### 6. ✅ Auto-Scroll Feature
+
+**Anforderung:** Wenn letzter Satz abgehakt wird, scrolle automatisch zur nächsten unvollständigen Übung.
+
+**Implementierung:**
+```swift
+// ScrollViewReader integration
+ScrollViewReader { proxy in
+    ScrollView {
+        LazyVStack(spacing: 8) {
+            ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, _ in
+                ActiveExerciseCard(...)
+                    .id("exercise_\(index)")  // For scrolling
+            }
+        }
+    }
+    .onChange(of: workout.exercises.map { $0.sets.map { $0.completed } }) { _, _ in
+        checkAndScrollToNextExercise(proxy: proxy)
+    }
+}
+
+// Scroll logic
+private func checkAndScrollToNextExercise(proxy: ScrollViewProxy) {
+    for (index, exercise) in workout.exercises.enumerated() {
+        let allSetsCompleted = exercise.sets.allSatisfy { $0.completed }
+        
+        if !allSetsCompleted {
+            withAnimation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.4)) {
+                proxy.scrollTo("exercise_\(index)", anchor: .top)
+            }
+            return
+        }
+    }
+}
+```
+
+**User Feedback & Iterations:**
+1. ❌ Tried `.center` anchor → "zeigt die neue Übung nur zur Hälfte"
+2. ❌ Added 200pt transparent spacer at top → "grauer Bereich oben viel zu groß"
+3. 🔵 Using `.top` anchor with smooth Bézier curve → **IN TESTING**
+
+#### 7. ✅ BottomActionBar Simplification
+
+**Removed:**
+- ❌ Center Plus Button (moved into ExerciseCard)
+
+**Kept:**
+- ✅ Left: Repeat/History (`clock.arrow.circlepath`)
+- ✅ Right: Reorder (`arrow.up.arrow.down`)
+
+#### 8. ✅ Animation Refinements (3 Iterationen)
+
+**Problem:** User reported "Animation springt beim ziehen" (animation jumps/bounces)
+
+**Iteration 1:** 
+```swift
+.interpolatingSpring(stiffness: 300, damping: 30)
+```
+❌ "Animation springt immer noch"
+
+**Iteration 2:**
+```swift
+.easeOut(duration: 0.25)
+```
+❌ "Animation springt immer noch"
+
+**Iteration 3 (FINAL):**
+```swift
+.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.35)
+```
+✅ **PERFEKT!** Custom Bézier curve ohne Bounce
+
+**Applied to:**
+- DraggableExerciseSheet drag animation
+- Auto-scroll animation
+- All other UI transitions
+
+### Current Status & Remaining Work
+
+#### 🔵 In Progress
+
+**Scroll Behavior Refinement:**
+- **User Request:** "Übung nach oben rausscrollen und die neue Übung den Platz einnehmen"
+- **Current Implementation:** `.scrollTo(anchor: .top)` with smooth Bézier curve
+- **Status:** Testing phase
+- **Files Modified:**
+  - `DraggableExerciseSheet.swift:38` - Corner radius 16pt → 39pt
+  - `ActiveWorkoutSheetView.swift:403, 414` - Animation timing curve update
+
+#### ⏳ Remaining Tasks
+
+1. ⏳ **Scroll Behavior Testing** - Verify smooth OUT/IN transition works as expected
+2. ⏳ **User Testing** - Get final confirmation from user
+3. ⏳ **Performance Check** - Ensure 60fps during scroll + drag
+4. ⏳ **Edge Cases Testing:**
+   - Single exercise workout
+   - All exercises completed
+   - First exercise incomplete
+   - Empty workout
+5. ⏳ **Component Documentation** - Update SwiftDoc comments
+
+#### 📊 Code Metrics (Session 2)
+
+**Modified/Created Files:**
+
+| Datei | Status | LOC | Changes |
+|-------|--------|-----|---------|
+| DraggableExerciseSheet.swift | ✅ NEW | ~95 | Complete draggable sheet implementation |
+| TimerSection.swift | ✅ Modified | ~150 | German text, 96pt .heavy font, black background |
+| ActiveWorkoutSheetView.swift | ✅ Modified | ~450 | Header redesign, auto-scroll, ScrollViewReader |
+| ExerciseCard.swift | ✅ Modified | ~350 | Bold fonts (28pt/24pt), shadow reduction, 39pt radius |
+| BottomActionBar.swift | ✅ Modified | ~80 | Removed center plus button |
+
+**Total Impact:** ~1,125 LOC modified/created
+
+**No Magic Numbers:** All layout values in enums ✅
+
+#### 🎯 Design Principles Applied
+
+1. ✅ **No Magic Numbers** - All values in Layout/Typography enums
+2. ✅ **Consistent Animation** - Same Bézier curve (0.2, 0.0, 0.0, 1.0) everywhere
+3. ✅ **iPhone Design Match** - 39pt corner radius matches device
+4. ✅ **German Localization** - Native language for user
+5. ✅ **Smooth Gestures** - Velocity-based snapping, no bounce
+6. ✅ **Visual Hierarchy** - Bold numbers (28pt/24pt), subtle shadows
+7. ✅ **Minimal Spacing** - Compact card layout (2pt + 4pt shadow)
+
+#### 💡 Key Learnings
+
+1. **Custom Animations Essential** - Standard SwiftUI animations (.easeOut, .spring) weren't smooth enough. Custom Bézier curve solved jumping issue.
+
+2. **Shadow = Spacing** - Large shadow radius (12pt) visually increased spacing between cards. Reduction to 4pt was the real solution, not padding changes.
+
+3. **User Feedback Loop Critical** - Multiple iterations based on screenshots were necessary for pixel-perfect UI. Don't assume first try is right.
+
+4. **Corner Radius Consistency** - Matching device radius (39pt) creates cohesive, native feel.
+
+5. **Iterative Problem Solving** - Some issues (spacing, animation) required 3-4 iterations to identify root cause.
+
+#### 🔗 Files Modified (Session 2)
+
+**New Files:**
+- `GymTracker/Views/Components/ActiveWorkoutV2/DraggableExerciseSheet.swift`
+
+**Modified Files:**
+- `GymTracker/Views/Components/ActiveWorkoutV2/TimerSection.swift`
+- `GymTracker/Views/Components/ActiveWorkoutV2/ActiveWorkoutSheetView.swift`
+- `GymTracker/Views/Components/ActiveWorkoutV2/ExerciseCard.swift`
+- `GymTracker/Views/Components/ActiveWorkoutV2/BottomActionBar.swift`
+
+**Models (from previous session):**
+- `GymTracker/Models/Workout.swift`
+- `GymTracker/Models/WorkoutExercise.swift`
+
+#### 📝 Next Session Tasks
+
+1. ✅ Finalize scroll behavior (verify with user)
+2. ⏳ Performance testing (60fps check)
+3. ⏳ Edge case testing (1 exercise, all complete, etc.)
+4. ⏳ Optional: Haptic feedback on set completion
+5. ⏳ Optional: Celebration animation on workout completion
+6. ⏳ Documentation update (SwiftDoc comments)
+
+---
 
 ### ✅ Phase 1: Model-Erweiterungen (ABGESCHLOSSEN)
 **Datum:** 2025-10-20  

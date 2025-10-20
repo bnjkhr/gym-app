@@ -1,275 +1,237 @@
+//
+//  ActiveExerciseCard.swift
+//  GymTracker
+//
+//  Exercise card for Active Workout View - matches screenshot design
+//
+
 import SwiftUI
 
-/// Übungs-Karte für Active Workout View (v2)
-///
-/// RENAMED from ExerciseCard to ActiveExerciseCard to avoid naming conflict
-/// with the existing ExerciseCard in EditWorkoutView.swift
-///
-/// Eine Karte, die eine komplette Übung mit allen Sets anzeigt.
-/// Kombiniert Header, CompactSetRows, Quick-Add Field und Menu.
-///
-/// **Features:**
-/// - Exercise Header (Name + Equipment + Indicator)
-/// - Alle Sets als CompactSetRows
-/// - Quick-Add Field ("Type anything...")
-/// - Menu (Drei-Punkte) für Optionen
-/// - Swipe-to-delete für Sets (optional)
-///
-/// **Layout:**
-/// ```
-/// ┌─────────────────────────────┐
-/// │ 🔴 Squat            [...]   │ ← Header
-/// │    Barbell                  │
-/// │                             │
-/// │ 1  135 Kg  6 reps  ☐        │ ← Set 1
-/// │ 2  135 Kg  6 reps  ☐        │ ← Set 2
-/// │ 3  135 Kg  7 reps  ☐        │ ← Set 3
-/// │                             │
-/// │ Type anything...            │ ← Quick-Add
-/// └─────────────────────────────┘
-/// ```
-///
-/// **Usage:**
-/// ```swift
-/// ExerciseCard(
-///     exercise: $workout.exercises[0],
-///     exerciseIndex: 0,
-///     onToggleCompletion: { setIndex in
-///         // Handle set completion
-///     },
-///     onQuickAdd: { input in
-///         // Handle quick-add
-///     }
-/// )
-/// ```
 struct ActiveExerciseCard: View {
+    // MARK: - Constants
+
+    private enum Layout {
+        static let cardCornerRadius: CGFloat = 39  // Match iPhone screen radius
+        static let headerPadding: CGFloat = 20
+        static let setPadding: CGFloat = 16
+        static let bottomButtonHeight: CGFloat = 56
+        static let bottomButtonSpacing: CGFloat = 12
+    }
+
+    private enum Typography {
+        static let exerciseNameSize: CGFloat = 24
+        static let equipmentSize: CGFloat = 14
+        static let weightSize: CGFloat = 28
+        static let repsSize: CGFloat = 24
+        static let unitSize: CGFloat = 14
+    }
+
+    // MARK: - Properties
+
     @Binding var exercise: WorkoutExercise
     let exerciseIndex: Int
     var onToggleCompletion: ((Int) -> Void)?
     var onQuickAdd: ((String) -> Void)?
     var onDeleteSet: ((Int) -> Void)?
-    var onMenuAction: (() -> Void)?
+    var onMarkAllComplete: (() -> Void)?
+    var onAddSet: (() -> Void)?
+    var onReorderSets: (() -> Void)?
 
     @State private var quickAddText: String = ""
     @FocusState private var isQuickAddFocused: Bool
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            header
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+    // MARK: - Body
 
-            Divider()
-                .padding(.horizontal, 16)
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            headerView
 
             // Sets
-            ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, _ in
-                CompactSetRow(
-                    set: $exercise.sets[index],
-                    setIndex: index,
-                    onToggleCompletion: {
-                        onToggleCompletion?(index)
-                    }
-                )
-                .padding(.horizontal, 16)
-                .contextMenu {
-                    if onDeleteSet != nil {
-                        Button(role: .destructive) {
-                            onDeleteSet?(index)
-                        } label: {
-                            Label("Satz löschen", systemImage: "trash")
-                        }
-                    }
-                }
+            setsView
 
-                // Divider between sets (not after last)
-                if index < exercise.sets.count - 1 {
-                    Divider()
-                        .padding(.leading, 56)  // Align with set content
-                }
-            }
+            // Quick-Add TextField
+            quickAddView
 
-            // Quick-Add Field
-            if onQuickAdd != nil {
-                Divider()
-                    .padding(.horizontal, 16)
-
-                quickAddField
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-            }
-
-            // Notes Display (if exists)
-            if let notes = exercise.notes, !notes.isEmpty {
-                Divider()
-                    .padding(.horizontal, 16)
-
-                HStack(spacing: 8) {
-                    Image(systemName: "note.text")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
+            // Bottom Action Buttons
+            bottomActionsView
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+        .background(Color.white)
+        .cornerRadius(Layout.cardCornerRadius)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 1)
     }
 
     // MARK: - Header
 
-    private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Indicator (red dot)
-            Circle()
-                .fill(Color.red)
-                .frame(width: 8, height: 8)
-                .padding(.top, 6)
-
-            // Exercise Info
+    private var headerView: some View {
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.exercise.name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.system(size: Typography.exerciseNameSize, weight: .semibold))
+                    .foregroundStyle(.black)
 
                 Text(exercise.exercise.equipmentType.rawValue)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: Typography.equipmentSize))
+                    .foregroundStyle(.gray)
             }
 
             Spacer()
 
-            // Menu Button
+            // Menu button (three dots)
             Menu {
-                Button {
-                    // Add set
-                } label: {
-                    Label("Satz hinzufügen", systemImage: "plus")
+                Button("Add Set") {
+                    onAddSet?()
                 }
-
-                Button {
-                    // View history
-                } label: {
-                    Label("Verlauf anzeigen", systemImage: "clock")
+                Button("View History") {
+                    // TODO
                 }
-
-                Divider()
-
-                Button(role: .destructive) {
-                    onMenuAction?()
-                } label: {
-                    Label("Übung entfernen", systemImage: "trash")
+                Button("Delete Exercise", role: .destructive) {
+                    // TODO
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .padding(.horizontal, Layout.headerPadding)
+        .padding(.top, Layout.headerPadding)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Sets
+
+    private var setsView: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, _ in
+                setRowView(index: index)
+                    .padding(.horizontal, Layout.headerPadding)
+                    .padding(.vertical, 12)
             }
         }
     }
 
-    // MARK: - Quick-Add Field
+    private func setRowView(index: Int) -> some View {
+        HStack(spacing: 16) {
+            // Weight
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(Int(exercise.sets[index].weight))")
+                    .font(.system(size: Typography.weightSize, weight: .bold))
+                    .foregroundStyle(.black)
 
-    private var quickAddField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "text.cursor")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("kg")
+                    .font(.system(size: Typography.unitSize))
+                    .foregroundStyle(.gray)
+            }
+            .frame(minWidth: 90, alignment: .leading)
 
-            TextField("Type anything...", text: $quickAddText)
-                .font(.subheadline)
-                .focused($isQuickAddFocused)
-                .submitLabel(.done)
-                .onSubmit {
-                    handleQuickAdd()
-                }
+            // Reps
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(exercise.sets[index].reps)")
+                    .font(.system(size: Typography.repsSize, weight: .bold))
+                    .foregroundStyle(.black)
 
-            if !quickAddText.isEmpty {
-                Button {
-                    quickAddText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
+                Text("reps")
+                    .font(.system(size: Typography.unitSize))
+                    .foregroundStyle(.gray)
+            }
+            .frame(minWidth: 80, alignment: .leading)
+
+            Spacer()
+
+            // Checkbox
+            Button {
+                onToggleCompletion?(index)
+            } label: {
+                Image(
+                    systemName: exercise.sets[index].completed ? "checkmark.square.fill" : "square"
+                )
+                .font(.system(size: 28))
+                .foregroundStyle(exercise.sets[index].completed ? .black : .gray.opacity(0.3))
             }
         }
+    }
+
+    // MARK: - Quick-Add
+
+    private var quickAddView: some View {
+        TextField("Neuer Satz oder Notiz", text: $quickAddText)
+            .font(.system(size: 16))
+            .foregroundStyle(.gray)
+            .padding(.horizontal, Layout.headerPadding)
+            .padding(.vertical, 16)
+            .focused($isQuickAddFocused)
+            .submitLabel(.done)
+            .onSubmit {
+                handleQuickAdd()
+            }
+    }
+
+    // MARK: - Bottom Actions
+
+    private var bottomActionsView: some View {
+        HStack(spacing: Layout.bottomButtonSpacing) {
+            // Mark all complete
+            Button {
+                onMarkAllComplete?()
+            } label: {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.gray)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Layout.bottomButtonHeight)
+            }
+
+            // Add set
+            Button {
+                onAddSet?()
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Layout.bottomButtonHeight)
+            }
+
+            // Reorder
+            Button {
+                onReorderSets?()
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.gray)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Layout.bottomButtonHeight)
+            }
+        }
+        .padding(.horizontal, Layout.headerPadding)
+        .padding(.bottom, Layout.headerPadding)
     }
 
     // MARK: - Quick-Add Logic
 
     private func handleQuickAdd() {
         guard !quickAddText.isEmpty else { return }
-
-        // Parse input: "100 x 8" or "100x8" → Weight: 100, Reps: 8
-        let trimmed = quickAddText.trimmingCharacters(in: .whitespaces)
-
-        // Try to parse as "weight x reps"
-        if let parsed = parseSetInput(trimmed) {
-            // Valid set format - add new set
-            onQuickAdd?(quickAddText)
-            quickAddText = ""
-            isQuickAddFocused = false
-        } else {
-            // Not a set format - save as note
-            onQuickAdd?(quickAddText)
-            quickAddText = ""
-            isQuickAddFocused = false
-        }
-    }
-
-    /// Parses input like "100 x 8" or "100x8" into (weight, reps)
-    private func parseSetInput(_ input: String) -> (weight: Double, reps: Int)? {
-        // Pattern: number [spaces] x [spaces] number
-        let pattern = #"^\s*(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+)\s*$"#
-
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-            let match = regex.firstMatch(in: input, range: NSRange(input.startIndex..., in: input))
-        else {
-            return nil
-        }
-
-        // Extract weight
-        guard let weightRange = Range(match.range(at: 1), in: input),
-            let weight = Double(input[weightRange])
-        else {
-            return nil
-        }
-
-        // Extract reps
-        guard let repsRange = Range(match.range(at: 2), in: input),
-            let reps = Int(input[repsRange])
-        else {
-            return nil
-        }
-
-        return (weight, reps)
+        onQuickAdd?(quickAddText)
+        quickAddText = ""
+        isQuickAddFocused = false
     }
 }
 
-// MARK: - Previews
+// MARK: - Preview
 
-#Preview("Single Exercise") {
+#Preview {
     @Previewable @State var exercise = WorkoutExercise(
         exercise: Exercise(
-            name: "Squat",
-            muscleGroups: [.legs],
-            equipmentType: .freeWeights
+            name: "Lat Pulldown",
+            muscleGroups: [.back],
+            equipmentType: .cable
         ),
         sets: [
-            ExerciseSet(reps: 6, weight: 135, restTime: 90, completed: true),
-            ExerciseSet(reps: 6, weight: 135, restTime: 90, completed: true),
-            ExerciseSet(reps: 7, weight: 135, restTime: 90, completed: false),
+            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: true),
+            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
+            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
         ]
     )
 
@@ -277,129 +239,21 @@ struct ActiveExerciseCard: View {
         ActiveExerciseCard(
             exercise: $exercise,
             exerciseIndex: 0,
-            onToggleCompletion: { setIndex in
-                exercise.sets[setIndex].completed.toggle()
+            onToggleCompletion: { index in
+                exercise.sets[index].completed.toggle()
             },
             onQuickAdd: { input in
                 print("Quick-Add: \(input)")
             },
-            onDeleteSet: { setIndex in
-                exercise.sets.remove(at: setIndex)
-            }
-        )
-        .padding()
-    }
-    .background(Color(.systemGroupedBackground))
-}
-
-#Preview("With Notes") {
-    @Previewable @State var exercise = WorkoutExercise(
-        exercise: Exercise(
-            name: "Bench Press",
-            muscleGroups: [.chest],
-            equipmentType: .freeWeights
-        ),
-        sets: [
-            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
-            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
-        ],
-        notes: "Felt heavy today, might reduce weight next time"
-    )
-
-    ScrollView {
-        ActiveExerciseCard(
-            exercise: $exercise,
-            exerciseIndex: 0,
-            onToggleCompletion: { setIndex in
-                exercise.sets[setIndex].completed.toggle()
+            onMarkAllComplete: {
+                exercise.sets.indices.forEach { exercise.sets[$0].completed = true }
             },
-            onQuickAdd: { input in
-                print("Quick-Add: \(input)")
-            }
-        )
-        .padding()
-    }
-    .background(Color(.systemGroupedBackground))
-}
-
-#Preview("Multiple Exercises") {
-    @Previewable @State var exercises = [
-        WorkoutExercise(
-            exercise: Exercise(
-                name: "Squat",
-                muscleGroups: [.legs],
-                equipmentType: .freeWeights
-            ),
-            sets: [
-                ExerciseSet(reps: 6, weight: 135, restTime: 90, completed: true),
-                ExerciseSet(reps: 6, weight: 135, restTime: 90, completed: true),
-                ExerciseSet(reps: 7, weight: 135, restTime: 90, completed: false),
-            ]
-        ),
-        WorkoutExercise(
-            exercise: Exercise(
-                name: "Hack Squat",
-                muscleGroups: [.legs],
-                equipmentType: .machine
-            ),
-            sets: [
-                ExerciseSet(reps: 9, weight: 80, restTime: 90, completed: false),
-                ExerciseSet(reps: 8, weight: 80, restTime: 90, completed: false),
-                ExerciseSet(reps: 8, weight: 80, restTime: 90, completed: false),
-            ],
-            restTimeToNext: 180  // 3 minutes to next exercise
-        ),
-    ]
-
-    ScrollView {
-        VStack(spacing: 0) {
-            ForEach(Array(exercises.enumerated()), id: \.element.id) { index, _ in
-                ActiveExerciseCard(
-                    exercise: $exercises[index],
-                    exerciseIndex: index,
-                    onToggleCompletion: { setIndex in
-                        exercises[index].sets[setIndex].completed.toggle()
-                    },
-                    onQuickAdd: { input in
-                        print("Quick-Add for exercise \(index): \(input)")
-                    }
-                )
-                .padding(.horizontal)
-
-                // Separator between exercises
-                if index < exercises.count - 1 {
-                    ExerciseSeparator(
-                        restTime: exercises[index].restTimeToNext,
-                        onAddExercise: {
-                            print("Add exercise after \(index)")
-                        }
-                    )
-                    .padding(.vertical, 8)
-                }
-            }
-        }
-        .padding(.vertical)
-    }
-    .background(Color(.systemGroupedBackground))
-}
-
-#Preview("Empty Sets") {
-    @Previewable @State var exercise = WorkoutExercise(
-        exercise: Exercise(
-            name: "New Exercise",
-            muscleGroups: [.chest],
-            equipmentType: .bodyweight
-        ),
-        sets: []
-    )
-
-    ScrollView {
-        ActiveExerciseCard(
-            exercise: $exercise,
-            exerciseIndex: 0,
-            onToggleCompletion: nil,
-            onQuickAdd: { input in
-                print("Quick-Add: \(input)")
+            onAddSet: {
+                exercise.sets.append(
+                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false))
+            },
+            onReorderSets: {
+                print("Reorder sets")
             }
         )
         .padding()

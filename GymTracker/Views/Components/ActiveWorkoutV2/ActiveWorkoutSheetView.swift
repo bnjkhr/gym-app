@@ -57,6 +57,7 @@ struct ActiveWorkoutSheetView: View {
     @State private var showingMenu = false
     @State private var showingFinishConfirmation = false
     @State private var currentTime = Date()  // For updating workout duration display
+    @State private var exerciseSheetDetent: PresentationDetent = .large
 
     // MARK: - Computed Properties
 
@@ -75,40 +76,62 @@ struct ActiveWorkoutSheetView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            headerView
+        ZStack {
+            // Background Layer: Header + Timer (fixed)
+            VStack(spacing: 0) {
+                // Header
+                headerView
 
-            // Timer Section (conditional - only with active rest)
-            if workoutStore.restTimerStateManager.currentState != nil {
-                TimerSection(
-                    restTimerManager: workoutStore.restTimerStateManager,
-                    workoutDuration: workoutDuration
-                )
-                .transition(.move(edge: .top).combined(with: .opacity))
+                // Timer Section (always visible when active)
+                if workoutStore.restTimerStateManager.currentState != nil {
+                    TimerSection(
+                        restTimerManager: workoutStore.restTimerStateManager,
+                        workoutDuration: workoutDuration
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                } else {
+                    // Black background when no timer
+                    Color.black
+                        .ignoresSafeArea(edges: .top)
+                }
+
+                Spacer()
             }
+            .background(Color.black)
 
-            // Main Content: ScrollView with all exercises
-            ScrollView {
+            // Foreground Layer: Draggable Exercise Sheet
+            DraggableExerciseSheet {
                 VStack(spacing: 0) {
-                    if workout.exercises.isEmpty {
-                        emptyStateView
-                    } else {
-                        exerciseListView
+                    // Exercise List with ScrollViewReader for auto-scroll
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                if workout.exercises.isEmpty {
+                                    emptyStateView
+                                } else {
+                                    exerciseListView
+                                }
+                            }
+                        }
+                        .onChange(of: workout.exercises.map { $0.sets.map { $0.completed } }) {
+                            _, _ in
+                            // Check if last set of current exercise was completed
+                            checkAndScrollToNextExercise(proxy: proxy)
+                        }
                     }
+
+                    // Bottom Action Bar (fixed at bottom of sheet)
+                    BottomActionBar(
+                        onRepeat: handleRepeat,
+                        onAdd: handleAddExercise,
+                        onReorder: handleReorder
+                    )
                 }
             }
-
-            // Bottom Action Bar (fixed)
-            BottomActionBar(
-                onRepeat: handleRepeat,
-                onAdd: handleAddExercise,
-                onReorder: handleReorder
-            )
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.black)
         .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)  // Using custom grabber
         .interactiveDismissDisabled(false)
         .onAppear {
             initializeWorkout()
@@ -130,52 +153,53 @@ struct ActiveWorkoutSheetView: View {
 
     private var headerView: some View {
         HStack {
-            // Back Button
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.title3)
-                    .foregroundStyle(.primary)
+            // Left side: Back button + Menu
+            HStack(spacing: 16) {
+                // Back Button
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                }
+
+                // Menu
+                Menu {
+                    Button("Reorder Exercises") {
+                        handleReorder()
+                    }
+                    Button("Add Exercise") {
+                        handleAddExercise()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                }
             }
 
             Spacer()
 
-            // Progress
-            Text(progressText)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            // Menu
-            Menu {
-                Button("Reorder Exercises") {
-                    handleReorder()
-                }
-                Button("Add Exercise") {
-                    handleAddExercise()
-                }
-                Divider()
-                Button("Finish Workout", role: .destructive) {
-                    showingFinishConfirmation = true
-                }
+            // Right side: Beenden button
+            Button {
+                showingFinishConfirmation = true
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title3)
-                    .foregroundStyle(.primary)
+                Text("Beenden")
+                    .font(.headline)
+                    .foregroundStyle(.white)
             }
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
-        .background(Color(.systemBackground))
+        .background(Color.black)
     }
 
     // MARK: - Exercise List View
 
     private var exerciseListView: some View {
-        ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, _ in
-            VStack(spacing: 0) {
+        LazyVStack(spacing: 8) {
+            ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, _ in
                 ActiveExerciseCard(
                     exercise: $workout.exercises[index],
                     exerciseIndex: index,
@@ -190,21 +214,10 @@ struct ActiveWorkoutSheetView: View {
                     }
                 )
                 .padding(.horizontal)
-                .padding(.top, index == 0 ? 16 : 8)
-
-                // Separator between exercises
-                if index < workout.exercises.count - 1 {
-                    ExerciseSeparator(
-                        restTime: workout.exercises[index].restTimeToNext,
-                        onAddExercise: {
-                            print("Add exercise after \(index)")
-                            // TODO: Implement add exercise
-                        }
-                    )
-                    .padding(.vertical, 8)
-                }
+                .id("exercise_\(index)")  // ID for scrolling
             }
         }
+        .padding(.vertical, 12)
         .padding(.bottom, 80)  // Space for BottomActionBar
     }
 
@@ -377,9 +390,42 @@ struct ActiveWorkoutSheetView: View {
         // TODO: Navigate to completion summary
         // TODO: Save workout to SwiftData
     }
+
+    // MARK: - Auto-Scroll Logic
+
+    private func checkAndScrollToNextExercise(proxy: ScrollViewProxy) {
+        // Find first incomplete exercise
+        for (index, exercise) in workout.exercises.enumerated() {
+            let allSetsCompleted = exercise.sets.allSatisfy { $0.completed }
+
+            if !allSetsCompleted {
+                // This is the first incomplete exercise
+                // Scroll to position it at the top, making the previous exercise scroll OUT
+                withAnimation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.4)) {
+                    proxy.scrollTo("exercise_\(index)", anchor: .top)
+                }
+                return
+            }
+        }
+
+        // All exercises completed - scroll to last one
+        if !workout.exercises.isEmpty {
+            let lastIndex = workout.exercises.count - 1
+            withAnimation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.4)) {
+                proxy.scrollTo("exercise_\(lastIndex)", anchor: .top)
+            }
+        }
+    }
 }
 
 // MARK: - Previews
+
+// Simple mock WorkoutStore for previews
+class MockWorkoutStore: WorkoutStoreCoordinator {
+    override init() {
+        super.init()
+    }
+}
 
 #Preview("Active Workout with Rest Timer") {
     @Previewable @State var workout = Workout(
@@ -389,7 +435,7 @@ struct ActiveWorkoutSheetView: View {
         exercises: [
             WorkoutExercise(
                 exercise: Exercise(
-                    name: "Bench Press",
+                    name: "Bankdrücken",
                     muscleGroups: [.chest],
                     equipmentType: .freeWeights
                 ),
@@ -417,12 +463,23 @@ struct ActiveWorkoutSheetView: View {
     )
 
     // Mock WorkoutStore
-    @Previewable @StateObject var mockStore = WorkoutStoreCoordinator()
+    @Previewable @StateObject var mockStore = MockWorkoutStore()
 
     ActiveWorkoutSheetView(
         workout: $workout,
         workoutStore: mockStore
     )
+    .onAppear {
+        // Start a rest timer for preview
+        mockStore.restTimerStateManager.startRest(
+            for: workout,
+            exercise: 0,
+            set: 1,
+            duration: 90,
+            currentExerciseName: "Bankdrücken",
+            nextExerciseName: "Bankdrücken"
+        )
+    }
 }
 
 #Preview("Active Workout - Empty State") {
@@ -433,7 +490,7 @@ struct ActiveWorkoutSheetView: View {
         exercises: []
     )
 
-    @Previewable @StateObject var mockStore = WorkoutStoreCoordinator()
+    @Previewable @StateObject var mockStore = MockWorkoutStore()
 
     ActiveWorkoutSheetView(
         workout: $workout,
@@ -486,7 +543,7 @@ struct ActiveWorkoutSheetView: View {
         startDate: Date().addingTimeInterval(-600)  // Started 10 mins ago
     )
 
-    @Previewable @StateObject var mockStore = WorkoutStoreCoordinator()
+    @Previewable @StateObject var mockStore = MockWorkoutStore()
 
     ActiveWorkoutSheetView(
         workout: $workout,

@@ -16,6 +16,28 @@ import SwiftUI
 /// - Pagination dots at bottom
 /// - Shows rest timer OR workout duration
 struct TimerSection: View {
+    // MARK: - Constants
+
+    enum Layout {
+        static let timerHeight: CGFloat = 300
+        static let paginationDotSize: CGFloat = 6
+        static let paginationDotSpacing: CGFloat = 6
+        static let paginationBottomPadding: CGFloat = 12
+    }
+
+    enum Typography {
+        static let timerFontSize: CGFloat = 96
+        static let timerFontWeight: Font.Weight = .heavy
+    }
+
+    enum Spacing {
+        static let pageSpacing: CGFloat = 16
+        static let controlBottomPadding: CGFloat = 20
+        static let controlIconSize: CGFloat = 32
+        static let controlSpacing: CGFloat = 40
+        static let controlLabelSpacing: CGFloat = 4
+    }
+
     // MARK: - Dependencies
 
     @ObservedObject var restTimerManager: RestTimerStateManager
@@ -42,22 +64,25 @@ struct TimerSection: View {
                 InsightsPageView()
                     .tag(1)
             }
-            .frame(height: 300)
+            .frame(height: Layout.timerHeight)
             .tabViewStyle(.page(indexDisplayMode: .never))
 
             // Pagination Dots
-            HStack(spacing: 6) {
+            HStack(spacing: Layout.paginationDotSpacing) {
                 Circle()
                     .fill(currentPage == 0 ? .white : .white.opacity(0.3))
-                    .frame(width: 6, height: 6)
+                    .frame(width: Layout.paginationDotSize, height: Layout.paginationDotSize)
 
                 Circle()
                     .fill(currentPage == 1 ? .white : .white.opacity(0.3))
-                    .frame(width: 6, height: 6)
+                    .frame(width: Layout.paginationDotSize, height: Layout.paginationDotSize)
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, Layout.paginationBottomPadding)
         }
-        .background(Color.black)
+        .background(
+            Color.black
+                .ignoresSafeArea(edges: .top)
+        )
         .foregroundStyle(.white)
     }
 }
@@ -69,7 +94,7 @@ struct TimerPageView: View {
     let workoutDuration: TimeInterval
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: TimerSection.Spacing.pageSpacing) {
             Spacer()
 
             // Timer Display
@@ -88,7 +113,7 @@ struct TimerPageView: View {
                 TimerControls(restTimerManager: restTimerManager)
             }
         }
-        .padding(.vertical, 20)
+        .padding(.vertical, TimerSection.Spacing.controlBottomPadding)
     }
 }
 
@@ -106,12 +131,16 @@ struct RestTimerDisplay: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("REST")
+            Text("PAUSE")
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.6))
 
             Text(remainingTime)
-                .font(.system(size: 72, weight: .thin, design: .rounded))
+                .font(
+                    .system(
+                        size: TimerSection.Typography.timerFontSize,
+                        weight: TimerSection.Typography.timerFontWeight)
+                )
                 .monospacedDigit()
         }
     }
@@ -136,7 +165,11 @@ struct WorkoutDurationDisplay: View {
                 .foregroundStyle(.white.opacity(0.6))
 
             Text(formattedDuration)
-                .font(.system(size: 72, weight: .thin, design: .rounded))
+                .font(
+                    .system(
+                        size: TimerSection.Typography.timerFontSize,
+                        weight: TimerSection.Typography.timerFontWeight)
+                )
                 .monospacedDigit()
         }
     }
@@ -148,14 +181,14 @@ struct TimerControls: View {
     @ObservedObject var restTimerManager: RestTimerStateManager
 
     var body: some View {
-        HStack(spacing: 40) {
+        HStack(spacing: TimerSection.Spacing.controlSpacing) {
             // -15s Button
             Button {
                 adjustTimer(by: -15)
             } label: {
-                VStack(spacing: 4) {
+                VStack(spacing: TimerSection.Spacing.controlLabelSpacing) {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: TimerSection.Spacing.controlIconSize))
                     Text("15s")
                         .font(.caption2)
                 }
@@ -166,9 +199,9 @@ struct TimerControls: View {
             Button {
                 skipTimer()
             } label: {
-                VStack(spacing: 4) {
+                VStack(spacing: TimerSection.Spacing.controlLabelSpacing) {
                     Image(systemName: "forward.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: TimerSection.Spacing.controlIconSize))
                     Text("Skip")
                         .font(.caption2)
                 }
@@ -179,16 +212,16 @@ struct TimerControls: View {
             Button {
                 adjustTimer(by: 15)
             } label: {
-                VStack(spacing: 4) {
+                VStack(spacing: TimerSection.Spacing.controlLabelSpacing) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: TimerSection.Spacing.controlIconSize))
                     Text("15s")
                         .font(.caption2)
                 }
             }
             .foregroundStyle(.white.opacity(0.8))
         }
-        .padding(.bottom, 20)
+        .padding(.bottom, TimerSection.Spacing.controlBottomPadding)
     }
 
     // MARK: - Actions
