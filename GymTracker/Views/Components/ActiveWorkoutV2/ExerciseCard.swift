@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Übungs-Karte für Active Workout View (v2)
 ///
+/// RENAMED from ExerciseCard to ActiveExerciseCard to avoid naming conflict
+/// with the existing ExerciseCard in EditWorkoutView.swift
+///
 /// Eine Karte, die eine komplette Übung mit allen Sets anzeigt.
 /// Kombiniert Header, CompactSetRows, Quick-Add Field und Menu.
 ///
@@ -39,7 +42,7 @@ import SwiftUI
 ///     }
 /// )
 /// ```
-struct ExerciseCard: View {
+struct ActiveExerciseCard: View {
     @Binding var exercise: WorkoutExercise
     let exerciseIndex: Int
     var onToggleCompletion: ((Int) -> Void)?
@@ -138,11 +141,9 @@ struct ExerciseCard: View {
                     .font(.headline)
                     .fontWeight(.semibold)
 
-                if let equipment = exercise.exercise.equipmentType {
-                    Text(equipment.rawValue)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(exercise.exercise.equipmentType.rawValue)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -273,7 +274,7 @@ struct ExerciseCard: View {
     )
 
     ScrollView {
-        ExerciseCard(
+        ActiveExerciseCard(
             exercise: $exercise,
             exerciseIndex: 0,
             onToggleCompletion: { setIndex in
@@ -306,7 +307,7 @@ struct ExerciseCard: View {
     )
 
     ScrollView {
-        ExerciseCard(
+        ActiveExerciseCard(
             exercise: $exercise,
             exerciseIndex: 0,
             onToggleCompletion: { setIndex in
@@ -353,7 +354,7 @@ struct ExerciseCard: View {
     ScrollView {
         VStack(spacing: 0) {
             ForEach(Array(exercises.enumerated()), id: \.element.id) { index, _ in
-                ExerciseCard(
+                ActiveExerciseCard(
                     exercise: $exercises[index],
                     exerciseIndex: index,
                     onToggleCompletion: { setIndex in
@@ -393,7 +394,7 @@ struct ExerciseCard: View {
     )
 
     ScrollView {
-        ExerciseCard(
+        ActiveExerciseCard(
             exercise: $exercise,
             exerciseIndex: 0,
             onToggleCompletion: nil,

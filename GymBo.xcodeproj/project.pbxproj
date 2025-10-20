@@ -33,11 +33,14 @@
 		11E7492C2C9E4E1000AB1234 /* WorkoutWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E7492B2C9E4E1000AB1234 /* WorkoutWizardView.swift */; };
 		11E7492E2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E7492D2C9E4E2000AB1234 /* GeneratedWorkoutPreviewView.swift */; };
 		11E749322C9E4E8A00AB1234 /* WizardSelectionStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E749312C9E4E8A00AB1234 /* WizardSelectionStepView.swift */; };
+		2A45436B80E150D5A424E6A6 /* WorkoutAnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6312406B8F6DC60341AA70E1 /* WorkoutAnalyticsService.swift */; };
 		3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */; };
 		3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE6D8614BB1440D7885FF0F32B /* WorkoutActionButton.swift */; };
 		41B84B86BC2B489E6850D0EE /* ExerciseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFC4C44BEB1FED14EC38A3C /* ExerciseCard.swift */; };
+		442E43CD97CC4942004A13E4 /* WorkoutDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB145B88B0CBEFB8A8FA8C8 /* WorkoutDataService.swift */; };
 		4B834F0DABB15B5D2844978A /* CompactSetRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DC84049BBCDB2C34903855F /* CompactSetRow.swift */; };
 		52906B8CBE674C51BA35B01D /* AddFolderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E481BFAB02FB4555AECB6A98 /* AddFolderView.swift */; };
+		5F0540E28B07678F9C1A26CA /* ProfileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E814983A6E7875960AF3D87 /* ProfileService.swift */; };
 		7BEE3022AAB849BC84AE555D /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */; };
 		A950419EB70E6F2D4AA71788 /* BottomActionBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36C4E88894458493E939809 /* BottomActionBar.swift */; };
 		AD03A7812E858AEC0005AE79 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD03A7802E858AEC0005AE79 /* UserProfile.swift */; };
@@ -160,6 +163,7 @@
 		DE8D447AD4E14CC8A668C5E6 /* EditExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1599F04F9E324D7E9982EB6C /* EditExerciseView.swift */; };
 		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
 		EBF64005B296B46CFD7EDE3C /* ExerciseSeparator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA34BF3889CD0BBAB2DD63B /* ExerciseSeparator.swift */; };
+		F523443A8AF5E720BF2EB397 /* WorkoutActionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9A48408B56DB826D2D99EB /* WorkoutActionService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -227,7 +231,11 @@
 		1FFCE41560FA498487D62805 /* SessionActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActionButton.swift; sourceTree = "<group>"; };
 		2DA34BF3889CD0BBAB2DD63B /* ExerciseSeparator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseSeparator.swift; path = GymTracker/Views/Components/ActiveWorkoutV2/ExerciseSeparator.swift; sourceTree = SOURCE_ROOT; };
 		437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
+		4D9A48408B56DB826D2D99EB /* WorkoutActionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutActionService.swift; path = GymTracker/Services/WorkoutActionService.swift; sourceTree = SOURCE_ROOT; };
+		6312406B8F6DC60341AA70E1 /* WorkoutAnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutAnalyticsService.swift; path = GymTracker/Services/WorkoutAnalyticsService.swift; sourceTree = SOURCE_ROOT; };
 		6544C69ED2054EA081190B12 /* WorkoutLiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityController.swift; sourceTree = "<group>"; };
+		7E814983A6E7875960AF3D87 /* ProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileService.swift; path = GymTracker/Services/ProfileService.swift; sourceTree = SOURCE_ROOT; };
+		ACB145B88B0CBEFB8A8FA8C8 /* WorkoutDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutDataService.swift; path = GymTracker/Services/WorkoutDataService.swift; sourceTree = SOURCE_ROOT; };
 		AD03A7802E858AEC0005AE79 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		AD03A7822E858B920005AE79 /* ProfileEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileEditView.swift; sourceTree = "<group>"; };
 		AD03A7842E858BA40005AE79 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -423,6 +431,10 @@
 				D36C4E88894458493E939809 /* BottomActionBar.swift */,
 				BFFC4C44BEB1FED14EC38A3C /* ExerciseCard.swift */,
 				1231478D97507B0159D28FB3 /* TimerSection.swift */,
+				7E814983A6E7875960AF3D87 /* ProfileService.swift */,
+				4D9A48408B56DB826D2D99EB /* WorkoutActionService.swift */,
+				6312406B8F6DC60341AA70E1 /* WorkoutAnalyticsService.swift */,
+				ACB145B88B0CBEFB8A8FA8C8 /* WorkoutDataService.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1014,6 +1026,10 @@
 				A950419EB70E6F2D4AA71788 /* BottomActionBar.swift in Sources */,
 				41B84B86BC2B489E6850D0EE /* ExerciseCard.swift in Sources */,
 				AD0C4C6F8839A52DAB8B0C18 /* TimerSection.swift in Sources */,
+				5F0540E28B07678F9C1A26CA /* ProfileService.swift in Sources */,
+				F523443A8AF5E720BF2EB397 /* WorkoutActionService.swift in Sources */,
+				2A45436B80E150D5A424E6A6 /* WorkoutAnalyticsService.swift in Sources */,
+				442E43CD97CC4942004A13E4 /* WorkoutDataService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
