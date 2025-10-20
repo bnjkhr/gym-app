@@ -63,7 +63,39 @@
 
 ---
 
-### ⏳ Phase 3-8: (AUSSTEHEND)
+### ✅ Phase 3: ExerciseCard (ABGESCHLOSSEN)
+**Datum:** 2025-10-20  
+**Dauer:** ~40 Minuten
+
+**Erstellte Komponente:**
+- ✅ `ExerciseCard.swift` - Vollständige Übungs-Karte mit allen Sets
+
+**Features implementiert:**
+- Exercise Header (Name + Equipment + Indicator)
+- Integration von CompactSetRow für alle Sets
+- Quick-Add Field mit Smart Parser ("100 x 8" → Set oder Notiz)
+- Menu (Drei-Punkte) mit Optionen
+- Notes Display (wenn vorhanden)
+- Context Menu für Set-Löschen
+- Regex-basierter Input Parser
+
+**Parser-Logik:**
+- `"100 x 8"` oder `"100x8"` → Neuer Set (100kg, 8 Reps)
+- `"Felt heavy today"` → Gespeichert als Notiz
+- Unterstützt Dezimalzahlen: `"62.5 x 10"`
+
+**Dateien erstellt:**
+- `GymTracker/Views/Components/ActiveWorkoutV2/ExerciseCard.swift`
+
+**Previews:** 4 verschiedene Szenarien (Single, With Notes, Multiple, Empty)
+
+**Build Status:** ✅ Kompiliert erfolgreich
+
+**Nächster Schritt:** Phase 4 - TimerSection
+
+---
+
+### ⏳ Phase 4-8: (AUSSTEHEND)
 Siehe Implementierungs-Plan unten
 
 ---
