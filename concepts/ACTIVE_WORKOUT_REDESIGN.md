@@ -36,11 +36,32 @@
 
 ---
 
-### ⏳ Phase 2: Basis-Komponenten (AUSSTEHEND)
-Geplante Komponenten:
-- `CompactSetRow.swift`
-- `ExerciseSeparator.swift`
-- `BottomActionBar.swift`
+### ✅ Phase 2: Basis-Komponenten (ABGESCHLOSSEN)
+**Datum:** 2025-10-20  
+**Dauer:** ~30 Minuten
+
+**Erstellte Komponenten:**
+- ✅ `CompactSetRow.swift` - Kompakte Set-Reihe mit inline editing
+- ✅ `ExerciseSeparator.swift` - Separator mit Timer zwischen Übungen
+- ✅ `BottomActionBar.swift` - Fixierte Bottom Bar mit 3 Actions
+
+**Features implementiert:**
+- Inline TextField für Weight/Reps (immer editierbar)
+- Completion Checkbox (ohne großen Button)
+- Rest Time Display zwischen Übungen
+- Prominent Plus-Button in Bottom Bar
+- Alle Komponenten mit SwiftUI Previews
+
+**Dateien erstellt:**
+- `GymTracker/Views/Components/ActiveWorkoutV2/CompactSetRow.swift`
+- `GymTracker/Views/Components/ActiveWorkoutV2/ExerciseSeparator.swift`
+- `GymTracker/Views/Components/ActiveWorkoutV2/BottomActionBar.swift`
+
+**Build Status:** 🔄 Testing...
+
+**Nächster Schritt:** Phase 3 - ExerciseCard
+
+---
 
 ### ⏳ Phase 3-8: (AUSSTEHEND)
 Siehe Implementierungs-Plan unten
@@ -635,18 +656,24 @@ Die neue Architektur ist **so fundamental anders**, dass ein schrittweiser Umbau
 
 ---
 
-### Phase 2: Basis-Komponenten 🧱
+### Phase 2: Basis-Komponenten 🧱 ✅ ABGESCHLOSSEN
 **Ziel:** Kleinste Bausteine ohne Dependencies bauen
 
 **Schritte:**
-1. `CompactSetRow.swift` - Kompakte Set-Reihe
-2. `ExerciseSeparator.swift` - Separator mit Timer
-3. `BottomActionBar.swift` - Fixierte Bottom Bar
-4. Teste Komponenten mit Preview/Dummy-Daten
+1. ✅ `CompactSetRow.swift` - Kompakte Set-Reihe
+2. ✅ `ExerciseSeparator.swift` - Separator mit Timer
+3. ✅ `BottomActionBar.swift` - Fixierte Bottom Bar
+4. ✅ Teste Komponenten mit Preview/Dummy-Daten (3-4 Previews pro Komponente)
 
-**Dauer:** 2-3 Stunden  
+**Dauer:** ~30 Minuten (geplant: 2-3h)  
 **Risiko:** Niedrig  
-**Blocker:** Keine
+**Blocker:** Keine  
+**Status:** ✅ Abgeschlossen am 2025-10-20
+
+**Highlights:**
+- Alle Komponenten mit umfangreichen SwiftUI Previews
+- Keine Dependencies zu anderen Views
+- Bereit für Integration in Phase 3
 
 ---
 
