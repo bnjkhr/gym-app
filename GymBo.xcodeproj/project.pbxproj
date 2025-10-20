@@ -133,6 +133,9 @@
 		ADD4F4902EA4313400E585B2 /* InputValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F48E2EA4313400E585B2 /* InputValidation.swift */; };
 		ADD4F4942EA4314900E585B2 /* AppButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F4912EA4314900E585B2 /* AppButtonStyles.swift */; };
 		ADD4F4952EA4314900E585B2 /* ValidatedTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F4922EA4314900E585B2 /* ValidatedTextField.swift */; };
+		ADD4F4FF2EA502F000E585B2 /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F4FD2EA502F000E585B2 /* TestHelpers.swift */; };
+		ADD4F5002EA502F000E585B2 /* MockModelContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F4FC2EA502F000E585B2 /* MockModelContext.swift */; };
+		ADD4F5012EA502F000E585B2 /* WorkoutDataServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F4FE2EA502F000E585B2 /* WorkoutDataServiceTests.swift */; };
 		ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */; };
 		ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04062E9E52E50080B745 /* DebugMenuView.swift */; };
 		ADE92E9A2E9EC6F00077A45A /* TipEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E972E9EC6F00077A45A /* TipEngine.swift */; };
@@ -313,6 +316,9 @@
 		ADD4F48E2EA4313400E585B2 /* InputValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputValidation.swift; sourceTree = "<group>"; };
 		ADD4F4912EA4314900E585B2 /* AppButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppButtonStyles.swift; sourceTree = "<group>"; };
 		ADD4F4922EA4314900E585B2 /* ValidatedTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValidatedTextField.swift; sourceTree = "<group>"; };
+		ADD4F4FC2EA502F000E585B2 /* MockModelContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockModelContext.swift; sourceTree = "<group>"; };
+		ADD4F4FD2EA502F000E585B2 /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
+		ADD4F4FE2EA502F000E585B2 /* WorkoutDataServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDataServiceTests.swift; sourceTree = "<group>"; };
 		ADDD04062E9E52E50080B745 /* DebugMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugMenuView.swift; sourceTree = "<group>"; };
 		ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		ADE92E972E9EC6F00077A45A /* TipEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipEngine.swift; sourceTree = "<group>"; };
@@ -386,6 +392,7 @@
 				AD363DA32E8C6B770015A34D /* GymBo.entitlements */,
 				ADCACAE72E8BDA210039256B /* GymBo-Info.plist */,
 				11E748EE2C9E4B0F00AB1234 /* GymTracker */,
+				ADFF00122EA8F50E00AB5184 /* Shared */,
 				AD52FEE02E8BCBD40048DF0F /* WorkoutWidgets */,
 				ADB19F6E2E9D8766004BE444 /* GymTrackerTests */,
 				AD52FEDB2E8BCBD40048DF0F /* Frameworks */,
@@ -400,6 +407,7 @@
 				AD59CF982E92E64F004A9D14 /* WorkoutTileCard.swift */,
 				ADF073CF2E92F89200B487B9 /* ExerciseMarkdownParser.swift */,
 				ADB9BB232E9307680077F1D8 /* SampleWorkoutMigrationPlan.swift */,
+				AD7E53562EA69CB60075C645 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -472,8 +480,7 @@
 		};
 		11E748FD2C9E4B5F00AB1234 /* Models */ = {
 			isa = PBXGroup;
-			children = (
-				ADD4F35C2EA3B32C00E585B2 /* MuscleGroup+Extensions.swift */,
+			children = (				ADD4F35C2EA3B32C00E585B2 /* MuscleGroup+Extensions.swift */,
 				ADD4F3442EA2D97A00E585B2 /* ShareableWorkout.swift */,
 				ADD4F3452EA2D97A00E585B2 /* WizardSelectableOption.swift */,
 				ADD4F3462EA2D97A00E585B2 /* WorkoutSelection.swift */,
@@ -506,6 +513,7 @@
 		11E748FF2C9E4B6D00AB1234 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AD452EC52EA6711700AB5184 /* Debug */,
 				ADDD04082E9E52E50080B745 /* Settings */,
 				ADB19F5B2E9D83E9004BE444 /* Overlays */,
 				AD3B0FB92E9848A400015183 /* RecoveryCard.swift */,
@@ -548,8 +556,7 @@
 		};
 		AD2A83C42E942E7500A6ADBE /* Services */ = {
 			isa = PBXGroup;
-			children = (
-				ADAAFBF02E9FE77A002EADAC /* LastUsedMetricsService.swift */,
+			children = (				ADAAFBF02E9FE77A002EADAC /* LastUsedMetricsService.swift */,
 				ADAAFBF12E9FE77A002EADAC /* WorkoutGenerationService.swift */,
 				ADAAFBE82E9FC840002EADAC /* ExerciseRecordService.swift */,
 				ADAAFBE92E9FC840002EADAC /* HealthKitSyncService.swift */,
@@ -604,6 +611,12 @@
 			);
 			path = Managers;
 			sourceTree = "<group>";
+		};		AD452EC52EA6711700AB5184 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Debug;
+			sourceTree = "<group>";
 		};
 		AD52FEDB2E8BCBD40048DF0F /* Frameworks */ = {
 			isa = PBXGroup;
@@ -612,6 +625,13 @@
 				AD52FEDE2E8BCBD40048DF0F /* SwiftUI.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		AD7E53562EA69CB60075C645 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 		ADB19F5B2E9D83E9004BE444 /* Overlays */ = {
@@ -633,6 +653,9 @@
 		ADB19F642E9D85BC004BE444 /* GymTrackerTests */ = {
 			isa = PBXGroup;
 			children = (
+				ADD4F4FC2EA502F000E585B2 /* MockModelContext.swift */,
+				ADD4F4FD2EA502F000E585B2 /* TestHelpers.swift */,
+				ADD4F4FE2EA502F000E585B2 /* WorkoutDataServiceTests.swift */,
 				ADB19F802E9D877C004BE444 /* GymTrackerTests.swift */,
 				ADB19F812E9D877C004BE444 /* RestTimerPersistenceTests.swift */,
 				ADB19F822E9D877C004BE444 /* RestTimerStateManagerTests.swift */,
@@ -686,6 +709,13 @@
 				ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		ADFF00122EA8F50E00AB5184 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -980,6 +1010,9 @@
 				ADB19F852E9D877C004BE444 /* GymTrackerTests.swift in Sources */,
 				ADB19F862E9D877C004BE444 /* TimerEngineTests.swift in Sources */,
 				ADB19F872E9D877C004BE444 /* RestTimerStateManagerTests.swift in Sources */,
+				ADD4F4FF2EA502F000E585B2 /* TestHelpers.swift in Sources */,
+				ADD4F5002EA502F000E585B2 /* MockModelContext.swift in Sources */,
+				ADD4F5012EA502F000E585B2 /* WorkoutDataServiceTests.swift in Sources */,
 				ADB19F882E9D877C004BE444 /* RestTimerPersistenceTests.swift in Sources */,
 				ADB19F892E9D877C004BE444 /* RestTimerStateTests.swift in Sources */,
 			);
@@ -1140,14 +1173,19 @@
 				INFOPLIST_FILE = "GymBo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GymBo;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Diese App benötigt Zugriff auf HealthKit, um deine Trainingsdaten zu lesen und dein Profil zu vervollständigen.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Diese App möchte deine Workouts in HealthKit speichern, um sie mit anderen Health-Apps zu teilen.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Wir benötigen Zugriff auf deine Fotobibliothek, um ein Profilbild auszuwählen.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportsDocumentBrowser = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1181,14 +1219,19 @@
 				INFOPLIST_FILE = "GymBo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GymBo;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Wir benötigen Zugriff auf deine Kamera, um ein Profilbild aufzunehmen.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Diese App benötigt Zugriff auf HealthKit, um deine Trainingsdaten zu lesen und dein Profil zu vervollständigen.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Diese App möchte deine Workouts in HealthKit speichern, um sie mit anderen Health-Apps zu teilen.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Wir benötigen Zugriff auf deine Fotobibliothek, um ein Profilbild auszuwählen.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportsDocumentBrowser = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
