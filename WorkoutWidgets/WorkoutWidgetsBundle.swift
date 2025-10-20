@@ -5,8 +5,8 @@
 //  Created by Ben Kohler on 30.09.25.
 //
 
-import WidgetKit
 import SwiftUI
+import WidgetKit
 
 @main
 struct WorkoutWidgetsBundle: WidgetBundle {
