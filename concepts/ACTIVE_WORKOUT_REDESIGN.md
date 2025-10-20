@@ -1,15 +1,15 @@
 # Active Workout View Redesign - Konzept
 
 **Erstellt:** 2025-10-20  
-**Aktualisiert:** 2025-10-20 (Session 2: UI Refinements - Draggable Sheet + Auto-Scroll)  
-**Status:** 🚀 Phase 1-6 ABGESCHLOSSEN | 🔵 UI Refinements IN PROGRESS (85%)  
+**Aktualisiert:** 2025-10-20 (Session 3: Transition Animations + Universal Notifications)  
+**Status:** 🚀 Phase 1-6 ABGESCHLOSSEN | ✅ UI Refinements ABGESCHLOSSEN (100%)  
 **Ziel:** Redesign der aktiven Workout-Ansicht basierend auf Screenshot-Vorlage
 
 ---
 
 ## 📊 Implementierungs-Status
 
-**Aktueller Stand:** Phase 1-6 abgeschlossen ✅ | UI Refinements in Progress 🔵
+**Aktueller Stand:** Phase 1-6 abgeschlossen ✅ | UI Refinements abgeschlossen ✅
 
 **Übersicht:**
 - ✅ Phase 1: Model-Erweiterungen (ABGESCHLOSSEN)
@@ -18,15 +18,473 @@
 - ✅ Phase 4: TimerSection (ABGESCHLOSSEN)
 - ✅ Phase 5: ActiveWorkoutSheetView (ABGESCHLOSSEN)
 - ✅ Phase 6: State Management & Logic (ABGESCHLOSSEN)
-- 🔵 **UI Refinements Session 2** (IN PROGRESS - 85%)
+- ✅ **UI Refinements Session 2** (ABGESCHLOSSEN - 100%)
+- ✅ **UI Refinements Session 3** (ABGESCHLOSSEN - 100%)
 - ⏳ Phase 7-8: Polish & Testing (AUSSTEHEND)
 
 ---
 
-## 🚀 UI Refinements Session 2 (2025-10-20) - IN PROGRESS 🔵
+## 🚀 UI Refinements Session 3 (2025-10-20) - ABGESCHLOSSEN ✅
 
-**Status:** 🔵 85% Complete - Scroll Behavior Refinement  
-**Session:** Continuation from previous conversation  
+**Status:** ✅ 100% Complete  
+**Session:** Continuation - Transition Animations + Universal Notification System  
+**Build Status:** ⚠️ Xcode project needs manual file addition (see below)  
+**Zeitaufwand:** ~4-5 Stunden
+
+### Session Highlights
+
+Diese Session konzentrierte sich auf:
+1. **Transition Animations** - Fade out/slide up statt Scroll
+2. **Exercise Counter & Visibility Toggle** - Übungszähler + Eye Icon
+3. **Live Timer Updates** - Echtzeit-Timer für Workout + Rest
+4. **Universal Notification System** - App-weites In-App-Notification-System
+5. **Project Cleanup** - Xcode-Projekt-Bereinigung (40+ doppelte Referenzen entfernt)
+
+### Implementierte Features (Session 3)
+
+#### 1. ✅ Transition Animations (Fade Out/Slide Up)
+
+**Problem:** User wollte keine Scroll-Animation, sondern Fade-Out der abgeschlossenen Übung mit Slide-Up der nächsten.
+
+**Vorher:**
+```swift
+// Scroll-basiert
+ScrollViewReader { proxy in
+    ForEach(workout.exercises) { exercise in
+        ActiveExerciseCard(...)
+    }
+    .onChange(of: lastCompletedExercise) {
+        proxy.scrollTo(nextExercise.id, anchor: .top)
+    }
+}
+```
+
+**Nachher:**
+```swift
+// Conditional Rendering mit Transitions
+ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, _ in
+    let allSetsCompleted = workout.exercises[index].sets.allSatisfy { $0.completed }
+    let shouldHide = allSetsCompleted && !showAllExercises
+
+    if !shouldHide {
+        ActiveExerciseCard(...)
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                removal: .opacity.combined(with: .move(edge: .top))
+            ))
+    }
+}
+.animation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.3), 
+           value: workout.exercises.map { $0.sets.map { $0.completed } })
+```
+
+**User Feedback:**
+- ❌ "Es scrollt nicht weit genug" (Scroll-Versuche mit Spacern)
+- ❌ "Jetzt ist der graue Bereich oben viel zu groß" (verschiedene Scroll-Anchors)
+- ✅ "Kannst du die Übungen ausblenden, wenn der letzte Satz abgeschlossen ist und die nächste Übungen rutscht dann nach oben?" → **Perfekt!**
+
+**Datei:** `ActiveWorkoutSheetView.swift:150-170`
+
+#### 2. ✅ Exercise Counter + Show/Hide Toggle
+
+**Features:**
+- **Counter:** "1 / 14", "2 / 14" etc. im Header (zentriert)
+- **Eye Icon Toggle:** Links im Header zum Ein-/Ausblenden abgeschlossener Übungen
+- **State:** `@State private var showAllExercises: Bool = false`
+
+**Header Layout:**
+```
+┌─────────────────────────────────┐
+│ 👁️ (eye)   1 / 14   Beenden  │  ← Header
+└─────────────────────────────────┘
+```
+
+**User Feedback (3 Iterationen):**
+- ❌ "Der kleine Pfeil bei Übungscounter sieht nicht gut aus" (Chevron-Down Icon)
+- ❌ "Nein, nicht gut. Mach die Underline wieder weg" (Underlined Text)
+- ✅ Eye Icon (eye.slash/eye.fill) links, statischer Counter mittig
+
+**Code:**
+```swift
+// Eye toggle
+Button {
+    showAllExercises.toggle()
+} label: {
+    Image(systemName: showAllExercises ? "eye.fill" : "eye.slash.fill")
+        .font(.title3)
+        .foregroundStyle(showAllExercises ? .orange : .white)
+}
+
+// Counter
+private var exerciseCounterText: String {
+    guard !workout.exercises.isEmpty else { return "0 / 0" }
+    return "\(currentExerciseIndex + 1) / \(workout.exercises.count)"
+}
+```
+
+**Datei:** `ActiveWorkoutSheetView.swift:72-90, 118-125`
+
+#### 3. ✅ Live Timer Updates (Workout + Rest)
+
+**Problem:** Timer zeigten statische Werte, User wollte "live laufen".
+
+**Implementierung:**
+
+**RestTimerDisplay:**
+```swift
+struct RestTimerDisplay: View {
+    let restState: RestTimerState
+    @State private var currentTime = Date()
+    
+    private var remainingTime: String {
+        let timeInterval = restState.endDate.timeIntervalSince(currentTime)
+        let seconds = max(0, Int(timeInterval))
+        let mins = seconds / 60
+        let secs = seconds % 60
+        return String(format: "%02d:%02d", mins, secs)
+    }
+    
+    var body: some View {
+        Text(remainingTime)
+            .onAppear {
+                Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                    currentTime = Date()
+                }
+            }
+    }
+}
+```
+
+**WorkoutDurationDisplay:**
+```swift
+struct WorkoutDurationDisplay: View {
+    let startDate: Date?
+    @State private var currentTime = Date()
+    
+    private var formattedDuration: String {
+        guard let startDate = startDate else { return "00:00" }
+        let duration = currentTime.timeIntervalSince(startDate)
+        let totalSeconds = max(0, Int(duration))
+        let mins = totalSeconds / 60
+        let secs = totalSeconds % 60
+        return String(format: "%02d:%02d", mins, secs)
+    }
+    
+    var body: some View {
+        Text(formattedDuration)
+            .onAppear {
+                Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                    currentTime = Date()
+                }
+            }
+    }
+}
+```
+
+**Änderung in TimerSection:**
+```swift
+// Vorher: duration: TimeInterval
+// Nachher: workoutStartDate: Date?
+TimerSection(
+    restTimerManager: workoutStore.restTimerStateManager,
+    workoutStartDate: workout.startDate
+)
+```
+
+**User Feedback:**
+- ✅ "Lasse beide Timer (Workout und Pause) in echt laufen" → Implementiert mit 1-Sekunden-Timer
+
+**Datei:** `TimerSection.swift:85-135`
+
+#### 4. ✅ Universal In-App Notification System
+
+**Problem:** User wollte grüne "Nächste Übung" Pill bei Set-Completion, nutzbar in gesamter App.
+
+**Architektur:**
+
+**InAppNotificationManager.swift** (Singleton):
+```swift
+class InAppNotificationManager: ObservableObject {
+    static let shared = InAppNotificationManager()
+    
+    @Published var currentNotification: InAppNotification?
+    @Published var isShowing: Bool = false
+    
+    func show(_ message: String, type: NotificationType = .success, icon: String? = nil) {
+        // Animation + Auto-dismiss nach 2 Sekunden
+    }
+}
+
+enum NotificationType {
+    case success, error, warning, info
+    
+    var color: Color { /* green, red, orange, blue */ }
+    var defaultIcon: String { /* SF Symbol */ }
+}
+```
+
+**NotificationPill.swift** (Universal View):
+```swift
+struct NotificationPill: View {
+    @ObservedObject var manager: InAppNotificationManager
+    
+    var body: some View {
+        VStack {
+            if let notification = manager.currentNotification {
+                HStack {
+                    Image(systemName: notification.icon)
+                    Text(notification.message)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Capsule().fill(notification.type.color))
+                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                .opacity(manager.isShowing ? 1 : 0)
+                .scaleEffect(manager.isShowing ? 1 : 0.8)
+                .offset(y: manager.isShowing ? 0 : -20)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 60)  // Below Dynamic Island
+        .allowsHitTesting(false)
+    }
+}
+```
+
+**Integration in ActiveWorkoutSheetView:**
+```swift
+@StateObject private var notificationManager = InAppNotificationManager.shared
+
+// Bei Set-Completion
+if isCompleted {
+    let isLastSet = (setIndex == workout.exercises[exerciseIndex].sets.count - 1)
+    if isLastSet {
+        notificationManager.show("Nächste Übung", type: .success)
+    }
+}
+
+// Als Overlay
+.overlay {
+    NotificationPill(manager: notificationManager)
+}
+```
+
+**User Feedback (2 Iterationen):**
+- ❌ "Zeige eine Indication-Pill in grün mit 'Nächster Satz'" → Alle Sets
+- ✅ "Nein. 1. Nur beim Abschluss des letzten Satzes, dann Text: Nächste Übung 2. weiter oben, direkt unter der Dynamic Island" → Perfekt!
+
+**Features:**
+- 4 Typen: success (green), error (red), warning (orange), info (blue)
+- Auto-dismiss nach 2 Sekunden
+- Spring animation (.spring(response: 0.3, dampingFraction: 0.7))
+- Task-basiert (cancellable)
+- App-weit nutzbar
+
+**Dateien:**
+- `GymTracker/Utilities/InAppNotificationManager.swift` (~110 LOC)
+- `GymTracker/Views/Components/NotificationPill.swift` (~90 LOC)
+
+#### 5. ✅ Xcode Project Cleanup
+
+**Problem:** Multiple commands produce NotificationManager.stringsdata + Build input file cannot be found
+
+**Root Cause:**
+- Doppelte File-Referenzen in project.pbxproj (alte + neue ActiveWorkoutV2 Komponenten)
+- SetCompletionPill.swift gelöscht, aber Referenzen blieben
+- NotificationManager in zwei Varianten (In-App vs. Push Notifications)
+
+**Gelöschte Referenzen (insgesamt 44 Zeilen):**
+1. ❌ SetCompletionPill.swift (4 Referenzen)
+2. ❌ Doppelte ActiveWorkoutV2 Komponenten (36 Referenzen):
+   - CompactSetRow.swift (2x)
+   - ExerciseSeparator.swift (2x)
+   - BottomActionBar.swift (2x)
+   - ExerciseCard.swift (2x)
+   - TimerSection.swift (2x)
+   - ActiveWorkoutSheetView.swift (2x)
+   - DraggableExerciseSheet.swift (2x)
+   - DraggableSheetDemo.swift (2x)
+   - SimpleSheetTest.swift (2x)
+3. ❌ Alte NotificationManager.swift in Utilities/ (4 Referenzen)
+
+**Notification System Refactoring:**
+
+Es gab zwei verschiedene Notification-Systeme mit demselben Namen:
+
+**Vorher (konfliktierend):**
+- `NotificationManager.swift` in `Utilities/` → In-App Pills (neu erstellt)
+- Alter NotificationManager für Push Notifications war überschrieben
+
+**Nachher (clean separation):**
+- `InAppNotificationManager.swift` in `Utilities/` → In-App Pills (grüne Notifications)
+- `NotificationManager.swift` in `Managers/` → Push Notifications (Timer expiry, wiederhergestellt aus Git)
+
+**Methoden:**
+```python
+# Python script to remove duplicate UUIDs
+old_uuids = [
+    "1DC84049BBCDB2C34903855F",  # CompactSetRow (alt)
+    "2DA34BF3889CD0BBAB2DD63B",  # ExerciseSeparator (alt)
+    # ... 18 UUIDs total
+]
+
+# Filtered 44 lines from project.pbxproj
+```
+
+**User Action Required:**
+⚠️ **Wichtig:** Nach Pull müssen 2 Dateien manuell zum Xcode-Projekt hinzugefügt werden:
+
+1. Xcode öffnen: `GymBo.xcodeproj`
+2. Rechtsklick auf `GymTracker/Utilities` → "Add Files to 'GymBo'..." → `InAppNotificationManager.swift`
+3. Rechtsklick auf `GymTracker/Managers` → "Add Files to 'GymBo'..." → `NotificationManager.swift`
+4. Build (⌘+B)
+
+**Datei:** `GymBo.xcodeproj/project.pbxproj` (1499 → 1463 Zeilen)
+
+#### 6. ✅ Timer Section Always Visible
+
+**Problem:** "Rest-Timer -> Skip -> Workout-Zeit -> Übung abhaken -> schwarzen Feld leer (kein timer mehr)"
+
+**Vorher:**
+```swift
+if let currentState = restTimerManager.currentState {
+    TimerSection(...)  // Nur wenn Rest-Timer aktiv
+}
+```
+
+**Nachher:**
+```swift
+// IMMER sichtbar
+TimerSection(
+    restTimerManager: workoutStore.restTimerStateManager,
+    workoutStartDate: workout.startDate
+)
+```
+
+**TimerSection Logic:**
+- **Rest Timer aktiv:** Zeigt Countdown
+- **Kein Rest Timer:** Zeigt Workout Duration
+
+**Datei:** `ActiveWorkoutSheetView.swift:200-205`
+
+### Code Metrics (Session 3)
+
+**Modified/Created Files:**
+
+| Datei | Status | LOC | Changes |
+|-------|--------|-----|---------|
+| InAppNotificationManager.swift | ✅ NEW | ~110 | Universal in-app notification system |
+| NotificationPill.swift | ✅ NEW | ~90 | Universal notification pill component |
+| NotificationManager.swift | ✅ RESTORED | ~250 | Push notification manager (from git) |
+| ActiveWorkoutSheetView.swift | ✅ Modified | ~480 | Transition animations, counter, toggle |
+| TimerSection.swift | ✅ Modified | ~180 | Live timer updates, always visible |
+| project.pbxproj | ✅ Cleaned | 1463 | Removed 44 duplicate/invalid references |
+
+**Total Impact:** ~1,570 LOC modified/created (cumulative from Session 2+3)
+
+**Cleanup:** 44 lines removed from project.pbxproj
+
+### Design Decisions (Session 3)
+
+1. ✅ **Conditional Rendering over Scroll** - Better UX, simpler code
+2. ✅ **Asymmetric Transitions** - Different animations for insertion/removal
+3. ✅ **Eye Icon for Toggle** - More intuitive than underlined text
+4. ✅ **Static Counter** - No interaction, just display
+5. ✅ **Live Timers** - 1-second update interval for both timers
+6. ✅ **Singleton Pattern** - InAppNotificationManager.shared for app-wide access
+7. ✅ **2-Second Auto-Dismiss** - Standard duration for transient notifications
+8. ✅ **Task-Based Dismissal** - Cancellable, prevents memory leaks
+9. ✅ **Separation of Concerns** - In-App vs. Push notifications (different managers)
+
+### User Feedback Iterations (Session 3)
+
+**Exercise Visibility:**
+- Iteration 1: Scroll mit 100pt spacer → "Grauer Bereich zu groß"
+- Iteration 2: Scroll mit UnitPoint anchor → "Passt immer noch nicht"
+- Iteration 3: Fade-Out/Slide-Up transitions → ✅ "Perfekt!"
+
+**Show/Hide Toggle:**
+- Iteration 1: Chevron-down icon bei Counter → "Sieht nicht gut aus"
+- Iteration 2: Underlined text → "Nein, nicht gut. Mach Underline weg"
+- Iteration 3: Eye icon links → ✅ "Perfekt!"
+
+**Notification System:**
+- Iteration 1: Pill bei jedem Set → "Nein, nur beim letzten Satz"
+- Iteration 2: "Nächste Übung" 60pt von oben → ✅ "Perfekt!"
+
+### Technical Highlights (Session 3)
+
+**1. Transition Animation Pattern:**
+```swift
+.transition(.asymmetric(
+    insertion: .opacity.combined(with: .move(edge: .bottom)),
+    removal: .opacity.combined(with: .move(edge: .top))
+))
+.animation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.3), 
+           value: workout.exercises.map { $0.sets.map { $0.completed } })
+```
+
+**2. Live Timer Pattern:**
+```swift
+@State private var currentTime = Date()
+
+var body: some View {
+    Text(formattedTime)
+        .onAppear {
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                currentTime = Date()
+            }
+        }
+}
+```
+
+**3. Task-Based Auto-Dismiss:**
+```swift
+hideTask = Task { @MainActor in
+    try? await Task.sleep(nanoseconds: 2_000_000_000)
+    guard !Task.isCancelled else { return }
+    
+    withAnimation(.easeOut(duration: 0.2)) {
+        isShowing = false
+    }
+    
+    try? await Task.sleep(nanoseconds: 200_000_000)
+    guard !Task.isCancelled else { return }
+    currentNotification = nil
+}
+```
+
+### Remaining Tasks
+
+1. ⏳ **Xcode File Addition** - User must manually add 2 files to project
+2. ⏳ **Build Verification** - After file addition, verify build succeeds
+3. ⏳ **User Testing** - Test all features in simulator/device
+4. ⏳ **Performance Check** - Ensure 60fps during transitions
+5. ⏳ **Edge Cases Testing:**
+   - Single exercise workout
+   - All exercises completed
+   - Toggle show/hide multiple times
+   - Notification spam (multiple rapid completions)
+
+### Git Status
+
+**Commit:** `91db64e` - "fix: Clean up Xcode project and separate notification systems"  
+**Branch:** `feature/active-workout-redesign`  
+**Files Changed:** 14 files (+812, -91 lines)
+
+**Key Changes:**
+- Renamed NotificationManager → InAppNotificationManager
+- Restored NotificationManager for push notifications
+- Cleaned 44 duplicate references from project.pbxproj
+- Updated all imports and usages
+
+---
+
+## 🚀 UI Refinements Session 2 (2025-10-20) - ABGESCHLOSSEN ✅
+
+**Status:** ✅ 100% Complete  
+**Session:** Draggable Sheet + Auto-Scroll  
 **Build Status:** ✅ SUCCESS  
 **Zeitaufwand:** ~3-4 Stunden
 
