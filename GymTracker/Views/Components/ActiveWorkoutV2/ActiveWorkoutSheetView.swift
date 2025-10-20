@@ -90,18 +90,11 @@ struct ActiveWorkoutSheetView: View {
                 // Header
                 headerView
 
-                // Timer Section (always visible when active)
-                if workoutStore.restTimerStateManager.currentState != nil {
-                    TimerSection(
-                        restTimerManager: workoutStore.restTimerStateManager,
-                        workoutDuration: workoutDuration
-                    )
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                } else {
-                    // Black background when no timer
-                    Color.black
-                        .ignoresSafeArea(edges: .top)
-                }
+                // Timer Section (ALWAYS visible - shows rest timer OR workout duration)
+                TimerSection(
+                    restTimerManager: workoutStore.restTimerStateManager,
+                    workoutDuration: workoutDuration
+                )
 
                 Spacer()
             }
