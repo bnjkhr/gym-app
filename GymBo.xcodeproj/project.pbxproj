@@ -164,6 +164,7 @@
 		E4D07EFB1F324BFA98499F7F /* SessionActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFCE41560FA498487D62805 /* SessionActionButton.swift */; };
 		EBF64005B296B46CFD7EDE3C /* ExerciseSeparator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA34BF3889CD0BBAB2DD63B /* ExerciseSeparator.swift */; };
 		F523443A8AF5E720BF2EB397 /* WorkoutActionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9A48408B56DB826D2D99EB /* WorkoutActionService.swift */; };
+		F8824736B32FB69F4CDA36D2 /* ActiveWorkoutSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C824F989C760A4F944055EF /* ActiveWorkoutSheetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -230,6 +231,7 @@
 		1DC84049BBCDB2C34903855F /* CompactSetRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CompactSetRow.swift; path = GymTracker/Views/Components/ActiveWorkoutV2/CompactSetRow.swift; sourceTree = SOURCE_ROOT; };
 		1FFCE41560FA498487D62805 /* SessionActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActionButton.swift; sourceTree = "<group>"; };
 		2DA34BF3889CD0BBAB2DD63B /* ExerciseSeparator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseSeparator.swift; path = GymTracker/Views/Components/ActiveWorkoutV2/ExerciseSeparator.swift; sourceTree = SOURCE_ROOT; };
+		3C824F989C760A4F944055EF /* ActiveWorkoutSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActiveWorkoutSheetView.swift; path = GymTracker/Views/Components/ActiveWorkoutV2/ActiveWorkoutSheetView.swift; sourceTree = SOURCE_ROOT; };
 		437AAE525E254351A9FB4A60571D1D51 /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
 		4D9A48408B56DB826D2D99EB /* WorkoutActionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutActionService.swift; path = GymTracker/Services/WorkoutActionService.swift; sourceTree = SOURCE_ROOT; };
 		6312406B8F6DC60341AA70E1 /* WorkoutAnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutAnalyticsService.swift; path = GymTracker/Services/WorkoutAnalyticsService.swift; sourceTree = SOURCE_ROOT; };
@@ -435,6 +437,7 @@
 				4D9A48408B56DB826D2D99EB /* WorkoutActionService.swift */,
 				6312406B8F6DC60341AA70E1 /* WorkoutAnalyticsService.swift */,
 				ACB145B88B0CBEFB8A8FA8C8 /* WorkoutDataService.swift */,
+				3C824F989C760A4F944055EF /* ActiveWorkoutSheetView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1030,6 +1033,7 @@
 				F523443A8AF5E720BF2EB397 /* WorkoutActionService.swift in Sources */,
 				2A45436B80E150D5A424E6A6 /* WorkoutAnalyticsService.swift in Sources */,
 				442E43CD97CC4942004A13E4 /* WorkoutDataService.swift in Sources */,
+				F8824736B32FB69F4CDA36D2 /* ActiveWorkoutSheetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

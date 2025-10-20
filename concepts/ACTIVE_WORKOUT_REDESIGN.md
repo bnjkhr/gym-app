@@ -132,7 +132,63 @@
 
 ---
 
-### ⏳ Phase 5-8: (AUSSTEHEND)
+### 📄 Phase 5: ActiveWorkoutSheetView ✅
+
+**Status:** ABGESCHLOSSEN
+
+**Komponente erstellt:**
+- `ActiveWorkoutSheetView.swift` - Haupt-Container als Modal Sheet
+
+**Features:**
+- Modal Sheet Presentation (`.sheet` modifier)
+- Drag-to-dismiss mit Grabber (`.presentationDragIndicator`)
+- Header mit Back, Menu (Ellipsis), Progress, Finish
+- Conditional TimerSection (nur bei aktivem Rest Timer)
+- ScrollView mit allen Übungen (kein TabView!)
+- Fixed BottomActionBar
+- Empty State für Workouts ohne Übungen
+
+**Architektur:**
+- VStack Layout: Header → Timer (conditional) → ScrollView → BottomBar
+- Integration aller Phase 2-4 Komponenten:
+  - ActiveExerciseCard für jede Übung
+  - ExerciseSeparator zwischen Übungen
+  - TimerSection oben (conditional)
+  - BottomActionBar unten (fixed)
+
+**Interaktionen implementiert:**
+- Set Completion → Rest Timer Start
+- Quick-Add Handling (vorbereitet)
+- Set Delete
+- Finish Workout mit Confirmation Dialog
+- Menu Actions (Add, Reorder, Finish)
+
+**State Management:**
+- Progress Tracking (completed / total sets)
+- Workout Duration (from startDate)
+- Rest Timer Integration (@ObservedObject)
+
+**Previews:** 3 Szenarien
+- Mit aktiven Sets (Rest Timer möglich)
+- Empty State (keine Übungen)
+- Multiple Exercises (Full Body)
+
+**TODOs für Phase 6:**
+- SwiftData Persistence implementieren
+- Add Exercise Flow einbauen
+- Reorder Sheet Integration
+- Repeat Workout Logik
+- Navigation zu Completion Summary
+
+**Build Status:** ✅ Kompiliert erfolgreich (1 Warning behoben)
+
+**Zeit:** ~30min (est. 2-3h) 🚀
+
+**Nächster Schritt:** Phase 6 - State Management & Logic
+
+---
+
+### ⏳ Phase 6-8: (AUSSTEHEND)
 Siehe Implementierungs-Plan unten
 
 ---
