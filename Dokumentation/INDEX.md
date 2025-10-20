@@ -2,380 +2,91 @@
 
 Alle technischen Dokumentationen für das GymBo (GymTracker) Projekt.
 
-**Letzte Aktualisierung:** 18. Oktober 2025
+**Letzte Aktualisierung:** 20. Oktober 2025
 
 ---
 
-## 📁 Dokumentationsstruktur
+## 📁 Aktive Dokumentation
 
-```
-Dokumentation/
-├── INDEX.md                                    ← Diese Datei
-├── Core Documentation/                         ← Kern-Dokumentation
-├── Architecture & Planning/                    ← Architektur & Planung
-├── Technical Guides/                           ← Technische Anleitungen
-├── Phase Summaries/                            ← Phasen-Zusammenfassungen
-├── System Documentation/                       ← System-Dokumentation
-├── Xcode Integration/                          ← Xcode-Integration
-└── Concept Documents/                          ← Konzept-Dokumente
-```
+### 🎯 Core Documentation
 
----
+| Dokument | Beschreibung | Zielgruppe |
+|----------|--------------|------------|
+| [CLAUDE.md](CLAUDE.md) | AI Assistant Guide - Projekt-Übersicht, Tech Stack, Architektur | AI Assistants, Entwickler |
+| [DOCUMENTATION.md](DOCUMENTATION.md) | Vollständige technische Dokumentation aller Komponenten | Entwickler, Team |
+| [CODE_REVIEW_REPORT.md](CODE_REVIEW_REPORT.md) | Code-Review Findings (Rating: B+, 83/100) - Kritische Issues & Action Plan | Entwickler, Tech Lead |
+| [README.md](README.md) | Projekt-README und Quick Start Guide | Alle |
+| **[INDEX.md](INDEX.md)** | **Dieser Dokumentations-Index** | Alle |
 
-## 📚 Core Documentation
+### 📊 Progress & Planning
 
-### [CLAUDE.md](CLAUDE.md)
-**Zweck:** Leitfaden für Claude Code AI Assistant beim Arbeiten mit dieser Codebase
-**Zielgruppe:** AI Assistants, Entwickler
-**Inhalt:**
-- Projekt-Übersicht & Tech Stack
-- Build & Development Commands
-- Architektur-Übersicht (MVVM + SwiftUI Hybrid)
-- Projekt-Struktur & Key Components
-- Entwicklungspatterns & Conventions
-- Testing Guidelines
-- Common Gotchas
+| Dokument | Beschreibung | Status |
+|----------|--------------|--------|
+| [PROGRESS.md](PROGRESS.md) | Live Progress Tracking - Phasen, Metriken, Tasks | ✅ Aktuell |
+| [MODULARIZATION_PLAN.md](MODULARIZATION_PLAN.md) | Refactoring-Plan (Phase 1-6, 13-14 Wochen) | ✅ Phasen 1-3 abgeschlossen |
+| [WORKOUTSTORE_MODULARISIERUNG.md](WORKOUTSTORE_MODULARISIERUNG.md) | WorkoutStore Modularisierungs-Plan & Status | ✅ Phase 1 & 2 abgeschlossen |
+| [TEST_COVERAGE_PLAN.md](TEST_COVERAGE_PLAN.md) | Test-Strategie (Ziel: 60-70% Coverage, 3 Phasen) | 🔵 In Arbeit |
 
-### [DOCUMENTATION.md](DOCUMENTATION.md)
-**Zweck:** Vollständige technische Dokumentation
-**Zielgruppe:** Entwickler, neue Team-Mitglieder
-**Inhalt:**
-- Detaillierte Architektur-Beschreibung
-- Alle Views, Services, Managers
-- SwiftData Schema
-- HealthKit Integration
-- Live Activities
-- Notifications System
+### 🧪 Testing & Quality
 
-### [CODE_REVIEW_REPORT.md](CODE_REVIEW_REPORT.md)
-**Zweck:** Umfassender Code-Review Bericht mit Findings & Empfehlungen
-**Zielgruppe:** Entwickler, Tech Lead
-**Inhalt:**
-- Executive Summary (Bewertung: B+, 83/100)
-- 17 Kapitel mit detaillierten Analysen
-- 20 konkrete Probleme mit Code-Beispielen
-- Priorisierte Empfehlungen (Kritisch/Wichtig/Nice-to-Have)
-- 3-Monats Action Plan
-- Metriken & Benchmarks
-- **KRITISCH:** Test-Coverage <5%, WorkoutStore 2177 Zeilen
-**Erstellt:** 18. Oktober 2025
+| Dokument | Beschreibung | Status |
+|----------|--------------|--------|
+| [TEST_INFRASTRUCTURE_STATUS.md](TEST_INFRASTRUCTURE_STATUS.md) | Test-Infrastructure Status & Blocker | ✅ Infrastruktur komplett |
+| [TEST_SESSION_DAY2_SUMMARY.md](TEST_SESSION_DAY2_SUMMARY.md) | Test Session Day 2 Summary | 🆕 Neu |
 
-### [PROGRESS.md](PROGRESS.md)
-**Zweck:** Live Progress Tracking über alle Refactoring-Phasen
-**Zielgruppe:** Team, Stakeholder
-**Inhalt:**
-- Phasen-Status (Phase 1-6 Completed)
-- Zeitschätzungen vs. Actual
-- Completed Features
-- Known Issues
-- Next Steps
+### 🗄️ System Documentation
 
-### [BUGFIXES.md](BUGFIXES.md)
-**Zweck:** Dokumentation aller behobenen Bugs während Refactoring
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Bug-Beschreibungen
-- Root Cause Analysis
-- Fixes
-- Prevention Strategies
+| Dokument | Beschreibung | Zielgruppe |
+|----------|--------------|------------|
+| [DATABASE_VERSION_CONTROL.md](DATABASE_VERSION_CONTROL.md) | SwiftData Migration System - Version Control & Rollback | Entwickler |
+| [SECURITY.md](SECURITY.md) | Security Best Practices - HealthKit, Keychain, API | Entwickler, Security |
+
+### 💡 Active Concepts
+
+| Dokument | Beschreibung | Status |
+|----------|--------------|--------|
+| [INDICATION_PILL_KONZEPT.md](INDICATION_PILL_KONZEPT.md) | UI-Konzept für Indication Pills | 🆕 Untracked |
 
 ---
 
-## 🏗️ Architecture & Planning
+## 📦 Archiv
 
-### [MODULARIZATION_PLAN.md](MODULARIZATION_PLAN.md)
-**Zweck:** Vollständiger Refactoring-Plan (Phase 1-6, 13-14 Wochen)
-**Zielgruppe:** Tech Lead, Entwickler
-**Inhalt:**
-- Phase 1: Rest Timer System (✅ Completed)
-- Phase 2: Coordinator Pattern (✅ Completed)
-- Phase 3: Views Modularization (✅ Completed)
-- Phase 4: Notifications (✅ Completed)
-- Phase 5: Integration (✅ Completed)
-- Phase 6: Settings & Debug (✅ Completed)
-- Phases 7-9: Planned
+Ältere Dokumentationen, die für Referenzzwecke aufbewahrt werden:
 
-### [PHASE_2_PLAN.md](PHASE_2_PLAN.md)
-**Zweck:** Detaillierter Plan für Phase 2 - Coordinator Pattern
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- 9 Coordinators (Profile, Exercise, Workout, Session, Records, Analytics, HealthKit, RestTimer, WorkoutStore)
-- 35-45h Zeitschätzung
-- Task Breakdown
-- Dependencies
+### [Archive/AlarmKit/](Archive/README.md)
+- AlarmKit POC Dokumentation (Migration abgebrochen)
+- 12 Dateien mit vollständiger POC-Historie
+- **Status:** ❌ Migration nicht feasible (iOS 26 Beta Crashes)
 
-### [CODE_OPTIMIZATION_PLAN.md](CODE_OPTIMIZATION_PLAN.md)
-**Zweck:** Performance-Optimierungs-Strategien
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- SwiftData Query Optimization
-- View Rendering Performance
-- Memory Management
-- Caching Strategies
-
-### [IMPLEMENTIERUNGSPLAN.md](IMPLEMENTIERUNGSPLAN.md)
-**Zweck:** Genereller Implementierungs-Roadmap
-**Zielgruppe:** Team
-**Inhalt:**
-- Feature Roadmap
-- Timeline
-- Dependencies
-
----
-
-## 📖 Technical Guides
-
-### [DATABASE_VERSION_CONTROL.md](DATABASE_VERSION_CONTROL.md)
-**Zweck:** SwiftData Migration System Details
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Version Control System
-- Migration Flow
-- Schema Changes
-- Rollback Strategies
-
-### [VERSION_CONTROL_QUICK_GUIDE.md](VERSION_CONTROL_QUICK_GUIDE.md)
-**Zweck:** Schnellreferenz für Versionierung
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Version Bump Guidelines
-- Breaking Changes
-- Migration Checklist
-
-### [TESTFLIGHT_UPDATE_GUIDE.md](TESTFLIGHT_UPDATE_GUIDE.md)
-**Zweck:** App Store & TestFlight Deployment Guide
-**Zielgruppe:** Release Manager
-**Inhalt:**
-- Build Process
-- Version Increment
-- TestFlight Upload
-- Beta Testing
-
-### [SECURITY.md](SECURITY.md)
-**Zweck:** Security Considerations & Best Practices
-**Zielgruppe:** Entwickler, Security Team
-**Inhalt:**
-- HealthKit Data Security
-- Keychain Usage
-- UserDefaults vs. Secure Storage
-- API Security
-
-### [VIEWS_DOCUMENTATION.md](VIEWS_DOCUMENTATION.md)
-**Zweck:** Katalog aller Views in der App
-**Zielgruppe:** Entwickler, Designer
-**Inhalt:**
-- View Hierarchy
-- View Descriptions
-- Dependencies
-- Navigation Flow
-
----
-
-## 📊 Phase Summaries
-
-### [PHASE_5_ABSCHLUSS.md](PHASE_5_ABSCHLUSS.md)
-**Zweck:** Phase 5 Completion Summary - WorkoutStore Integration
-**Status:** ✅ Completed
-**Inhalt:**
-- Integration Results
-- Code Reduction: 83% (300 → 50 Zeilen)
-- Deep Link Navigation
-- Lessons Learned
-
-### [PHASE_6_ABSCHLUSS.md](PHASE_6_ABSCHLUSS.md)
-**Zweck:** Phase 6 Completion Summary - User Settings & Debug Tools
-**Status:** ✅ Completed
-**Inhalt:**
-- NotificationSettingsView
-- DebugMenuView (DEBUG only)
-- AppStorage Settings
-- Testing Tools
-
-### [PHASE3_LIVE_ACTIVITY_SUMMARY.md](PHASE3_LIVE_ACTIVITY_SUMMARY.md)
-**Zweck:** Live Activity Implementation Summary
-**Status:** ✅ Completed
-**Inhalt:**
-- Dynamic Island Integration
-- Live Activity Controller
-- Force Quit Recovery
-- Throttling Strategy
-
-### [PHASE4_NOTIFICATIONS_SUMMARY.md](PHASE4_NOTIFICATIONS_SUMMARY.md)
-**Zweck:** Notification System Implementation Summary
-**Status:** ✅ Completed
-**Inhalt:**
-- Smart Notification Logic
-- Deep Link Support
-- Permission Handling
-- Testing Guide
-
-### [PHASE5_INTEGRATION_SUMMARY.md](PHASE5_INTEGRATION_SUMMARY.md)
-**Zweck:** Integration Phase Summary
-**Status:** ✅ Completed
-**Inhalt:**
-- Coordinator Integration
-- State Synchronization
-- Performance Improvements
-
----
-
-## 🔧 System Documentation
-
-### [NOTIFICATION_SYSTEM_KONZEPT.md](NOTIFICATION_SYSTEM_KONZEPT.md)
-**Zweck:** Konzept für das Notification System
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Architecture Design
-- Notification Types
-- User Preferences
-- Integration Points
-
-### [NOTIFICATION_SYSTEM_IMPLEMENTIERUNGSPLAN.md](NOTIFICATION_SYSTEM_IMPLEMENTIERUNGSPLAN.md)
-**Zweck:** Detaillierter Implementierungsplan für Notifications
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Step-by-Step Implementation
-- Timeline
-- Testing Strategy
-
-### [TEST_NOTIFICATION_SYSTEM.md](TEST_NOTIFICATION_SYSTEM.md)
-**Zweck:** Testing Guide für Notification System
-**Zielgruppe:** QA, Entwickler
-**Inhalt:**
-- Test Cases
-- Manual Testing Steps
-- Automated Testing
-- Edge Cases
-
-### [STATISTICS_CALCULATIONS_AUDIT.md](STATISTICS_CALCULATIONS_AUDIT.md)
-**Zweck:** Validierung der Statistik-Berechnungen
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Calculation Logic
-- Accuracy Validation
-- Edge Cases
-- Performance Analysis
-
-### [STATISTICS_PERFORMANCE_OPTIMIZATION.md](STATISTICS_PERFORMANCE_OPTIMIZATION.md)
-**Zweck:** Performance-Optimierung für Statistics View
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Performance Bottlenecks
-- Optimization Strategies
-- Before/After Metrics
-
-### [WEEK_COMPARISON_VALIDATION.md](WEEK_COMPARISON_VALIDATION.md)
-**Zweck:** Validierung der Wochen-Vergleichs-Logik
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Logic Validation
-- Test Cases
-- Edge Cases
-
----
-
-## 🔨 Xcode Integration
-
-### [XCODE_INTEGRATION.md](XCODE_INTEGRATION.md)
-**Zweck:** Genereller Xcode Integration Guide
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Project Setup
-- File Organization
-- Build Settings
-
-### [XCODE_SETUP_PHASE2.md](XCODE_SETUP_PHASE2.md)
-**Zweck:** Xcode Setup für Phase 2 Coordinators
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Coordinator Files Setup
-- Target Membership
-- Build Phases
-
-### [XCODE_INTEGRATION_PHASE2.md](XCODE_INTEGRATION_PHASE2.md)
-**Zweck:** Phase 2 Xcode Integration Details
-**Zielgruppe:** Entwickler
-
-### [XCODE_INTEGRATION_PHASE3.md](XCODE_INTEGRATION_PHASE3.md)
-**Zweck:** Phase 3 Xcode Integration Details
-**Zielgruppe:** Entwickler
-
-### [XCODE_INTEGRATION_TASK_3.3.md](XCODE_INTEGRATION_TASK_3.3.md)
-**Zweck:** Task 3.3 Xcode Integration
-**Zielgruppe:** Entwickler
-
-### [XCODE_INTEGRATION_TASK_3.4.md](XCODE_INTEGRATION_TASK_3.4.md)
-**Zweck:** Task 3.4 Xcode Integration
-**Zielgruppe:** Entwickler
-
-### [ADD_FILES_TO_XCODE.md](ADD_FILES_TO_XCODE.md)
-**Zweck:** Guide zum Hinzufügen von Dateien zum Xcode Projekt
-**Zielgruppe:** Entwickler
-**Inhalt:**
-- Manual Steps
-- CLI Commands
-- Troubleshooting
-
-### [XCODE_TEST_TARGET_SETUP.md](XCODE_TEST_TARGET_SETUP.md)
-**Zweck:** Test Target Configuration
-**Zielgruppe:** Entwickler
-**Inhalt:**
+### [Archive/Xcode-Integration/](Archive/Xcode-Integration/)
+- Xcode Setup Guides für Phasen 2 & 3
+- Manual Integration Steps
 - Test Target Setup
-- File Membership
-- Test Configuration
+- **Status:** ✅ Alle Phasen abgeschlossen, Guides nicht mehr benötigt
 
-### [XCODE_TEST_TARGET_ERSTELLEN.md](XCODE_TEST_TARGET_ERSTELLEN.md)
-**Zweck:** Anleitung zum Erstellen eines Test Targets
-**Zielgruppe:** Entwickler
+### [Archive/Phase-Summaries/](Archive/Phase-Summaries/)
+- Phase 2-6 Abschluss-Summaries
+- Live Activity Implementation (Phase 3)
+- Notifications Implementation (Phase 4)
+- Integration Summary (Phase 5)
+- **Status:** ✅ Abgeschlossen, archiviert für Historie
 
-### [TEST_TARGET_FIX.md](TEST_TARGET_FIX.md)
-**Zweck:** Fixes für Test Target Issues
-**Zielgruppe:** Entwickler
+### [Archive/Implementation-Plans/](Archive/Implementation-Plans/)
+- Notification System Konzept & Implementierungsplan
+- Code Optimization Plan
+- Allgemeiner Implementierungsplan
+- **Status:** ✅ Implementiert, nicht mehr aktiv
 
-### [XCODE_MANUAL_STEPS.md](XCODE_MANUAL_STEPS.md)
-**Zweck:** Manuelle Xcode-Schritte (nicht automatisierbar)
-**Zielgruppe:** Entwickler
+### [Archive/Statistics/](Archive/Statistics/)
+- Statistics Calculations Audit
+- Performance Optimization
+- Week Comparison Validation
+- **Status:** ✅ Validiert und optimiert, archiviert
 
----
-
-## 💡 Concept Documents
-
-### [SMART_GYM_KONZEPT.md](SMART_GYM_KONZEPT.md)
-**Zweck:** Konzept für Smart Gym Features
-**Zielgruppe:** Product Manager, Entwickler
-**Inhalt:**
-- Feature Ideas
-- AI Integration
-- User Experience
-
-### [APP_VERBESSERUNGS_KONZEPT.md](APP_VERBESSERUNGS_KONZEPT.md)
-**Zweck:** App-Verbesserungs-Konzepte
-**Zielgruppe:** Product Manager, Entwickler
-**Inhalt:**
-- UX Improvements
-- Feature Requests
-- Performance Enhancements
-
-### [SESSION_SUMMARY_2025-10-15.md](SESSION_SUMMARY_2025-10-15.md)
-**Zweck:** Entwicklungs-Session Summary vom 15. Oktober 2025
-**Zielgruppe:** Team
-**Inhalt:**
-- Work Done
-- Decisions Made
-- Next Steps
-
-### [QUICK_WINS_SESSION_SUMMARY.md](QUICK_WINS_SESSION_SUMMARY.md)
-**Zweck:** Quick Wins Session - Code Quality Improvements
-**Zielgruppe:** Entwickler, Tech Lead
-**Status:** ✅ Completed (18. Oktober 2025)
-**Inhalt:**
-- DateFormatter Constants (8 Duplikate eliminiert)
-- AppLayout Design System (102 Magic Numbers ersetzt)
-- UserProfile SwiftData Migration (@Model Macro hinzugefügt)
-- Input Validation Utilities (erstellt, bereit zur Integration)
-- **Statistiken:** 38 Dateien modifiziert, ~500+ Zeilen geändert
-- **Build Status:** ✅ SUCCESS, 0 Breaking Changes
-**Erstellt:** 18. Oktober 2025
+### [Archive/Sessions/](Archive/Sessions/)
+- Session Summaries (15. Oktober 2025)
+- Quick Wins Session Summary
+- **Status:** ✅ Abgeschlossen, archiviert
 
 ---
 
@@ -387,15 +98,11 @@ Dokumentation/
 |---------|----------|
 | **Projekt verstehen** | [CLAUDE.md](CLAUDE.md), [DOCUMENTATION.md](DOCUMENTATION.md) |
 | **Code Review Findings** | [CODE_REVIEW_REPORT.md](CODE_REVIEW_REPORT.md) |
-| **Architektur-Änderungen** | [MODULARIZATION_PLAN.md](MODULARIZATION_PLAN.md) |
+| **Fortschritt tracken** | [PROGRESS.md](PROGRESS.md) |
+| **Refactoring-Plan** | [MODULARIZATION_PLAN.md](MODULARIZATION_PLAN.md) |
+| **Test-Strategie** | [TEST_COVERAGE_PLAN.md](TEST_COVERAGE_PLAN.md) |
 | **Datenbank-Migration** | [DATABASE_VERSION_CONTROL.md](DATABASE_VERSION_CONTROL.md) |
-| **App deployen** | [TESTFLIGHT_UPDATE_GUIDE.md](TESTFLIGHT_UPDATE_GUIDE.md) |
-| **Notifications testen** | [TEST_NOTIFICATION_SYSTEM.md](TEST_NOTIFICATION_SYSTEM.md) |
-| **Xcode-Probleme** | [XCODE_INTEGRATION.md](XCODE_INTEGRATION.md), [ADD_FILES_TO_XCODE.md](ADD_FILES_TO_XCODE.md) |
-| **Progress tracking** | [PROGRESS.md](PROGRESS.md) |
-| **Bug-Fixes** | [BUGFIXES.md](BUGFIXES.md) |
-| **Security** | [SECURITY.md](SECURITY.md) |
-| **Quick Wins Session** | [QUICK_WINS_SESSION_SUMMARY.md](QUICK_WINS_SESSION_SUMMARY.md) |
+| **Security Guidelines** | [SECURITY.md](SECURITY.md) |
 
 ---
 
@@ -403,19 +110,17 @@ Dokumentation/
 
 ### Neue Dokumentation erstellen
 
-1. **Speicherort:** Alle neuen `.md` Dateien in `/Dokumentation/` speichern
+1. **Speicherort:** `/Dokumentation/<DOKUMENTNAME>.md`
 2. **Naming Convention:** `UPPERCASE_WITH_UNDERSCORES.md`
-3. **Update INDEX.md:** Neue Dokumente hier hinzufügen
-4. **Update CLAUDE.md:** Falls relevant für AI Assistant
-
-### Dokumentations-Template
+3. **Template verwenden:**
 
 ```markdown
 # Dokument-Titel
 
-**Zweck:** [Was ist der Zweck dieses Dokuments?]
-**Zielgruppe:** [Wer sollte dieses Dokument lesen?]
-**Letzte Aktualisierung:** [Datum]
+**Zweck:** Was ist der Zweck dieses Dokuments?
+**Zielgruppe:** Wer sollte dieses Dokument lesen?
+**Letzte Aktualisierung:** YYYY-MM-DD
+**Status:** ✅ Aktuell / 🔵 In Arbeit / 📦 Archiviert
 
 ---
 
@@ -436,15 +141,78 @@ Dokumentation/
 - [Verwandte Dokumente]
 ```
 
+4. **INDEX.md aktualisieren:** Neues Dokument in passende Kategorie eintragen
+5. **CLAUDE.md aktualisieren:** Falls für AI Assistant relevant
+
+### Dokumentation archivieren
+
+1. Datei nach `Archive/<Kategorie>/` verschieben
+2. INDEX.md aktualisieren (Eintrag nach Archive verschieben)
+3. Git commit mit Grund für Archivierung
+
+### Dokumentation löschen
+
+**Nur bei Redundanz oder wenn komplett veraltet!**
+1. Prüfen: Ist Info woanders dokumentiert?
+2. Bestätigung von Team einholen
+3. Löschen + INDEX.md aktualisieren
+4. Git commit mit Begründung
+
 ---
 
 ## 📊 Statistiken
 
-- **Gesamt-Dokumentationen:** 40 Dateien
-- **Gesamtgröße:** ~1,3 MB
-- **Letzte große Änderung:** 18. Oktober 2025 (Quick Wins Session abgeschlossen)
-- **Dokumentations-Coverage:** Hoch (alle wichtigen Bereiche dokumentiert)
+- **Aktive Dokumentationen:** 14 Dateien
+- **Archivierte Dokumentationen:** ~40 Dateien (6 Kategorien)
+- **Letzte Bereinigung:** 20. Oktober 2025
+- **Dokumentations-Coverage:** Hoch (alle wichtigen Bereiche abgedeckt)
+
+---
+
+## 🔄 Changelog
+
+### 2025-10-20 - Große Dokumentations-Bereinigung
+
+**Archiviert:**
+- 11 Xcode Integration Guides → `Archive/Xcode-Integration/`
+- 7 Phase Summaries → `Archive/Phase-Summaries/`
+- 4 Implementation Plans → `Archive/Implementation-Plans/`
+- 3 Statistics Validations → `Archive/Statistics/`
+- 2 Session Summaries → `Archive/Sessions/`
+- 12 AlarmKit Dokumente → `Archive/AlarmKit/` (bereits am 20.10.)
+
+**Gelöscht (redundant):**
+- VIEWS_DOCUMENTATION.md (in DOCUMENTATION.md integriert)
+- TEST_NOTIFICATION_SYSTEM.md (veraltet)
+- TESTFLIGHT_UPDATE_GUIDE.md (Standard-Prozess)
+- VERSION_CONTROL_QUICK_GUIDE.md (in DATABASE_VERSION_CONTROL.md)
+- SMART_GYM_KONZEPT.md (veraltet)
+- APP_VERBESSERUNGS_KONZEPT.md (umgesetzt)
+- BUGFIXES.md (Git-History ausreichend)
+
+**Ergebnis:**
+- Von ~47 Dateien → 14 aktive Dateien
+- Klare Struktur: Core / Progress / Testing / System / Concepts
+- Archiv gut organisiert in 6 Kategorien
+- INDEX.md komplett neu strukturiert (von 500+ Zeilen → ~200 Zeilen)
+
+### 2025-10-18 - Code Quality Update
+
+**Hinzugefügt:**
+- QUICK_WINS_SESSION_SUMMARY.md
+- INDEX.md erweitert mit Quick Wins Section
+
+### 2025-10-15 - Initiale Dokumentation
+
+**Erstellt:**
+- Umfassende Projekt-Dokumentation
+- Code-Review Report
+- Modularization Plan
+- Progress Tracking
 
 ---
 
 **Hinweis:** Dieses INDEX.md wird manuell gepflegt. Bei neuen Dokumentationen bitte aktualisieren.
+
+**Version:** 2.0  
+**Maintainer:** Development Team
