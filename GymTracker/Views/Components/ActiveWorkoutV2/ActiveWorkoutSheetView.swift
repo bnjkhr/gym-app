@@ -58,6 +58,8 @@ struct ActiveWorkoutSheetView: View {
     @State private var showingFinishConfirmation = false
     @State private var currentTime = Date()  // For updating workout duration display
     @State private var exerciseSheetDetent: PresentationDetent = .large
+    @State private var currentExerciseIndex: Int = 0  // Track current exercise for counter
+    @State private var showAllExercises: Bool = false  // Toggle to show completed exercises
 
     // MARK: - Computed Properties
 
@@ -71,6 +73,12 @@ struct ActiveWorkoutSheetView: View {
     /// Current workout duration (from startDate)
     private var workoutDuration: TimeInterval {
         workout.currentDuration
+    }
+
+    /// Exercise counter (e.g. "2 / 14")
+    private var exerciseCounterText: String {
+        guard !workout.exercises.isEmpty else { return "0 / 0" }
+        return "\(currentExerciseIndex + 1) / \(workout.exercises.count)"
     }
 
     // MARK: - Body
@@ -181,6 +189,35 @@ struct ActiveWorkoutSheetView: View {
 
             Spacer()
 
+            // Center: Exercise counter (1/14, 2/14, etc.) or "Alle anzeigen" toggle
+            if showAllExercises {
+                Button {
+                    showAllExercises = false
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "eye.slash.fill")
+                            .font(.caption)
+                        Text("Nur aktuelle")
+                            .font(.subheadline)
+                    }
+                    .foregroundStyle(.orange)
+                }
+            } else {
+                Button {
+                    showAllExercises = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(exerciseCounterText)
+                            .font(.headline)
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.white)
+                }
+            }
+
+            Spacer()
+
             // Right side: Beenden button
             Button {
                 showingFinishConfirmation = true
@@ -200,23 +237,37 @@ struct ActiveWorkoutSheetView: View {
     private var exerciseListView: some View {
         LazyVStack(spacing: 8) {
             ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, _ in
-                ActiveExerciseCard(
-                    exercise: $workout.exercises[index],
-                    exerciseIndex: index,
-                    onToggleCompletion: { setIndex in
-                        toggleSetCompletion(exerciseIndex: index, setIndex: setIndex)
-                    },
-                    onQuickAdd: { input in
-                        handleQuickAdd(exerciseIndex: index, input: input)
-                    },
-                    onDeleteSet: { setIndex in
-                        deleteSet(exerciseIndex: index, setIndex: setIndex)
-                    }
-                )
-                .padding(.horizontal)
-                .id("exercise_\(index)")  // ID for scrolling
+                let allSetsCompleted = workout.exercises[index].sets.allSatisfy { $0.completed }
+                let shouldHide = allSetsCompleted && !showAllExercises
+
+                if !shouldHide {
+                    ActiveExerciseCard(
+                        exercise: $workout.exercises[index],
+                        exerciseIndex: index,
+                        onToggleCompletion: { setIndex in
+                            toggleSetCompletion(exerciseIndex: index, setIndex: setIndex)
+                        },
+                        onQuickAdd: { input in
+                            handleQuickAdd(exerciseIndex: index, input: input)
+                        },
+                        onDeleteSet: { setIndex in
+                            deleteSet(exerciseIndex: index, setIndex: setIndex)
+                        }
+                    )
+                    .padding(.horizontal)
+                    .id("exercise_\(index)")  // ID for scrolling
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity.combined(with: .move(edge: .top))
+                        ))
+                }
             }
         }
+        .animation(
+            .timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.3),
+            value: workout.exercises.map { $0.sets.map { $0.completed } }
+        )
         .padding(.vertical, 12)
         .padding(.bottom, 80)  // Space for BottomActionBar
     }
@@ -400,20 +451,18 @@ struct ActiveWorkoutSheetView: View {
 
             if !allSetsCompleted {
                 // This is the first incomplete exercise
-                // Scroll to position it at the top, making the previous exercise scroll OUT
-                withAnimation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.4)) {
-                    proxy.scrollTo("exercise_\(index)", anchor: .top)
-                }
+                // Update current exercise index for counter
+                currentExerciseIndex = index
+
+                // No scrolling needed - the fade-out animation handles the transition
                 return
             }
         }
 
-        // All exercises completed - scroll to last one
+        // All exercises completed - update counter to last exercise
         if !workout.exercises.isEmpty {
             let lastIndex = workout.exercises.count - 1
-            withAnimation(.timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.4)) {
-                proxy.scrollTo("exercise_\(lastIndex)", anchor: .top)
-            }
+            currentExerciseIndex = lastIndex
         }
     }
 }
@@ -440,8 +489,8 @@ class MockWorkoutStore: WorkoutStoreCoordinator {
                     equipmentType: .freeWeights
                 ),
                 sets: [
-                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: true),
-                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: true),
+                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
+                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
                     ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
                 ],
                 notes: "Felt strong today"
@@ -456,6 +505,54 @@ class MockWorkoutStore: WorkoutStoreCoordinator {
                     ExerciseSet(reps: 10, weight: 35, restTime: 90, completed: false),
                     ExerciseSet(reps: 10, weight: 35, restTime: 90, completed: false),
                     ExerciseSet(reps: 10, weight: 35, restTime: 90, completed: false),
+                ]
+            ),
+            WorkoutExercise(
+                exercise: Exercise(
+                    name: "Schulterdrücken",
+                    muscleGroups: [.shoulders],
+                    equipmentType: .freeWeights
+                ),
+                sets: [
+                    ExerciseSet(reps: 10, weight: 25, restTime: 90, completed: false),
+                    ExerciseSet(reps: 10, weight: 25, restTime: 90, completed: false),
+                    ExerciseSet(reps: 10, weight: 25, restTime: 90, completed: false),
+                ]
+            ),
+            WorkoutExercise(
+                exercise: Exercise(
+                    name: "Seitheben",
+                    muscleGroups: [.shoulders],
+                    equipmentType: .freeWeights
+                ),
+                sets: [
+                    ExerciseSet(reps: 12, weight: 12, restTime: 60, completed: false),
+                    ExerciseSet(reps: 12, weight: 12, restTime: 60, completed: false),
+                    ExerciseSet(reps: 12, weight: 12, restTime: 60, completed: false),
+                ]
+            ),
+            WorkoutExercise(
+                exercise: Exercise(
+                    name: "Trizeps Pushdown",
+                    muscleGroups: [.arms],
+                    equipmentType: .cable
+                ),
+                sets: [
+                    ExerciseSet(reps: 12, weight: 40, restTime: 60, completed: false),
+                    ExerciseSet(reps: 12, weight: 40, restTime: 60, completed: false),
+                    ExerciseSet(reps: 12, weight: 40, restTime: 60, completed: false),
+                ]
+            ),
+            WorkoutExercise(
+                exercise: Exercise(
+                    name: "Bizeps Curls",
+                    muscleGroups: [.arms],
+                    equipmentType: .freeWeights
+                ),
+                sets: [
+                    ExerciseSet(reps: 10, weight: 15, restTime: 60, completed: false),
+                    ExerciseSet(reps: 10, weight: 15, restTime: 60, completed: false),
+                    ExerciseSet(reps: 10, weight: 15, restTime: 60, completed: false),
                 ]
             ),
         ],
