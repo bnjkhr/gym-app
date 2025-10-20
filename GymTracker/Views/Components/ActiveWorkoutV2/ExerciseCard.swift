@@ -263,7 +263,7 @@ struct ExerciseCard: View {
         exercise: Exercise(
             name: "Squat",
             muscleGroups: [.legs],
-            equipmentType: .barbell
+            equipmentType: .freeWeights
         ),
         sets: [
             ExerciseSet(reps: 6, weight: 135, restTime: 90, completed: true),
@@ -296,7 +296,7 @@ struct ExerciseCard: View {
         exercise: Exercise(
             name: "Bench Press",
             muscleGroups: [.chest],
-            equipmentType: .barbell
+            equipmentType: .freeWeights
         ),
         sets: [
             ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
@@ -327,7 +327,7 @@ struct ExerciseCard: View {
             exercise: Exercise(
                 name: "Squat",
                 muscleGroups: [.legs],
-                equipmentType: .barbell
+                equipmentType: .freeWeights
             ),
             sets: [
                 ExerciseSet(reps: 6, weight: 135, restTime: 90, completed: true),
