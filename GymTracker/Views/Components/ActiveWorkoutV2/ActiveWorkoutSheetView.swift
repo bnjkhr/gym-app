@@ -56,6 +56,7 @@ struct ActiveWorkoutSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingMenu = false
     @State private var showingFinishConfirmation = false
+    @State private var currentTime = Date()  // For updating workout duration display
 
     // MARK: - Computed Properties
 
@@ -109,6 +110,10 @@ struct ActiveWorkoutSheetView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(false)
+        .onAppear {
+            initializeWorkout()
+            startDurationTimer()
+        }
         .confirmationDialog(
             "Workout beenden?",
             isPresented: $showingFinishConfirmation,
@@ -275,13 +280,52 @@ struct ActiveWorkoutSheetView: View {
     }
 
     private func handleQuickAdd(exerciseIndex: Int, input: String) {
-        // Parse input (handled by ActiveExerciseCard internally)
-        // This is just for logging/analytics
-        print("Quick-Add for exercise \(exerciseIndex): \(input)")
+        let trimmed = input.trimmingCharacters(in: .whitespaces)
 
-        // TODO: Add new set to exercise
-        // workout.exercises[exerciseIndex].sets.append(newSet)
-        // TODO: Persist to SwiftData
+        // Try to parse as "weight x reps"
+        if let parsed = parseSetInput(trimmed) {
+            // Valid set format - create new set
+            let newSet = ExerciseSet(
+                reps: parsed.reps,
+                weight: parsed.weight,
+                restTime: 90,  // Default rest time
+                completed: false
+            )
+
+            workout.exercises[exerciseIndex].sets.append(newSet)
+            print("✅ Added new set: \(parsed.weight)kg x \(parsed.reps) reps")
+        } else {
+            // Not a set format - save as note
+            if workout.exercises[exerciseIndex].notes == nil {
+                workout.exercises[exerciseIndex].notes = trimmed
+            } else {
+                workout.exercises[exerciseIndex].notes? += "\n" + trimmed
+            }
+            print("✅ Added note: \(trimmed)")
+        }
+
+        // Note: SwiftData persistence will auto-save when using @Binding
+    }
+
+    /// Parses input like "100 x 8" or "100x8" into (weight, reps)
+    private func parseSetInput(_ input: String) -> (weight: Double, reps: Int)? {
+        let pattern = #"^\s*(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+)\s*$"#
+
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+            let match = regex.firstMatch(in: input, range: NSRange(input.startIndex..., in: input))
+        else {
+            return nil
+        }
+
+        guard let weightRange = Range(match.range(at: 1), in: input),
+            let weight = Double(input[weightRange]),
+            let repsRange = Range(match.range(at: 2), in: input),
+            let reps = Int(input[repsRange])
+        else {
+            return nil
+        }
+
+        return (weight, reps)
     }
 
     private func deleteSet(exerciseIndex: Int, setIndex: Int) {
@@ -303,6 +347,21 @@ struct ActiveWorkoutSheetView: View {
     private func handleReorder() {
         print("Reorder exercises")
         // TODO: Show reorder sheet
+    }
+
+    private func initializeWorkout() {
+        // Set startDate if not already set
+        if workout.startDate == nil {
+            workout.startDate = Date()
+            print("✅ Workout started at \(Date())")
+        }
+    }
+
+    private func startDurationTimer() {
+        // Update currentTime every second to refresh workout duration display
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            currentTime = Date()
+        }
     }
 
     private func finishWorkout() {
