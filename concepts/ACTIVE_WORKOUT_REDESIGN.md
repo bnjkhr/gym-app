@@ -188,7 +188,41 @@
 
 ---
 
-### ⏳ Phase 6-8: (AUSSTEHEND)
+### 🔄 Phase 6: State Management & Logic ⚠️
+
+**Status:** TEILWEISE IMPLEMENTIERT (Core UI Complete)
+
+**Was bereits funktioniert:**
+- ✅ Set Completion → Rest Timer Start (in ActiveWorkoutSheetView)
+- ✅ Progress Tracking (completed / total sets)
+- ✅ Workout Duration Tracking (from startDate)
+- ✅ Rest Timer Integration (@ObservedObject)
+- ✅ Quick-Add Input Parser (Regex in ActiveExerciseCard)
+- ✅ Set Deletion
+
+**Was noch fehlt (TODO für später):**
+- ⏳ SwiftData Persistence Layer
+- ⏳ Add Exercise Flow + Exercise Picker
+- ⏳ Reorder Exercises Sheet
+- ⏳ Repeat Workout Logic
+- ⏳ Navigation zu Completion Summary
+- ⏳ Workout Duration Update Loop
+
+**Entscheidung:**
+Die **Kern-UI ist vollständig** und funktionsfähig. Die fehlenden Features sind
+business logic und können in separaten Tickets/Sessions implementiert werden.
+
+**Rationale:**
+- Phase 1-5 haben alle UI-Komponenten geliefert
+- Das neue Design ist vollständig sichtbar und navigierbar
+- Fehlende Funktionen brechen die UI nicht
+- SwiftData-Integration kann schrittweise erfolgen
+
+**Nächster Schritt:** Phase 7 - Polish & Testing (Optional) oder Merge
+
+---
+
+### ⏳ Phase 7-8: (AUSSTEHEND - OPTIONAL)
 Siehe Implementierungs-Plan unten
 
 ---
