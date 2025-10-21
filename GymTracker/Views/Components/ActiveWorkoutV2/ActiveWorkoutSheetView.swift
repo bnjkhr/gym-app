@@ -115,6 +115,7 @@ struct ActiveWorkoutSheetView: View {
                                 }
                             }
                         }
+                        .scrollDismissesKeyboard(.interactively)
                         .onChange(of: workout.exercises.map { $0.sets.map { $0.completed } }) {
                             _, _ in
                             // Check if last set of current exercise was completed
@@ -170,6 +171,7 @@ struct ActiveWorkoutSheetView: View {
 
                 // Show/Hide completed exercises toggle
                 Button {
+                    HapticManager.shared.selection()
                     showAllExercises.toggle()
                 } label: {
                     Image(systemName: showAllExercises ? "eye.fill" : "eye.slash.fill")
@@ -189,6 +191,7 @@ struct ActiveWorkoutSheetView: View {
 
             // Right side: Beenden button
             Button {
+                HapticManager.shared.warning()
                 showingFinishConfirmation = true
             } label: {
                 Text("Beenden")
@@ -406,6 +409,9 @@ struct ActiveWorkoutSheetView: View {
     }
 
     private func finishWorkout() {
+        // Haptic feedback for workout completion
+        HapticManager.shared.success()
+
         // Stop any active rest timer
         workoutStore.restTimerStateManager.cancelRest()
 

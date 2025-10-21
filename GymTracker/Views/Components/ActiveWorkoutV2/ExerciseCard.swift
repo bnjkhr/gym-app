@@ -142,6 +142,7 @@ struct ActiveExerciseCard: View {
 
             // Checkbox
             Button {
+                HapticManager.shared.light()
                 onToggleCompletion?(index)
             } label: {
                 Image(
@@ -174,6 +175,7 @@ struct ActiveExerciseCard: View {
         HStack(spacing: Layout.bottomButtonSpacing) {
             // Mark all complete
             Button {
+                HapticManager.shared.success()
                 onMarkAllComplete?()
             } label: {
                 Image(systemName: "checkmark.circle")
@@ -185,6 +187,7 @@ struct ActiveExerciseCard: View {
 
             // Add set
             Button {
+                HapticManager.shared.light()
                 onAddSet?()
             } label: {
                 Image(systemName: "plus.circle.fill")

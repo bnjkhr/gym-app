@@ -1,15 +1,15 @@
 # Active Workout View Redesign - Konzept
 
 **Erstellt:** 2025-10-20  
-**Aktualisiert:** 2025-10-20 (Session 3: Transition Animations + Universal Notifications)  
-**Status:** 🚀 Phase 1-6 ABGESCHLOSSEN | ✅ UI Refinements ABGESCHLOSSEN (100%)  
+**Aktualisiert:** 2025-10-21 (Session 4: Phase 7 Polish - Haptic Feedback & Keyboard Handling)  
+**Status:** 🚀 Phase 1-7 ABGESCHLOSSEN (TEILWEISE) | ✅ Polish Features Implemented  
 **Ziel:** Redesign der aktiven Workout-Ansicht basierend auf Screenshot-Vorlage
 
 ---
 
 ## 📊 Implementierungs-Status
 
-**Aktueller Stand:** Phase 1-6 abgeschlossen ✅ | UI Refinements abgeschlossen ✅
+**Aktueller Stand:** Phase 1-6 abgeschlossen ✅ | UI Refinements abgeschlossen ✅ | Phase 7 in Arbeit 🔄
 
 **Übersicht:**
 - ✅ Phase 1: Model-Erweiterungen (ABGESCHLOSSEN)
@@ -20,7 +20,192 @@
 - ✅ Phase 6: State Management & Logic (ABGESCHLOSSEN)
 - ✅ **UI Refinements Session 2** (ABGESCHLOSSEN - 100%)
 - ✅ **UI Refinements Session 3** (ABGESCHLOSSEN - 100%)
-- ⏳ Phase 7-8: Polish & Testing (AUSSTEHEND)
+- 🔄 **Phase 7: Polish & Testing Session 4** (IN ARBEIT - 60%)
+- ⏳ Phase 8: Migration & Cleanup (AUSSTEHEND)
+
+---
+
+## 🚀 Phase 7: Polish & Testing Session 4 (2025-10-21) - IN ARBEIT 🔄
+
+**Status:** 🔄 60% Complete  
+**Session:** Phase 7 Implementation - Haptic Feedback & UX Polish  
+**Build Status:** ✅ BUILD SUCCEEDED  
+**Zeitaufwand:** ~1 Stunde
+
+### Session Highlights
+
+Fokus auf Phase 7 Polish & Testing Tasks:
+- ✅ Haptic Feedback Integration
+- ✅ Keyboard Handling
+- ✅ Dark Mode Verification
+- ⏳ Edge Case Testing (ausstehend)
+- ⏳ Performance Testing (ausstehend)
+
+### Implementierte Features (Session 4)
+
+#### 1. ✅ Comprehensive Haptic Feedback
+
+**Implementierung:**
+
+Integration des existierenden `HapticManager` in alle Benutzer-Interaktionen:
+
+**ExerciseCard.swift:**
+```swift
+// Set completion toggle - Light feedback
+Button {
+    HapticManager.shared.light()
+    onToggleCompletion?(index)
+} label: { /* Checkbox */ }
+
+// Mark all complete - Success feedback
+Button {
+    HapticManager.shared.success()
+    onMarkAllComplete?()
+} label: { /* Checkmark icon */ }
+
+// Add set - Light feedback
+Button {
+    HapticManager.shared.light()
+    onAddSet?()
+} label: { /* Plus icon */ }
+```
+
+**ActiveWorkoutSheetView.swift:**
+```swift
+// Show/Hide toggle - Selection feedback
+Button {
+    HapticManager.shared.selection()
+    showAllExercises.toggle()
+} label: { /* Eye icon */ }
+
+// Finish workout confirmation - Warning feedback
+Button {
+    HapticManager.shared.warning()
+    showingFinishConfirmation = true
+} label: { /* "Beenden" */ }
+
+// Workout completion - Success feedback
+private func finishWorkout() {
+    HapticManager.shared.success()
+    // ... rest of function
+}
+```
+
+**Feedback Types:**
+- `light()` - Set toggle, add set (subtle actions)
+- `success()` - Mark all complete, finish workout (achievements)
+- `selection()` - Show/hide toggle (mode change)
+- `warning()` - Finish button (destructive action warning)
+
+**User Experience Impact:**
+- Immediate tactile confirmation for all actions
+- Differentiated feedback based on action importance
+- Respects system haptic settings via HapticManager
+
+**Files Modified:**
+- `ExerciseCard.swift:144, 177, 189`
+- `ActiveWorkoutSheetView.swift:172, 192, 410`
+
+---
+
+#### 2. ✅ Keyboard Dismiss on Scroll
+
+**Problem:** Quick-Add TextField hält Keyboard offen während Scrollen.
+
+**Lösung:**
+```swift
+ScrollView {
+    // Exercise list content
+}
+.scrollDismissesKeyboard(.interactively)
+```
+
+**Verhalten:**
+- Keyboard verschwindet beim Scrollen
+- `.interactively` = Keyboard folgt Scroll-Geste (native iOS Verhalten)
+- Funktioniert mit dem Quick-Add TextField in ExerciseCard
+
+**File Modified:**
+- `ActiveWorkoutSheetView.swift:117`
+
+---
+
+#### 3. ✅ Dark Mode Compatibility Verified
+
+**Audit:**
+- ✅ Header (schwarz) - hardcoded by design
+- ✅ Timer Section (schwarz) - hardcoded by design
+- ✅ ExerciseCard background (weiß) - hardcoded by design (matches screenshots)
+- ✅ Text colors using semantic colors (.gray, .orange)
+- ✅ Bottom Action Bar uses adaptive colors
+
+**Design Decision:**
+Cards bleiben weiß auch im Dark Mode (wie WhatsApp, Instagram chats).
+Der schwarze Header/Timer-Bereich ist Teil des Designs, nicht Dark-Mode-abhängig.
+
+**Result:** ✅ Keine Änderungen erforderlich - Design ist intentional
+
+---
+
+### Code Metrics (Session 4)
+
+**Lines Changed:** ~10 LOC (Haptic calls + keyboard modifier)
+
+**Files Modified:** 2
+- `ExerciseCard.swift` (+4 lines)
+- `ActiveWorkoutSheetView.swift` (+6 lines)
+
+**Build Time:** ~2 minutes  
+**Build Status:** ✅ SUCCESS (iPhone 17 Pro Simulator, iOS 26.0)
+
+---
+
+### Phase 7 Progress
+
+**Phase 7 Tasks (from Plan):**
+1. ✅ Animationen - Already done in Session 3
+2. ✅ Haptic Feedback - Done
+3. ✅ Keyboard Handling - Done
+4. ✅ Dark Mode - Verified
+5. ⏳ Verschiedene Bildschirmgrößen - TODO
+6. ⏳ Edge Cases Testing - TODO
+7. ⏳ Performance (20+ Sets) - TODO
+
+**Completion:** 4/7 Tasks = ~60%
+
+---
+
+### Remaining Tasks (Session 4)
+
+1. ⏳ **Different Screen Sizes Testing**
+   - iPhone SE (small)
+   - iPhone 17 Pro Max (large)
+   - iPad (if supported)
+
+2. ⏳ **Edge Cases Testing**
+   - Empty workout (0 exercises)
+   - Single exercise workout
+   - All exercises completed
+   - 20+ sets per exercise (scroll performance)
+   - Rapid toggle show/hide
+   - Quick-Add with very long text
+
+3. ⏳ **User Testing**
+   - Real device testing
+   - Workout flow end-to-end
+   - Verify haptic feedback feels natural
+
+---
+
+### Git Status
+
+**Branch:** `feature/active-workout-redesign`  
+**Pending Commit:** Session 4 - Phase 7 Polish (Haptic + Keyboard)
+
+**Next Steps:**
+1. Test edge cases
+2. Commit Session 4 changes
+3. Optional: Phase 8 (Migration & Cleanup)
 
 ---
 
