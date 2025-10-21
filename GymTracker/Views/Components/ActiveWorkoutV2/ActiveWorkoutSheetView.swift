@@ -82,6 +82,13 @@ struct ActiveWorkoutSheetView: View {
         return "\(currentExerciseIndex + 1) / \(workout.exercises.count)"
     }
 
+    /// Check if all exercises are completed and hidden
+    private var allExercisesCompletedAndHidden: Bool {
+        !workout.exercises.isEmpty
+            && workout.exercises.allSatisfy { $0.sets.allSatisfy { $0.completed } }
+            && !showAllExercises
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -110,6 +117,8 @@ struct ActiveWorkoutSheetView: View {
                             VStack(spacing: 0) {
                                 if workout.exercises.isEmpty {
                                     emptyStateView
+                                } else if allExercisesCompletedAndHidden {
+                                    completedStateView
                                 } else {
                                     exerciseListView
                                 }
@@ -269,6 +278,41 @@ struct ActiveWorkoutSheetView: View {
                 handleAddExercise()
             } label: {
                 Label("Übung hinzufügen", systemImage: "plus.circle.fill")
+                    .font(.headline)
+            }
+            .buttonStyle(.borderedProminent)
+
+            Spacer()
+        }
+        .padding()
+    }
+
+    // MARK: - Completed State View
+
+    private var completedStateView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 60, weight: .light))
+                .foregroundStyle(.green)
+
+            VStack(spacing: 8) {
+                Text("Alle Übungen abgeschlossen! 🎉")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("Tippe auf das Auge-Symbol, um alle Übungen anzuzeigen.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Button {
+                HapticManager.shared.light()
+                showAllExercises = true
+            } label: {
+                Label("Alle Übungen anzeigen", systemImage: "eye.fill")
                     .font(.headline)
             }
             .buttonStyle(.borderedProminent)
