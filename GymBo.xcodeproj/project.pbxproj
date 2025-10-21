@@ -165,6 +165,11 @@
 		ADD4F5012EA502F000E585B2 /* WorkoutDataServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4F4FE2EA502F000E585B2 /* WorkoutDataServiceTests.swift */; };
 		ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */; };
 		ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDD04062E9E52E50080B745 /* DebugMenuView.swift */; };
+		ADDF9E032EA81F7C000295C3 /* QuickStatsBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDF9E002EA81F7C000295C3 /* QuickStatsBar.swift */; };
+		ADDF9E042EA81F7C000295C3 /* HomeHeaderSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDF9DFE2EA81F7C000295C3 /* HomeHeaderSection.swift */; };
+		ADDF9E052EA81F7C000295C3 /* WorkoutListCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDF9E012EA81F7C000295C3 /* WorkoutListCard.swift */; };
+		ADDF9E062EA81F7C000295C3 /* HomeViewV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDF9DFF2EA81F7C000295C3 /* HomeViewV2.swift */; };
+		ADDF9E322EA827D9000295C3 /* HomeWeekCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDF9E312EA827D9000295C3 /* HomeWeekCalendar.swift */; };
 		ADE92E9A2E9EC6F00077A45A /* TipEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E972E9EC6F00077A45A /* TipEngine.swift */; };
 		ADE92E9B2E9EC6F00077A45A /* TipFeedbackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E982E9EC6F00077A45A /* TipFeedbackManager.swift */; };
 		ADE92E9C2E9EC6F00077A45A /* WorkoutAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE92E992E9EC6F00077A45A /* WorkoutAnalyzer.swift */; };
@@ -372,6 +377,11 @@
 		ADD4F4FE2EA502F000E585B2 /* WorkoutDataServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDataServiceTests.swift; sourceTree = "<group>"; };
 		ADDD04062E9E52E50080B745 /* DebugMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugMenuView.swift; sourceTree = "<group>"; };
 		ADDD04072E9E52E50080B745 /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
+		ADDF9DFE2EA81F7C000295C3 /* HomeHeaderSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeaderSection.swift; sourceTree = "<group>"; };
+		ADDF9DFF2EA81F7C000295C3 /* HomeViewV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewV2.swift; sourceTree = "<group>"; };
+		ADDF9E002EA81F7C000295C3 /* QuickStatsBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickStatsBar.swift; sourceTree = "<group>"; };
+		ADDF9E012EA81F7C000295C3 /* WorkoutListCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutListCard.swift; sourceTree = "<group>"; };
+		ADDF9E312EA827D9000295C3 /* HomeWeekCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWeekCalendar.swift; sourceTree = "<group>"; };
 		ADE92E972E9EC6F00077A45A /* TipEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipEngine.swift; sourceTree = "<group>"; };
 		ADE92E982E9EC6F00077A45A /* TipFeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipFeedbackManager.swift; sourceTree = "<group>"; };
 		ADE92E992E9EC6F00077A45A /* WorkoutAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAnalyzer.swift; sourceTree = "<group>"; };
@@ -625,6 +635,7 @@
 		AD2A83CA2E942EA000A6ADBE /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				ADDF9E022EA81F7C000295C3 /* HomeV2 */,
 				ADD0DFA72EA80D7C0009BC04 /* ActiveWorkoutV2 */,
 				AD7E55692EA6DFA70075C645 /* NotificationPill.swift */,
 				AD7E555A2EA6DE740075C645 /* ActiveWorkoutV2 */,
@@ -799,6 +810,18 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		ADDF9E022EA81F7C000295C3 /* HomeV2 */ = {
+			isa = PBXGroup;
+			children = (
+				ADDF9E312EA827D9000295C3 /* HomeWeekCalendar.swift */,
+				ADDF9DFE2EA81F7C000295C3 /* HomeHeaderSection.swift */,
+				ADDF9DFF2EA81F7C000295C3 /* HomeViewV2.swift */,
+				ADDF9E002EA81F7C000295C3 /* QuickStatsBar.swift */,
+				ADDF9E012EA81F7C000295C3 /* WorkoutListCard.swift */,
+			);
+			path = HomeV2;
+			sourceTree = "<group>";
+		};
 		ADFF00122EA8F50E00AB5184 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
@@ -962,6 +985,10 @@
 				ADE92E9B2E9EC6F00077A45A /* TipFeedbackManager.swift in Sources */,
 				ADAAFBEC2E9FC840002EADAC /* SessionManagementService.swift in Sources */,
 				ADAAFBED2E9FC840002EADAC /* WorkoutSessionService.swift in Sources */,
+				ADDF9E032EA81F7C000295C3 /* QuickStatsBar.swift in Sources */,
+				ADDF9E042EA81F7C000295C3 /* HomeHeaderSection.swift in Sources */,
+				ADDF9E052EA81F7C000295C3 /* WorkoutListCard.swift in Sources */,
+				ADDF9E062EA81F7C000295C3 /* HomeViewV2.swift in Sources */,
 				ADAAFBEE2E9FC840002EADAC /* ExerciseRecordService.swift in Sources */,
 				ADD4F4942EA4314900E585B2 /* AppButtonStyles.swift in Sources */,
 				ADD4F4952EA4314900E585B2 /* ValidatedTextField.swift in Sources */,
@@ -974,6 +1001,7 @@
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
 				ADB19F592E9D83D1004BE444 /* HapticManager.swift in Sources */,
 				AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */,
+				ADDF9E322EA827D9000295C3 /* HomeWeekCalendar.swift in Sources */,
 				3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */,
 				AD2568DD2E904916009BE060 /* ExerciseRecordMigration.swift in Sources */,
 				3F9060DDF1804A4BBF231BF88B /* WorkoutActionButton.swift in Sources */,
