@@ -2,328 +2,319 @@
 
 **Erstellt:** 2025-10-21  
 **Aktualisiert:** 2025-10-21  
-**Status:** 🚀 IN PROGRESS  
-**Ziel:** Komplettes UI/UX Redesign aller Views mit modernem iOS-Design
+**Status:** 🔄 ARCHITECTURE REDESIGN  
+**Branch:** `feature/v2-clean-architecture`  
+**Ziel:** Ground-Up Redesign mit Clean Architecture für maximale Qualität
 
 ---
 
-## 📊 Gesamtübersicht
+## 🎯 V2 Strategy Shift - Clean Architecture First
 
-| View | Status | Phase | Fortschritt | Letzte Änderung | Dokument |
-|------|--------|-------|-------------|-----------------|----------|
-| **Active Workout** | ✅ LIVE | Phase 7 (85%) | ████████░░ 85% | 2025-10-21 | [ACTIVE_WORKOUT_REDESIGN.md](./ACTIVE_WORKOUT_REDESIGN.md) |
-| **Home** | 🚧 ENTWICKLUNG | Phase 1 (100%) | ████░░░░░░ 40% | 2025-10-21 | [HOME_VIEW_V2_REDESIGN.md](./HOME_VIEW_V2_REDESIGN.md) |
-| **Workouts** | ⏳ GEPLANT | - | ░░░░░░░░░░ 0% | - | - |
-| **Analytics** | ⏳ GEPLANT | - | ░░░░░░░░░░ 0% | - | - |
-| **Profile** | ⏳ GEPLANT | - | ░░░░░░░░░░ 0% | - | - |
+**WICHTIG:** Am 2025-10-21 haben wir die V2-Strategie geändert:
 
-**Legende:**
-- ✅ **LIVE** - In Produktion, voll funktionsfähig
-- 🔄 **PLANUNG** - Design-Phase, noch nicht implementiert
-- 🚧 **ENTWICKLUNG** - Aktiv in Entwicklung
-- ⏳ **GEPLANT** - Noch nicht gestartet
-- ❌ **BLOCKIERT** - Wartet auf Dependencies
+### ❌ Alte Strategie (UI-First)
+- Einzelne Views redesignen (Active Workout, Home, etc.)
+- Business Logic später refactoren
+- Inkrementelle Migration
+
+### ✅ Neue Strategie (Architecture-First)
+- **Ground-Up Redesign** mit Clean Architecture
+- **4-Layer Pattern** (Domain, Data, Presentation, Infrastructure)
+- **Testability First** - 70%+ Coverage Target
+- **8-Wochen Roadmap** für kompletten Rewrite
+
+**Rationale:** Die alte Architektur (130KB WorkoutStore) ist nicht mehr wartbar. Ein kompletter Rewrite ist schneller und qualitativ besser als inkrementelles Refactoring.
 
 ---
 
-## 🎯 Design-Prinzipien (V2 Standard)
+## 📊 Architektur-Übersicht
 
-Alle V2 Views folgen diesen Prinzipien:
+### 🏗️ Clean Architecture Layers
 
-### 1. **Modern iOS Native Design**
-- Plain Lists statt Custom ScrollViews
-- Native SwiftUI Gesten (.swipeActions, .onMove)
-- SF Symbols für alle Icons
-- iOS 16+ Features nutzen
+```
+┌─────────────────────────────────────────────────┐
+│         PRESENTATION LAYER                      │
+│  SwiftUI Views + ViewModels (Stores)            │
+│                                                  │
+├─────────────────────────────────────────────────┤
+│         DOMAIN LAYER (Pure Swift)               │
+│  Entities + Use Cases + Repository Protocols    │
+│                                                  │
+├─────────────────────────────────────────────────┤
+│         DATA LAYER                              │
+│  Repositories + Mappers + Cache                 │
+│                                                  │
+├─────────────────────────────────────────────────┤
+│         INFRASTRUCTURE LAYER                    │
+│  SwiftData + HealthKit + Notifications          │
+└─────────────────────────────────────────────────┘
+```
 
-### 2. **Haptic Feedback Everywhere**
-- `light()` - Subtile Aktionen (Toggle, Add)
-- `impact()` - Drag & Drop
-- `selection()` - Mode Changes
-- `success()` - Achievements
-- `warning()` - Destructive Actions
+### 🎓 Architektur-Prinzipien (The Sacred Five)
 
-### 3. **Consistent Spacing System**
-- **4px** - Minimal (Icon-Text Spacing)
-- **8px** - Tight (Related Elements)
-- **12px** - Standard (Cards in Grid)
-- **16px** - Comfortable (Sections)
-- **24px** - Generous (Major Sections)
+1. **Separation of Concerns** - Jede Schicht hat genau eine Verantwortung
+2. **Dependency Rule** - Dependencies zeigen immer nach innen
+3. **Testability First** - 100% der Business Logic testbar ohne UI/DB
+4. **Type Safety** - Starke Typisierung, Result Types, Phantom Types
+5. **Performance by Design** - Async/Await, Actor Isolation, Lazy Loading
 
-### 4. **Gesture Support**
-- Swipe-to-Delete auf allen Listen
-- Drag-and-Drop für Reordering
-- Long-Press für Kontext-Menüs
-- Pull-to-Refresh wo sinnvoll
+---
 
-### 5. **Performance First**
-- Lazy Loading (LazyVStack, List)
-- Cached Computed Properties
-- Minimal Re-Renders
-- Background Operations für Heavy Tasks
+## 📋 Implementation Status
 
-### 6. **Dark Mode Native**
-- Semantic Colors (`.primary`, `.secondary`)
-- Dynamic Background Colors
-- Proper Contrast Ratios
-- Custom Colors mit Dark Mode Support
+### Sprint 1-2: Foundation (Woche 1-2) - ⏳ NEXT
+**Ziel:** Neue Architektur aufsetzen, DI funktionsfähig
+
+- [ ] Projektstruktur anlegen (4 Layers)
+- [ ] DI Container implementieren
+- [ ] Repository Protocols definieren
+- [ ] Test Infrastructure aufsetzen
+- [ ] Domain Entities erstellen (Workout, Exercise, Session)
+
+**Deliverable:** Leere Architektur, lauffähige App
+
+**Status:** 🟡 NICHT GESTARTET - Bereit für morgen
+
+---
+
+### Sprint 3-4: Session Management (Woche 3-4) - ⏳ GEPLANT
+**Ziel:** Session Flow komplett neu implementiert
+
+- [ ] `SessionStore` extrahieren
+- [ ] Use Cases implementieren:
+  - `StartWorkoutSessionUseCase`
+  - `EndWorkoutSessionUseCase`
+  - `UpdateWorkoutSessionUseCase`
+- [ ] `SessionRepository` implementieren
+- [ ] Views migrieren (ActiveWorkoutView, ExerciseView)
+- [ ] Unit Tests schreiben (>80% Coverage)
+
+**Deliverable:** Funktionierendes Session Management
+
+**Status:** ⏳ GEPLANT
+
+---
+
+### Sprint 5-6: Workout & Exercise Management (Woche 5-6) - ⏳ GEPLANT
+**Ziel:** CRUD Operationen für Workouts & Exercises
+
+- [ ] `WorkoutStore` extrahieren
+- [ ] `ExerciseStore` extrahieren
+- [ ] Use Cases implementieren
+- [ ] Repositories implementieren
+- [ ] Profile Migration (UserDefaults → SwiftData)
+- [ ] Views migrieren
+
+**Deliverable:** Workout-Library funktioniert
+
+**Status:** ⏳ GEPLANT
+
+---
+
+### Sprint 7-8: Statistics, Testing, Polish (Woche 7-8) - ⏳ GEPLANT
+**Ziel:** Feature-Completion, Performance, Tests
+
+- [ ] `StatisticsStore` implementieren
+- [ ] Caching optimieren
+- [ ] Performance Profiling
+- [ ] Integration Tests
+- [ ] UI Tests (Critical Flows)
+- [ ] Code Cleanup
+- [ ] Alte `WorkoutStore` löschen (130KB Monster)
+- [ ] Documentation Update
+
+**Deliverable:** v2.0 Release Candidate
+
+**Status:** ⏳ GEPLANT
 
 ---
 
 ## 📁 Dokumentationsstruktur
 
 ```
-Dokumentation/V2/
-├── V2_MASTER_PROGRESS.md          # Diese Datei - Zentrale Übersicht
-├── ACTIVE_WORKOUT_REDESIGN.md     # Active Workout View Redesign
-├── HOME_VIEW_V2_REDESIGN.md       # Home View Redesign
-├── WORKOUTS_VIEW_V2_REDESIGN.md   # Workouts View Redesign (TBD)
-├── ANALYTICS_VIEW_V2_REDESIGN.md  # Analytics View Redesign (TBD)
-└── PROFILE_VIEW_V2_REDESIGN.md    # Profile View Redesign (TBD)
-```
-
-**Jede View-Datei enthält:**
-- ✅ Design-Konzept & Mockups
-- ✅ Phasen-Plan mit Zeitschätzung
-- ✅ Technische Spezifikation
-- ✅ Komponenten-Übersicht
-- ✅ Session-Logs mit Fortschritt
-- ✅ Known Issues & Workarounds
-
----
-
-## 🚀 Active Workout View - ABGESCHLOSSEN (85%)
-
-**Datei:** [ACTIVE_WORKOUT_REDESIGN.md](./ACTIVE_WORKOUT_REDESIGN.md)  
-**Status:** ✅ Phase 1-6 Complete | 🔄 Phase 7 (85%) | ⏳ Phase 8 Pending  
-**Branch:** `feature/active-workout-redesign`  
-**Commits:** 20+ commits over 4 sessions
-
-### Aktuelle Features ✅
-- [x] ExerciseCard mit kompaktem Set-Layout
-- [x] TimerSection mit Workout-Duration Fallback
-- [x] Exercise Counter (X/Y completed)
-- [x] Show/Hide completed exercises
-- [x] Quick-Add Gewicht Input
-- [x] Mark All Complete Button
-- [x] Haptic Feedback komplett
-- [x] Keyboard dismiss on scroll
-- [x] Dark Mode verified
-- [x] Edge Case Testing (8/8 passed)
-- [x] Swipe-to-Delete Sets
-- [x] Drag-and-Drop Reordering
-
-### Offene Tasks ⏳
-- [ ] Phase 7: Exercise History Chart (Feature 3)
-- [ ] Phase 8: Migration (Replace old ActiveWorkoutNavigationView)
-- [ ] Phase 8: Cleanup (Delete old files)
-
-### Key Components
-```
-GymTracker/Views/Components/ActiveWorkoutV2/
-├── ActiveWorkoutSheetView.swift      # Main Container
-├── ExerciseCard.swift                # Exercise + Sets Card
-├── TimerSection.swift                # Rest Timer + Duration
-├── CompactSetRow.swift               # Single Set Row
-├── BottomActionBar.swift             # Add Set + Mark Complete
-└── EdgeCaseTests.swift              # Test Scenarios
-```
-
-### Session History
-- **Session 1** (2025-10-19): Phase 1-3 Complete
-- **Session 2** (2025-10-20): Phase 4-6 + UI Refinements
-- **Session 3** (2025-10-20): More UI Polish + Bug Fixes
-- **Session 4** (2025-10-21): Haptic Feedback + Edge Cases
-- **Session 5** (2025-10-21): Swipe-to-Delete + Drag-and-Drop
-
----
-
-## 🏠 Home View V2 - PHASE 1 COMPLETE (40%)
-
-**Datei:** [HOME_VIEW_V2_REDESIGN.md](./HOME_VIEW_V2_REDESIGN.md)  
-**Status:** 🚧 ENTWICKLUNG (Phase 1 Complete)  
-**Branch:** `feature/active-workout-redesign` (aktiv)  
-**Geschätzte Dauer:** 3-5 Stunden (2h verbraucht)
-
-### Implementierte Features ✅
-- [x] List-basiertes Layout (statt Grid)
-- [x] Swipe-to-Delete Workouts (Dummy)
-- [x] Drag-and-Drop Favoriten-Reorder (Dummy)
-- [x] Größere Workout-Cards (1 pro Zeile)
-- [x] Week Calendar Strip (HomeWeekCalendar)
-- [x] Quick-Start Button
-- [x] Haptic Feedback
-- [x] Empty State View
-- [x] Favorite Star Toggle
-- [x] Black/White UI (no colors)
-- [x] Dark Mode Support (HomeV2Theme)
-- [x] Estimated Duration Display
-
-### Phasen-Plan
-**Phase 1: Layout & Dummy-Functions** (2-3h) ✅ COMPLETE
-- [x] HomeViewV2.swift mit List
-- [x] WorkoutListCard Component
-- [x] HomeHeaderSection Component
-- [x] HomeWeekCalendar Component (Week Calendar Strip)
-- [x] HomeV2Theme (Centralized Black/White/Dark Mode Colors)
-- [x] Swipe-to-Delete (Dummy)
-- [x] Drag-and-Drop (Dummy)
-- [x] Preview-Daten (3 Szenarien)
-
-**Phase 2: Business Logic** (1-2h) ⏳ NEXT
-- [ ] WorkoutReorderService erstellen
-- [ ] WorkoutActionService Erweiterung
-- [ ] SwiftData Reorder Persistence
-- [ ] WorkoutsHomeViewV2 Production Wrapper
-- [ ] Callbacks Integration
-
-**Phase 3: Migration & Testing** (1h)
-- [ ] Feature Flag Setup
-- [ ] ContentView Integration
-- [ ] A/B Testing Setup
-- [ ] Edge Case Testing
-- [ ] Dark Mode Testing
-
----
-
-## 📋 Workouts View V2 - GEPLANT
-
-**Status:** ⏳ GEPLANT  
-**Priorität:** Medium  
-**Abhängigkeiten:** Home View V2
-
-Noch keine Details definiert.
-
----
-
-## 📊 Analytics View V2 - GEPLANT
-
-**Status:** ⏳ GEPLANT  
-**Priorität:** Low  
-**Abhängigkeiten:** Workouts View V2
-
-Noch keine Details definiert.
-
----
-
-## 👤 Profile View V2 - GEPLANT
-
-**Status:** ⏳ GEPLANT  
-**Priorität:** Low  
-**Abhängigkeiten:** Keine
-
-Noch keine Details definiert.
-
----
-
-## 🔧 Technische Infrastruktur
-
-### Shared Components (V2 Standard)
-```
-GymTracker/Views/Components/Shared/
-├── HapticManager.swift              # ✅ Vorhanden
-├── AppTheme.swift                   # ✅ Vorhanden
-└── SwipeableCard.swift              # ⏳ Geplant (Reusable Swipe-Card)
-```
-
-### Services (Business Logic Layer)
-```
-GymTracker/Services/
-├── WorkoutActionService.swift       # ✅ Vorhanden
-├── WorkoutDataService.swift         # ⏳ Geplant (CRUD Operations)
-└── WorkoutReorderService.swift      # ⏳ Geplant (Persistence for Reorder)
-```
-
-### Models (SwiftData Entities)
-```
-GymTracker/Models/
-├── WorkoutEntity.swift              # ✅ Vorhanden
-├── ExerciseEntity.swift             # ✅ Vorhanden
-├── WorkoutSessionEntity.swift       # ✅ Vorhanden
-└── WorkoutEntity+Extensions.swift   # ⏳ Geplant (sortOrder property)
+Dokumentation/
+├── TECHNICAL_CONCEPT_V2.md              # Haupt-Architektur-Dokument
+├── DATAFLOW_KONZEPT_V2.md               # Redux-Style State Management
+└── V2/
+    ├── V2_MASTER_PROGRESS.md            # Diese Datei
+    ├── V2_CLEAN_ARCHITECTURE_ROADMAP.md # Detaillierte Roadmap
+    ├── ACTIVE_WORKOUT_REDESIGN.md       # UI Reference (archived work)
+    ├── HOME_VIEW_V2_REDESIGN.md         # UI Reference (archived work)
+    ├── EDGE_CASE_ANALYSIS.md            # Testing Insights
+    └── README.md                        # Quick Start Guide
 ```
 
 ---
 
-## 📈 Nächste Schritte
+## 🗂️ Archivierte UI-Experimente
 
-### Aktuelle Priorität: Home View V2
+**Branch:** `archive/v2-ui-experiments`
 
-1. **✅ ERLEDIGT:** V2 Ordnerstruktur erstellt
-2. **🔄 IN ARBEIT:** HOME_VIEW_V2_REDESIGN.md Dokument erstellen
-3. **⏳ NÄCHSTER:** Active Workout Docs in V2 verschieben
-4. **⏳ DANN:** HomeViewV2 Phase 1 Implementation starten
+Vor der Clean Architecture Entscheidung haben wir UI-First Redesigns gemacht:
+- ✅ Active Workout V2 (ExerciseCard, TimerSection, etc.)
+- ✅ Home View V2 (HomeViewV2, HomeWeekCalendar, etc.)
 
-### Langfristig (nach Home View)
+**Status:** Archiviert, nicht in Production  
+**Verwendung:** Als Referenz für Presentation Layer in Clean Architecture
 
-1. **Workouts View V2** - Workout-Verwaltung modernisieren
-2. **Analytics View V2** - Charts & Statistiken neu designen
-3. **Profile View V2** - Profil & Settings konsolidieren
-4. **Migration Cleanup** - Alle alten Views entfernen
+**UI Components (archiviert):**
+```
+GymTracker/Views/Components/ActiveWorkoutV2/   # Archived
+GymTracker/Views/Components/HomeV2/            # Archived
+```
+
+Diese werden **neu implementiert** im Presentation Layer, aber mit:
+- Clean separation von Business Logic
+- Store Pattern (nicht direkt SwiftData)
+- Testable ViewModels
+- Dependency Injection
 
 ---
 
-## 🐛 Known Issues & Blockers
+## 🔧 Neue Projektstruktur (V2)
 
-### Active Workout View
-- **Phase 7 unvollständig:** Exercise History Chart noch nicht implementiert (Feature 3)
-- **Phase 8 ausstehend:** Migration von old → new View noch nicht durchgeführt
+**Noch nicht erstellt - Sprint 1 Task:**
 
-### Home View V2
-- **Keine Blocker:** Kann sofort gestartet werden
+```
+GymTracker/
+├── Domain/                          # ⏳ Pure Swift, keine Frameworks
+│   ├── Entities/
+│   │   ├── Workout.swift
+│   │   ├── Exercise.swift
+│   │   └── WorkoutSession.swift
+│   ├── UseCases/
+│   │   ├── Session/
+│   │   │   ├── StartWorkoutSessionUseCase.swift
+│   │   │   ├── EndWorkoutSessionUseCase.swift
+│   │   │   └── UpdateWorkoutSessionUseCase.swift
+│   │   └── Workout/
+│   │       ├── FetchWorkoutsUseCase.swift
+│   │       └── SaveWorkoutUseCase.swift
+│   └── RepositoryProtocols/
+│       ├── WorkoutRepositoryProtocol.swift
+│       └── SessionRepositoryProtocol.swift
+│
+├── Data/                            # ⏳ Repositories + Mappers
+│   ├── Repositories/
+│   │   ├── SwiftDataWorkoutRepository.swift
+│   │   └── SwiftDataSessionRepository.swift
+│   ├── Mappers/
+│   │   ├── WorkoutMapper.swift
+│   │   └── SessionMapper.swift
+│   └── Cache/
+│       └── CacheService.swift
+│
+├── Presentation/                    # ⏳ Stores + Views
+│   ├── Stores/
+│   │   ├── SessionStore.swift
+│   │   ├── WorkoutStore.swift
+│   │   └── StatisticsStore.swift
+│   └── Views/
+│       ├── ActiveWorkout/
+│       ├── Home/
+│       └── Workouts/
+│
+└── Infrastructure/                  # ⏳ Framework Isolation
+    ├── SwiftData/
+    │   └── Entities/
+    ├── HealthKit/
+    │   └── HealthKitService.swift
+    └── DI/
+        └── DependencyContainer.swift
+```
+
+---
+
+## 📈 Erfolgsmetriken - V1 vs V2
+
+| Metrik | v1.x (Current) | v2.0 Ziel |
+|--------|----------------|-----------|
+| **Test Coverage** | 15% | **70%+** |
+| **App Launch** | 3-5s | **< 1.5s** |
+| **Größte Datei** | 130KB (WorkoutStore) | **< 30KB** |
+| **Compile Time** | 45s | **< 20s** |
+| **SOLID Violations** | Viele | **Keine** |
+| **Testable Use Cases** | 0 | **100%** |
+
+---
+
+## 🎓 Lessons Learned (UI-First Attempt)
+
+### Was wir aus den UI-Experimenten gelernt haben:
+
+**✅ Positiv:**
+1. List-basiertes Layout funktioniert sehr gut
+2. Native Gestures (.swipeActions, .onMove) sind besser als Custom
+3. Preview-First Development beschleunigt enorm
+4. Haptic Feedback macht große UX-Differenz
+5. Dark Mode mit UIColor Theme System funktioniert
+
+**⚠️ Probleme entdeckt:**
+1. Business Logic in Views → nicht testbar
+2. Direkte SwiftData Abhängigkeit → nicht mockbar
+3. Massive WorkoutStore (130KB) → nicht wartbar
+4. Fehlende Separation of Concerns → Edge Cases schwer zu fixen
+5. Keine Use Cases → Business Logic überall verteilt
+
+**💡 Konsequenz:**
+Deswegen Clean Architecture! Diese Probleme sind fundamental und nur durch Architektur-Rewrite lösbar.
+
+---
+
+## 📚 Haupt-Dokumentation
+
+Für Details siehe:
+- **[TECHNICAL_CONCEPT_V2.md](../TECHNICAL_CONCEPT_V2.md)** - Komplette Architektur-Spezifikation
+- **[DATAFLOW_KONZEPT_V2.md](../DATAFLOW_KONZEPT_V2.md)** - State Management Details
+- **[V2_CLEAN_ARCHITECTURE_ROADMAP.md](./V2_CLEAN_ARCHITECTURE_ROADMAP.md)** - Detaillierter Sprint-Plan
+
+---
+
+## 🚀 Nächster Sprint (Morgen starten)
+
+### Sprint 1 - Foundation Setup (Woche 1-2)
+
+**Tag 1-2: Projektstruktur**
+- [ ] Ordnerstruktur anlegen (Domain, Data, Presentation, Infrastructure)
+- [ ] DependencyContainer.swift erstellen
+- [ ] GymTrackerApp.swift für DI vorbereiten
+
+**Tag 3-4: Domain Layer**
+- [ ] Domain Entities (Workout, Exercise, Session)
+- [ ] Repository Protocols
+- [ ] Erste Use Cases (Fetch Workouts)
+
+**Tag 5-7: Test Infrastructure**
+- [ ] Mock Repositories
+- [ ] Test Helpers & Fixtures
+- [ ] Erste Unit Tests
+
+**Tag 8-10: Integration**
+- [ ] DI Container verdrahten
+- [ ] App läuft mit neuer Architektur
+- [ ] Alte + Neue Architektur parallel
+
+**Deliverable:** Funktionierende Foundation, erste Tests grün
 
 ---
 
 ## 📝 Changelog
 
-### 2025-10-21
-- ✅ V2 Ordnerstruktur erstellt (`Dokumentation/V2/`)
-- ✅ `V2_MASTER_PROGRESS.md` erstellt
-- ✅ `HOME_VIEW_V2_REDESIGN.md` erstellt (Phase 0 Complete)
-- ✅ Active Workout Docs migriert zu V2 Ordner
-- ✅ **Home View V2 Phase 1 Complete** (4 Components, 3 Previews, ~800 LOC)
-  - HomeViewV2.swift (Main Container with List)
-  - WorkoutListCard.swift (Individual Workout Card)
-  - HomeHeaderSection.swift (Greeting + Locker + Settings)
-  - HomeWeekCalendar.swift (Week Calendar Strip with workout indicators)
-  - HomeV2Theme (Embedded in QuickStatsBar.swift - Dark Mode Colors)
-- ✅ **Design Changes Applied**
-  - Removed all colors (Orange/Yellow/Blue → Black/White/Gray)
-  - Removed emoji workout icons
-  - Implemented Dark Mode support with dynamic colors
-  - Replaced QuickStatsBar with Week Calendar Strip
+### 2025-10-21 - Architecture Pivot
+- 🔄 **STRATEGY CHANGE:** Von UI-First zu Clean Architecture
+- ✅ Branch `feature/v2-clean-architecture` erstellt
+- ✅ Branch `archive/v2-ui-experiments` für alte UI-Arbeit
+- ✅ `TECHNICAL_CONCEPT_V2.md` importiert
+- ✅ `DATAFLOW_KONZEPT_V2.md` importiert
+- ✅ V2 Dokumentation wiederhergestellt
+- ✅ `V2_MASTER_PROGRESS.md` komplett überarbeitet
+- 🔄 `V2_CLEAN_ARCHITECTURE_ROADMAP.md` in Arbeit
+- ⏳ **READY TO START:** Sprint 1 Foundation morgen starten
 
 ---
 
-## 🎓 Lessons Learned
+**Zuletzt aktualisiert:** 2025-10-21 23:10 - Ready for Clean Architecture Implementation
 
-### Active Workout V2 Development
-
-**Was gut funktioniert hat:**
-1. ✅ **Phasen-basierter Ansatz** - Klare Meilensteine, leicht verfolgbar
-2. ✅ **Preview-First Development** - Schnelle Iteration ohne Simulator
-3. ✅ **Dummy-Callbacks zuerst** - UI unabhängig von Business Logic
-4. ✅ **List statt VStack** - Native Gestures (Swipe, Move) funktionieren out-of-the-box
-5. ✅ **Session-Logs in Markdown** - Perfekt für Context-Resumes
-
-**Was verbessert werden kann:**
-1. ⚠️ **Business Logic früher planen** - Reorder-Persistence war Nachgedanke
-2. ⚠️ **Edge Cases früher testen** - "All Completed + Hidden = Blank Screen" Bug spät gefunden
-3. ⚠️ **SwiftData Migration** - Noch nicht durchgeführt, könnte Probleme geben
-
-**Für Home View V2 anwenden:**
-1. ✅ Business Logic (Reorder-Persistence) von Anfang an einplanen
-2. ✅ Edge Cases in Design-Phase identifizieren
-3. ✅ Migration-Strategie vor Implementation definieren
-
----
-
-## 📚 Referenzen
-
-- **Apple HIG:** https://developer.apple.com/design/human-interface-guidelines/
-- **SwiftUI List Best Practices:** https://developer.apple.com/documentation/swiftui/list
-- **Haptic Feedback Guidelines:** https://developer.apple.com/design/human-interface-guidelines/playing-haptics
-
----
-
-**Zuletzt aktualisiert:** 2025-10-21 - Home View V2 Phase 1 Complete
+**Status:** 🟢 Bereit für Sprint 1 (Foundation)  
+**Branch:** `feature/v2-clean-architecture`  
+**Next Action:** Sprint 1 - Day 1 - Projektstruktur anlegen
