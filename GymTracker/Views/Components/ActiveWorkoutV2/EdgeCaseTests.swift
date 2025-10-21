@@ -27,7 +27,6 @@ extension ActiveWorkoutEdgeCasePreviews {
         Workout(
             name: "Empty Workout",
             exercises: [],
-            targetMuscleGroups: [],
             startDate: Date()
         )
     }
@@ -41,7 +40,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     exercise: Exercise(
                         name: "Bench Press",
                         muscleGroups: [.chest],
-                        equipmentType: .barbell
+                        equipmentType: .freeWeights
                     ),
                     sets: [
                         ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
@@ -50,7 +49,6 @@ extension ActiveWorkoutEdgeCasePreviews {
                     ]
                 )
             ],
-            targetMuscleGroups: [.chest],
             startDate: Date()
         )
     }
@@ -64,7 +62,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     exercise: Exercise(
                         name: "Bench Press",
                         muscleGroups: [.chest],
-                        equipmentType: .barbell
+                        equipmentType: .freeWeights
                     ),
                     sets: [
                         ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: true),
@@ -75,7 +73,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     exercise: Exercise(
                         name: "Squats",
                         muscleGroups: [.legs],
-                        equipmentType: .barbell
+                        equipmentType: .freeWeights
                     ),
                     sets: [
                         ExerciseSet(reps: 10, weight: 120, restTime: 120, completed: true),
@@ -83,7 +81,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     ]
                 ),
             ],
-            targetMuscleGroups: [.chest, .legs],
+
             startDate: Date()
         )
     }
@@ -114,7 +112,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     sets: sets
                 )
             ],
-            targetMuscleGroups: [.back],
+
             startDate: Date()
         )
     }
@@ -128,7 +126,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     exercise: Exercise(
                         name: "Bench Press",
                         muscleGroups: [.chest],
-                        equipmentType: .barbell
+                        equipmentType: .freeWeights
                     ),
                     sets: [
                         ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: true),
@@ -140,7 +138,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     exercise: Exercise(
                         name: "Incline Press",
                         muscleGroups: [.chest],
-                        equipmentType: .barbell
+                        equipmentType: .freeWeights
                     ),
                     sets: [
                         ExerciseSet(reps: 8, weight: 80, restTime: 90, completed: true),
@@ -161,7 +159,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     ]
                 ),
             ],
-            targetMuscleGroups: [.chest],
+
             startDate: Date()
         )
     }
@@ -175,7 +173,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                     exercise: Exercise(
                         name: "Barbell Bench Press with Extra Wide Grip on Competition Bench",
                         muscleGroups: [.chest],
-                        equipmentType: .barbell
+                        equipmentType: .freeWeights
                     ),
                     sets: [
                         ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false)
@@ -184,7 +182,7 @@ extension ActiveWorkoutEdgeCasePreviews {
                         "This is a very long note that contains detailed information about the exercise execution, form cues, and personal records. It should test how the UI handles multi-line text overflow and layout constraints."
                 )
             ],
-            targetMuscleGroups: [.chest],
+
             startDate: Date()
         )
     }

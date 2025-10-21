@@ -104,28 +104,22 @@ struct ActiveExerciseCard: View {
     // MARK: - Sets
 
     private var setsView: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, _ in
-                HStack(spacing: 8) {
-                    // Reorder handle (only visible in reorder mode)
-                    if isReorderMode {
-                        Image(systemName: "line.3.horizontal")
-                            .foregroundStyle(.gray)
-                            .font(.title3)
-                    }
+        List {
+            ForEach(exercise.sets) { set in
+                let index = exercise.sets.firstIndex(where: { $0.id == set.id }) ?? 0
 
-                    setRowView(index: index)
-                }
-                .padding(.horizontal, Layout.headerPadding)
-                .padding(.vertical, 12)
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        HapticManager.shared.light()
-                        onDeleteSet?(index)
-                    } label: {
-                        Label("Löschen", systemImage: "trash")
+                setRowView(index: index)
+                    .contentShape(Rectangle())
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            HapticManager.shared.light()
+                            onDeleteSet?(index)
+                        } label: {
+                            Label("Löschen", systemImage: "trash")
+                        }
                     }
-                }
             }
             .onMove { source, destination in
                 withAnimation {
@@ -134,6 +128,9 @@ struct ActiveExerciseCard: View {
                 HapticManager.shared.impact()
             }
         }
+        .listStyle(.plain)
+        .scrollDisabled(true)
+        .frame(height: CGFloat(exercise.sets.count) * 60)  // Approximate height per row
         .environment(\.editMode, .constant(isReorderMode ? .active : .inactive))
     }
 
@@ -177,6 +174,7 @@ struct ActiveExerciseCard: View {
                 .foregroundStyle(exercise.sets[index].completed ? .black : .gray.opacity(0.3))
             }
         }
+        .padding(.horizontal, Layout.headerPadding)
     }
 
     // MARK: - Quick-Add
@@ -261,8 +259,10 @@ struct ActiveExerciseCard: View {
         ),
         sets: [
             ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: true),
-            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
-            ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
+            ExerciseSet(reps: 8, weight: 105, restTime: 90, completed: false),
+            ExerciseSet(reps: 8, weight: 110, restTime: 90, completed: false),
+            ExerciseSet(reps: 6, weight: 115, restTime: 120, completed: false),
+            ExerciseSet(reps: 8, weight: 95, restTime: 90, completed: false),
         ]
     )
 
@@ -275,6 +275,10 @@ struct ActiveExerciseCard: View {
             },
             onQuickAdd: { input in
                 print("Quick-Add: \(input)")
+            },
+            onDeleteSet: { index in
+                exercise.sets.remove(at: index)
+                print("Deleted set at index \(index)")
             },
             onMarkAllComplete: {
                 exercise.sets.indices.forEach { exercise.sets[$0].completed = true }
