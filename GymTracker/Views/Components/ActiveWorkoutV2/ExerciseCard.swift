@@ -39,6 +39,7 @@ struct ActiveExerciseCard: View {
 
     @State private var quickAddText: String = ""
     @FocusState private var isQuickAddFocused: Bool
+    @State private var isReorderMode: Bool = false
 
     // MARK: - Body
 
@@ -105,11 +106,35 @@ struct ActiveExerciseCard: View {
     private var setsView: some View {
         VStack(spacing: 0) {
             ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, _ in
-                setRowView(index: index)
-                    .padding(.horizontal, Layout.headerPadding)
-                    .padding(.vertical, 12)
+                HStack(spacing: 8) {
+                    // Reorder handle (only visible in reorder mode)
+                    if isReorderMode {
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundStyle(.gray)
+                            .font(.title3)
+                    }
+
+                    setRowView(index: index)
+                }
+                .padding(.horizontal, Layout.headerPadding)
+                .padding(.vertical, 12)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        HapticManager.shared.light()
+                        onDeleteSet?(index)
+                    } label: {
+                        Label("Löschen", systemImage: "trash")
+                    }
+                }
+            }
+            .onMove { source, destination in
+                withAnimation {
+                    exercise.sets.move(fromOffsets: source, toOffset: destination)
+                }
+                HapticManager.shared.impact()
             }
         }
+        .environment(\.editMode, .constant(isReorderMode ? .active : .inactive))
     }
 
     private func setRowView(index: Int) -> some View {
@@ -199,11 +224,14 @@ struct ActiveExerciseCard: View {
 
             // Reorder
             Button {
-                onReorderSets?()
+                HapticManager.shared.selection()
+                withAnimation {
+                    isReorderMode.toggle()
+                }
             } label: {
-                Image(systemName: "arrow.up.arrow.down")
+                Image(systemName: isReorderMode ? "checkmark" : "arrow.up.arrow.down")
                     .font(.system(size: 24))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(isReorderMode ? .orange : .gray)
                     .frame(maxWidth: .infinity)
                     .frame(height: Layout.bottomButtonHeight)
             }
