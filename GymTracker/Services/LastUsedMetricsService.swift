@@ -150,7 +150,7 @@ final class LastUsedMetricsService {
 
         // Hole alle Sessions, sortiert nach Datum (neueste zuerst)
         let descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
-            sortBy: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)]
+            sortBy: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)]
         )
 
         guard let sessions = try? context.fetch(descriptor) else { return nil }

@@ -87,7 +87,7 @@ struct WorkoutsHomeView: View {
     private var workoutEntities: [WorkoutEntity]
 
     @Query(sort: [
-        SortDescriptor(\WorkoutSessionEntity.date, order: SortOrder.reverse)
+        SortDescriptor(\WorkoutSessionEntityV1.date, order: SortOrder.reverse)
     ])
     private var sessionEntities: [WorkoutSessionEntityV1]
 

@@ -23,7 +23,7 @@ struct StatisticsView: View {
     @State private var expandedHealthCard: Bool = false
     @Environment(\.colorScheme) private var colorScheme
 
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
 
     // Filter out active/incomplete workouts - only show completed sessions
@@ -922,7 +922,7 @@ private struct CompactHealthCard: View {
 
 // 1. Consistency / Wochenfortschritt
 private struct ConsistencyCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var consistencyWeeks: Int {
@@ -1158,7 +1158,7 @@ private struct PersonalRecordCardView: View {
 
 // 3. Weekly Volume
 private struct WeeklyVolumeCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var weeklyData: (currentVolume: Double, previousVolume: Double, weekNumber: Int) {
@@ -1248,7 +1248,7 @@ private struct WeeklyVolumeCardView: View {
 // 4. Muscle Group Balance
 private struct MuscleGroupBalanceCardView: View {
     @Environment(\.colorScheme) private var colorScheme
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var muscleBalance: (push: Double, pull: Double, legs: Double, isBalanced: Bool) {
@@ -1384,7 +1384,7 @@ private struct MuscleGroupBalanceCardView: View {
 
 // 5. Average Weight per Exercise
 private struct AverageWeightCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var topExercises: [(name: String, avgWeight: Double, change: Double)] {
@@ -1513,7 +1513,7 @@ private struct AverageWeightCardView: View {
 
 // 6. Session Intensity
 private struct SessionIntensityCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var latestSessionScore: Int {
@@ -1581,7 +1581,7 @@ private struct SessionIntensityCardView: View {
 
 // 7. Plateau Check
 private struct PlateauCheckCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var plateauAlert: (exercise: String, weeks: Int)? {
@@ -1663,7 +1663,7 @@ private struct PlateauCheckCardView: View {
 }
 
 private struct ProgressOverviewCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
 
     private var lastSession: WorkoutSession? {
@@ -1742,7 +1742,7 @@ private struct ProgressOverviewCardView: View {
 }
 
 private struct ProgressDeltaInfoCardView: View {
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
 
     private var lastTwoSessions: [WorkoutSession] {

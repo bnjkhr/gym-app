@@ -40,7 +40,7 @@ struct DayStripView: View {
     let showCalendar: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
 
     /// Die letzten 7 Tage (heute bis vor 6 Tagen)
