@@ -4,7 +4,7 @@ import Charts
 /// Card zeigt die Volumen-Verteilung nach Muskelgruppen
 struct MuscleDistributionCard: View {
     @StateObject private var cache = StatisticsCache.shared
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @State private var isExpanded: Bool = false
     @State private var cachedDistribution: [MuscleGroupVolume] = []
     @State private var updateTask: Task<Void, Never>?

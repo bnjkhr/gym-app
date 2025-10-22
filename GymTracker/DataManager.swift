@@ -13,7 +13,7 @@ class DataManager: ObservableObject {
             // Check if we already have data
             let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
             let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
             
             print("📊 Datenbank-Status: Workouts: \(workouts.count), Übungen: \(exercises.count), Sessions: \(sessions.count)")
             
@@ -428,7 +428,7 @@ class DataManager: ObservableObject {
         return newExercise
     }
     
-    func recordSession(_ session: WorkoutSession, to context: ModelContext) throws -> WorkoutSessionEntity {
+    func recordSession(_ session: WorkoutSession, to context: ModelContext) throws -> WorkoutSessionEntityV1 {
         print("💾 Speichere Session: \(session.name) (ID: \(session.id.uuidString.prefix(8)))")
         
         let sessionEntity = WorkoutSessionEntity(
@@ -473,7 +473,7 @@ class DataManager: ObservableObject {
         // Delete all data
         let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
         let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-        let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
         let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
         
         for workout in workouts {
@@ -502,7 +502,7 @@ class DataManager: ObservableObject {
         do {
             let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
             let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
             let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
             
             print("=== 📊 Datenbank-Status ===")

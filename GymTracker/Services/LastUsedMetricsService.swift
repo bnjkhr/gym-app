@@ -149,7 +149,7 @@ final class LastUsedMetricsService {
         guard let context = modelContext else { return nil }
 
         // Hole alle Sessions, sortiert nach Datum (neueste zuerst)
-        let descriptor = FetchDescriptor<WorkoutSessionEntity>(
+        let descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
             sortBy: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)]
         )
 
@@ -187,7 +187,7 @@ final class LastUsedMetricsService {
     /// 5. Update Properties und speichere
     ///
     /// - Parameter session: Die abgeschlossene Workout-Session
-    func updateLastUsedMetrics(from session: WorkoutSession) {
+    func updateLastUsedMetrics(from session: WorkoutSessionV1) {
         guard let context = modelContext else {
             print("⚠️ LastUsedMetricsService: ModelContext ist nil")
             return

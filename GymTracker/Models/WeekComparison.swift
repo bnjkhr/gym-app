@@ -13,7 +13,7 @@ struct WeekComparison {
     let avgDurationChange: TimeInterval // Sekunden
 
     /// Berechnet den Wochenvergleich
-    static func calculate(sessions: [WorkoutSessionEntity], records: [ExerciseRecord]) -> WeekComparison {
+    static func calculate(sessions: [WorkoutSessionEntityV1], records: [ExerciseRecord]) -> WeekComparison {
         let calendar = Calendar.current
         let now = Date()
 
@@ -112,7 +112,7 @@ struct WeekStats {
 
     /// Berechnet Statistiken für eine Woche
     static func calculate(
-        sessions: [WorkoutSessionEntity],
+        sessions: [WorkoutSessionEntityV1],
         records: [ExerciseRecord],
         startDate: Date
     ) -> WeekStats {

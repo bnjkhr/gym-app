@@ -8,7 +8,7 @@ struct SessionDetailView: View {
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
 
     @State private var showingRestartConfirmation = false
-    @State private var previousSessions: [WorkoutSessionEntity] = []
+    @State private var previousSessions: [WorkoutSessionEntityV1] = []
 
     // Performance: Use cached DateFormatter
     private var localizedDateFormatter: DateFormatter {
@@ -183,7 +183,7 @@ struct SessionDetailView: View {
     // MARK: - Data Loading
 
     private func loadPreviousSessions() {
-        let descriptor = FetchDescriptor<WorkoutSessionEntity>(
+        let descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
 

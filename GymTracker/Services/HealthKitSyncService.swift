@@ -127,7 +127,7 @@ final class HealthKitSyncService {
     /// Exportiert eine Workout-Session zu HealthKit
     /// - Parameter session: Die WorkoutSession zum Exportieren
     /// - Throws: HealthKitError bei Fehlern
-    func saveWorkout(_ session: WorkoutSession) async throws {
+    func saveWorkout(_ session: WorkoutSessionV1) async throws {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }

@@ -468,7 +468,7 @@ struct GymTrackerApp: App {
             }
 
             // WICHTIG: Sessions (Workout-Historie) bleiben erhalten!
-            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
             AppLogger.data.info("✅ Preserving \(sessions.count) workout sessions (history)")
 
             try context.save()

@@ -4,7 +4,7 @@ import SwiftData
 // MARK: - Smart Tips Card
 
 struct SmartTipsCard: View {
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @EnvironmentObject var workoutStore: WorkoutStoreCoordinator
 
     private var feedbackManager: TipFeedbackManager {

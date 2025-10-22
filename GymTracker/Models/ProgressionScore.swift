@@ -13,7 +13,7 @@ struct ProgressionScore {
 
     /// Berechnet den Progression Score basierend auf Session-Daten und Records
     static func calculate(
-        sessions: [WorkoutSessionEntity],
+        sessions: [WorkoutSessionEntityV1],
         records: [ExerciseRecord],
         weeklyGoal: Int,
         compareWeeks: Int = 4
@@ -70,7 +70,7 @@ struct ProgressionScore {
         return prScore
     }
 
-    private static func calculateVolumeScore(sessions: [WorkoutSessionEntity], compareWeeks: Int) -> Double {
+    private static func calculateVolumeScore(sessions: [WorkoutSessionEntityV1], compareWeeks: Int) -> Double {
         guard compareWeeks >= 2 else { return 0 }
 
         let calendar = Calendar.current
@@ -102,7 +102,7 @@ struct ProgressionScore {
     }
 
     private static func calculateConsistencyScore(
-        sessions: [WorkoutSessionEntity],
+        sessions: [WorkoutSessionEntityV1],
         weeklyGoal: Int,
         compareWeeks: Int
     ) -> Double {
@@ -128,7 +128,7 @@ struct ProgressionScore {
         }
     }
 
-    private static func calculateBalanceScore(sessions: [WorkoutSessionEntity]) -> Double {
+    private static func calculateBalanceScore(sessions: [WorkoutSessionEntityV1]) -> Double {
         var muscleGroupVolumes: [MuscleGroup: Double] = [:]
 
         // Volumen pro Muskelgruppe sammeln
@@ -190,7 +190,7 @@ struct ProgressionScore {
 
     // MARK: - Helper Functions
 
-    private static func calculateTotalVolume(sessions: [WorkoutSessionEntity]) -> Double {
+    private static func calculateTotalVolume(sessions: [WorkoutSessionEntityV1]) -> Double {
         return sessions.reduce(0.0) { total, session in
             total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
                 exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
@@ -200,7 +200,7 @@ struct ProgressionScore {
         }
     }
 
-    private static func calculateVolumeChange(sessions: [WorkoutSessionEntity], compareWeeks: Int) -> Double {
+    private static func calculateVolumeChange(sessions: [WorkoutSessionEntityV1], compareWeeks: Int) -> Double {
         guard compareWeeks >= 2 else { return 0 }
 
         let calendar = Calendar.current
@@ -219,7 +219,7 @@ struct ProgressionScore {
     }
 
     private static func calculateCompletionRate(
-        sessions: [WorkoutSessionEntity],
+        sessions: [WorkoutSessionEntityV1],
         weeklyGoal: Int,
         compareWeeks: Int
     ) -> Double {

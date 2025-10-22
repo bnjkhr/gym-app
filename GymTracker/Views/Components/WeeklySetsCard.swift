@@ -3,7 +3,7 @@ import SwiftUI
 /// Card zeigt Sets pro Muskelgruppe mit wissenschaftlichen Empfehlungen
 struct WeeklySetsCard: View {
     @StateObject private var cache = StatisticsCache.shared
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @State private var isExpanded: Bool = false
     @State private var cachedSetsData: [MuscleGroupSets] = []
     @State private var updateTask: Task<Void, Never>?

@@ -44,7 +44,7 @@ struct CalendarSessionsView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
 
     @State private var displayedMonth: Date = Date()
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())

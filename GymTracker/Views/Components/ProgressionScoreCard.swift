@@ -4,7 +4,7 @@ import SwiftUI
 struct ProgressionScoreCard: View {
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @StateObject private var cache = StatisticsCache.shared
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @State private var progressionScore: ProgressionScore?
     @State private var isExpanded: Bool = false
     @Environment(\.colorScheme) private var colorScheme

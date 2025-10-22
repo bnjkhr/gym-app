@@ -1,8 +1,8 @@
 # GymBo V2.0 - Clean Architecture Implementation Roadmap
 
-**Erstellt:** 2025-10-21  
-**Branch:** `feature/v2-clean-architecture`  
-**Dauer:** 8 Wochen (40 Arbeitstage)  
+**Erstellt:** 2025-10-21
+**Branch:** `feature/v2-clean-architecture`
+**Dauer:** 8 Wochen (40 Arbeitstage)
 **Ziel:** Ground-Up Redesign mit Clean Architecture
 
 ---
@@ -35,14 +35,14 @@ Eine hochperformante, wartbare und testbare iOS-App nach Clean Architecture Prin
 | **Sprint 7-8** | 7-8 | Statistics, Tests, Polish | ⏳ GEPLANT |
 
 ### 🎓 Architektur-Referenz
-Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_V2.md)
+Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](TECHNICAL_CONCEPT_V2.md)
 
 ---
 
 ## Sprint 1-2: Foundation (Woche 1-2)
 
-**Dauer:** 10 Arbeitstage  
-**Ziel:** Neue Architektur aufsetzen, DI funktionsfähig  
+**Dauer:** 10 Arbeitstage
+**Ziel:** Neue Architektur aufsetzen, DI funktionsfähig
 **Status:** 🟡 BEREIT ZUM START (2025-10-22)
 
 ### 📦 Deliverables
@@ -114,11 +114,11 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
       var defaultRestTime: TimeInterval
       var isFavorite: Bool
       var folder: WorkoutFolder?
-      
+
       // Computed Properties
       var totalVolume: Double { ... }
       var estimatedDuration: TimeInterval { ... }
-      
+
       // Business Logic
       func canAddExercise(_ exercise: Exercise) -> Result<Void, WorkoutError>
   }
@@ -175,7 +175,7 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
   ```swift
   class FetchWorkoutsUseCase {
       let repository: WorkoutRepositoryProtocol
-      
+
       func execute() async -> Result<[Workout], WorkoutError> {
           // Business Logic hier
       }
@@ -202,7 +202,7 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
   class SwiftDataWorkoutRepository: WorkoutRepositoryProtocol {
       let context: ModelContext
       let mapper: WorkoutMapper
-      
+
       func fetch(id: UUID) async -> Result<Workout, RepositoryError> {
           // SwiftData fetch + mapping
       }
@@ -250,8 +250,8 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
 
 ## Sprint 3-4: Session Management (Woche 3-4)
 
-**Dauer:** 10 Arbeitstage  
-**Ziel:** Active Workout Flow komplett neu implementiert  
+**Dauer:** 10 Arbeitstage
+**Ziel:** Active Workout Flow komplett neu implementiert
 **Status:** ⏳ GEPLANT (startet nach Sprint 1-2)
 
 ### 📦 Deliverables
@@ -274,7 +274,7 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
       let workoutRepository: WorkoutRepositoryProtocol
       let sessionRepository: SessionRepositoryProtocol
       let healthKitService: HealthKitServiceProtocol
-      
+
       func execute(workoutId: UUID) async -> Result<WorkoutSession, SessionError>
   }
   ```
@@ -306,10 +306,10 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
       @Published var state: State
       @Published var activeSession: WorkoutSession?
       @Published var error: SessionError?
-      
+
       let startSessionUseCase: StartWorkoutSessionUseCaseProtocol
       let endSessionUseCase: EndWorkoutSessionUseCaseProtocol
-      
+
       func startSession(workoutId: UUID) async
       func completeSet(_ setIndex: Int, for exerciseIndex: Int) async
   }
@@ -399,8 +399,8 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
 
 ## Sprint 5-6: Workout & Exercise Management (Woche 5-6)
 
-**Dauer:** 10 Arbeitstage  
-**Ziel:** CRUD für Workouts & Exercises  
+**Dauer:** 10 Arbeitstage
+**Ziel:** CRUD für Workouts & Exercises
 **Status:** ⏳ GEPLANT
 
 ### 📦 Deliverables
@@ -454,8 +454,8 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
 
 ## Sprint 7-8: Statistics, Testing, Polish (Woche 7-8)
 
-**Dauer:** 10 Arbeitstage  
-**Ziel:** Feature-Completion, Performance, Cleanup  
+**Dauer:** 10 Arbeitstage
+**Ziel:** Feature-Completion, Performance, Cleanup
 **Status:** ⏳ GEPLANT
 
 ### 📦 Deliverables
@@ -669,7 +669,7 @@ Alle Implementierungen folgen: [`TECHNICAL_CONCEPT_V2.md`](../TECHNICAL_CONCEPT_
 
 ---
 
-**Nächster Meilenstein:** Sprint 1 - Tag 1 (2025-10-22)  
+**Nächster Meilenstein:** Sprint 1 - Tag 1 (2025-10-22)
 **Erste Task:** Projektstruktur anlegen (4 Layer Ordner)
 
 **Status:** 🟢 READY TO START

@@ -4,7 +4,7 @@ import SwiftUI
 struct WeekComparisonCard: View {
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @StateObject private var cache = StatisticsCache.shared
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @State private var comparison: WeekComparison?
     @State private var isExpanded: Bool = false
     @State private var updateTask: Task<Void, Never>?

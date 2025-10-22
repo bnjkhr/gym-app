@@ -71,9 +71,9 @@ final class WorkoutSessionService {
 
     /// Speichert eine abgeschlossene Workout-Session
     /// - Parameter session: Die WorkoutSession zum Speichern
-    /// - Returns: Das gespeicherte WorkoutSessionEntity
+    /// - Returns: Das gespeicherte WorkoutSessionEntityV1
     /// - Throws: SessionError bei Fehlern
-    func recordSession(_ session: WorkoutSession) throws -> WorkoutSessionEntity {
+    func recordSession(_ session: WorkoutSessionV1) throws -> WorkoutSessionEntityV1 {
         guard let context = modelContext else {
             throw SessionError.missingModelContext
         }
@@ -113,8 +113,8 @@ final class WorkoutSessionService {
             workoutExerciseEntities.append(workoutExerciseEntity)
         }
 
-        // Erstelle WorkoutSessionEntity mit allen erforderlichen Parametern
-        let sessionEntity = WorkoutSessionEntity(
+        // Erstelle WorkoutSessionEntityV1 mit allen erforderlichen Parametern
+        let sessionEntity = WorkoutSessionEntityV1(
             id: session.id,
             templateId: session.templateId,
             name: session.name,

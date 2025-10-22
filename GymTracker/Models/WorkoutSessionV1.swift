@@ -1,6 +1,8 @@
 import Foundation
 
-struct WorkoutSession: Identifiable, Codable {
+// V1 Legacy Model - Renamed to avoid conflict with V2 Domain Entity
+// TODO: Migrate usages to V2 WorkoutSession (Domain/Entities/WorkoutSession.swift)
+struct WorkoutSessionV1: Identifiable, Codable {
     let id: UUID
     let templateId: UUID?
     var name: String
@@ -43,9 +45,9 @@ struct WorkoutSession: Identifiable, Codable {
 }
 
 extension Workout {
-    init(session: WorkoutSession) {
+    init(session: WorkoutSessionV1) {
         self.init(
-            id: UUID(), // ✅ Neue ID für Template-Konvertierung
+            id: UUID(),  // ✅ Neue ID für Template-Konvertierung
             name: session.name,
             date: session.date,
             exercises: session.exercises,

@@ -285,7 +285,7 @@ struct BackupView: View {
             do {
                 let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
                 let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
                 
                 await MainActor.run {
                     self.backupStats = BackupStats(

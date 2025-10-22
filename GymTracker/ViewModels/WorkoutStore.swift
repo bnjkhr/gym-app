@@ -712,7 +712,7 @@ class WorkoutStore: ObservableObject {
 
             // Fetch and delete all entities
             let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
-            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+            let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
             let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
             let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
 
@@ -760,7 +760,7 @@ class WorkoutStore: ObservableObject {
             do {
                 let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
                 let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+                let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
 
                 print("Gespeicherte Workouts: \(workouts.count)")
                 for workout in workouts.prefix(5) {

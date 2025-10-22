@@ -708,12 +708,12 @@ struct WorkoutDetailView: View {
         let currentDate = workout.date
         let searchDate = isActiveSession ? Date() : currentDate
 
-        let predicate = #Predicate<WorkoutSessionEntity> { entity in
+        let predicate = #Predicate<WorkoutSessionEntityV1> { entity in
             (entity.templateId == templateId) && (entity.date < searchDate)
         }
-        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
+        var descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
             predicate: predicate,
-            sortBy: [SortDescriptor<WorkoutSessionEntity>(\.date, order: .reverse)]
+            sortBy: [SortDescriptor<WorkoutSessionEntityV1>(\.date, order: .reverse)]
         )
         descriptor.fetchLimit = 1
 

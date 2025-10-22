@@ -15,7 +15,7 @@ class BackupManager: ObservableObject {
         // Fetch all data
         let workouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
         let exercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-        let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
         let profiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
         
         // Convert to backup format
@@ -134,7 +134,7 @@ class BackupManager: ObservableObject {
         // Delete all existing data
         let existingWorkouts = try context.fetch(FetchDescriptor<WorkoutEntity>())
         let existingExercises = try context.fetch(FetchDescriptor<ExerciseEntity>())
-        let existingSessions = try context.fetch(FetchDescriptor<WorkoutSessionEntity>())
+        let existingSessions = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>())
         let existingProfiles = try context.fetch(FetchDescriptor<UserProfileEntity>())
         
         for workout in existingWorkouts { context.delete(workout) }
@@ -184,8 +184,8 @@ class BackupManager: ObservableObject {
         
         // Merge sessions
         for backupSession in backup.sessions {
-            let existing = try context.fetch(FetchDescriptor<WorkoutSessionEntity>(
-                predicate: #Predicate<WorkoutSessionEntity> { session in session.id == backupSession.id }
+            let existing = try context.fetch(FetchDescriptor<WorkoutSessionEntityV1>(
+                predicate: #Predicate<WorkoutSessionEntityV1> { session in session.id == backupSession.id }
             )).first
             
             if existing == nil {
@@ -270,7 +270,7 @@ class BackupManager: ObservableObject {
         )
     }
     
-    private func convertSessionToBackup(_ entity: WorkoutSessionEntity) -> BackupSession {
+    private func convertSessionToBackup(_ entity: WorkoutSessionEntityV1) -> BackupSession {
         BackupSession(
             id: entity.id,
             templateId: entity.templateId,
@@ -359,7 +359,7 @@ class BackupManager: ObservableObject {
         return entity
     }
     
-    private func createSessionEntity(from backup: BackupSession, in context: ModelContext) throws -> WorkoutSessionEntity {
+    private func createSessionEntity(from backup: BackupSession, in context: ModelContext) throws -> WorkoutSessionEntityV1 {
         let entity = WorkoutSessionEntity(
             id: backup.id,
             templateId: backup.templateId,

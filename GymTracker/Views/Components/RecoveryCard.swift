@@ -3,7 +3,7 @@ import SwiftUI
 /// Card zeigt den Recovery Index basierend auf HealthKit-Daten
 struct RecoveryCard: View {
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @State private var recoveryIndex: RecoveryIndex?
     @State private var isExpanded: Bool = false
     @State private var isLoading: Bool = false

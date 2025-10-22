@@ -24,10 +24,10 @@ struct StatisticsView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
 
     // Filter out active/incomplete workouts - only show completed sessions
-    private var completedSessions: [WorkoutSessionEntity] {
+    private var completedSessions: [WorkoutSessionEntityV1] {
         sessionEntities.filter { session in
             // Only include sessions with a duration (completed workouts)
             session.duration != nil && session.duration! > 0
@@ -172,7 +172,7 @@ private struct FloatingInsightsHeader: View {
 
 // MARK: - Hero Streak Card
 private struct HeroStreakCard: View {
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
 
     @State private var cachedConsistencyWeeks: Int = 0
@@ -317,7 +317,7 @@ private struct HeroStreakCard: View {
 
 // MARK: - Quick Stats Grid
 private struct QuickStatsGrid: View {
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @Environment(\.colorScheme) private var colorScheme
 
@@ -517,7 +517,7 @@ private struct QuickStatCard: View, Equatable {
 private struct VolumeChartCard: View {
     @StateObject private var cache = StatisticsCache.shared
     @Binding var isExpanded: Bool
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var cachedLast4WeeksData: [(week: String, volume: Double)] = []
@@ -770,7 +770,7 @@ private struct CompactPersonalRecordsCard: View {
 // MARK: - Compact Health Card (Expandable)
 private struct CompactHealthCard: View {
     @Binding var isExpanded: Bool
-    let sessionEntities: [WorkoutSessionEntity]
+    let sessionEntities: [WorkoutSessionEntityV1]
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator
     @State private var heartRateReadings: [HeartRateReading] = []
     @State private var weightReadings: [BodyWeightReading] = []
@@ -923,7 +923,7 @@ private struct CompactHealthCard: View {
 // 1. Consistency / Wochenfortschritt
 private struct ConsistencyCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var consistencyWeeks: Int {
         let calendar = Calendar.current
@@ -1159,7 +1159,7 @@ private struct PersonalRecordCardView: View {
 // 3. Weekly Volume
 private struct WeeklyVolumeCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var weeklyData: (currentVolume: Double, previousVolume: Double, weekNumber: Int) {
         let calendar = Calendar.current
@@ -1249,7 +1249,7 @@ private struct WeeklyVolumeCardView: View {
 private struct MuscleGroupBalanceCardView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var muscleBalance: (push: Double, pull: Double, legs: Double, isBalanced: Bool) {
         let recentSessions = sessionEntities.prefix(10) // Letzte 10 Sessions
@@ -1385,7 +1385,7 @@ private struct MuscleGroupBalanceCardView: View {
 // 5. Average Weight per Exercise
 private struct AverageWeightCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var topExercises: [(name: String, avgWeight: Double, change: Double)] {
         let recentSessions = sessionEntities.prefix(20) // Letzte 20 Sessions
@@ -1514,7 +1514,7 @@ private struct AverageWeightCardView: View {
 // 6. Session Intensity
 private struct SessionIntensityCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var latestSessionScore: Int {
         guard let latestSession = sessionEntities.first else { return 0 }
@@ -1582,7 +1582,7 @@ private struct SessionIntensityCardView: View {
 // 7. Plateau Check
 private struct PlateauCheckCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
     
     private var plateauAlert: (exercise: String, weeks: Int)? {
         let recentSessions = sessionEntities.prefix(30) // Letzte 30 Sessions
@@ -1664,7 +1664,7 @@ private struct PlateauCheckCardView: View {
 
 private struct ProgressOverviewCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
 
     private var lastSession: WorkoutSession? {
         let session = sessionEntities.first.map { WorkoutSession(entity: $0) }
@@ -1743,7 +1743,7 @@ private struct ProgressOverviewCardView: View {
 
 private struct ProgressDeltaInfoCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
 
     private var lastTwoSessions: [WorkoutSession] {
         let sessions = sessionEntities.prefix(2).map { WorkoutSession(entity: $0) }

@@ -52,7 +52,7 @@ struct RecoveryIndex {
         restingHeartRate: Double?, // Ruhepuls (bpm)
         baselineRestingHR: Double?, // Baseline Ruhepuls (Durchschnitt der letzten 30 Tage)
         sleepHours: Double?, // Schlafstunden letzte Nacht
-        recentSessions: [WorkoutSessionEntity], // Letzte 7 Tage
+        recentSessions: [WorkoutSessionEntityV1], // Letzte 7 Tage
         weeklyGoal: Int
     ) -> RecoveryIndex {
         var totalScore = 0.0
@@ -164,7 +164,7 @@ struct RecoveryIndex {
         }
     }
 
-    private static func calculateTrainingLoadScore(sessions: [WorkoutSessionEntity]) -> Double {
+    private static func calculateTrainingLoadScore(sessions: [WorkoutSessionEntityV1]) -> Double {
         let totalVolume = sessions.reduce(0.0) { total, session in
             total + session.exercises.reduce(0.0) { exerciseTotal, exercise in
                 exerciseTotal + exercise.sets.reduce(0.0) { setTotal, set in
@@ -192,7 +192,7 @@ struct RecoveryIndex {
         }
     }
 
-    private static func calculateFrequencyScore(sessions: [WorkoutSessionEntity], weeklyGoal: Int) -> Double {
+    private static func calculateFrequencyScore(sessions: [WorkoutSessionEntityV1], weeklyGoal: Int) -> Double {
         let sessionCount = sessions.count
 
         // Frequenz: Balance zwischen Aktivität und Erholung

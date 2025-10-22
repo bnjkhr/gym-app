@@ -89,7 +89,7 @@ struct WorkoutsHomeView: View {
     @Query(sort: [
         SortDescriptor(\WorkoutSessionEntity.date, order: SortOrder.reverse)
     ])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
 
     @State private var showingSettings = false
     @State private var showingProfileEditor = false
@@ -802,7 +802,7 @@ struct WorkoutsHomeView: View {
 
     /// Updates the session cache by mapping entities to domain models
     /// Only called when sessionEntities actually change, not on every render
-    private func updateSessionCache(_ entities: [WorkoutSessionEntity]) {
+    private func updateSessionCache(_ entities: [WorkoutSessionEntityV1]) {
         cachedSessions = entities.map { WorkoutSession(entity: $0, in: modelContext) }
     }
 }

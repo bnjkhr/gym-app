@@ -210,7 +210,7 @@ final class SessionManagementService: ObservableObject {
     }
 
     /// Gibt die aktive Session zurück (falls vorhanden)
-    var activeSession: WorkoutSession? {
+    var activeSession: WorkoutSessionV1? {
         guard let sessionID = activeSessionID else { return nil }
         return sessionService.getSession(with: sessionID)
     }

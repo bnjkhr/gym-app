@@ -9,18 +9,18 @@ final class ExerciseEntity {
     // Persist muscle groups as raw values for stability
     var muscleGroupsRaw: [String]
     var equipmentTypeRaw: String
-    var difficultyLevelRaw: String // NEU: Schwierigkeitsgrad als String gespeichert
+    var difficultyLevelRaw: String  // NEU: Schwierigkeitsgrad als String gespeichert
     var descriptionText: String
     var instructions: [String]
     var createdAt: Date
-    
+
     // 🆕 NEU: Letzte verwendete Werte für bessere UX
     var lastUsedWeight: Double?
     var lastUsedReps: Int?
     var lastUsedSetCount: Int?
     var lastUsedDate: Date?
     var lastUsedRestTime: TimeInterval?
-    
+
     @Relationship(inverse: \WorkoutExerciseEntity.exercise) var usages: [WorkoutExerciseEntity] = []
 
     init(
@@ -28,7 +28,7 @@ final class ExerciseEntity {
         name: String,
         muscleGroupsRaw: [String] = [],
         equipmentTypeRaw: String = "mixed",
-        difficultyLevelRaw: String = "Anfänger", // Default-Schwierigkeitsgrad
+        difficultyLevelRaw: String = "Anfänger",  // Default-Schwierigkeitsgrad
         descriptionText: String = "",
         instructions: [String] = [],
         createdAt: Date = Date(),
@@ -86,17 +86,18 @@ final class WorkoutExerciseEntity {
     // Relationship to the master Exercise catalog. Do NOT cascade from usage to catalog; nullify reference when usage is deleted
     @Relationship(deleteRule: .nullify) var exercise: ExerciseEntity?
     // Ordered sets for this exercise within the workout
-    @Relationship(deleteRule: .cascade, inverse: \ExerciseSetEntity.owner) var sets: [ExerciseSetEntity]
+    @Relationship(deleteRule: .cascade, inverse: \ExerciseSetEntity.owner) var sets:
+        [ExerciseSetEntity]
     var workout: WorkoutEntity?
-    var session: WorkoutSessionEntity?
-    var order: Int = 0 // Maintains the order of exercises in the workout (default 0 for existing data)
+    var session: WorkoutSessionEntityV1?
+    var order: Int = 0  // Maintains the order of exercises in the workout (default 0 for existing data)
 
     init(
         id: UUID = UUID(),
         exercise: ExerciseEntity? = nil,
         sets: [ExerciseSetEntity] = [],
         workout: WorkoutEntity? = nil,
-        session: WorkoutSessionEntity? = nil,
+        session: WorkoutSessionEntityV1? = nil,
         order: Int = 0
     ) {
         self.id = id
@@ -113,15 +114,16 @@ final class WorkoutExerciseEntity {
 final class WorkoutFolderEntity {
     @Attribute(.unique) var id: UUID
     var name: String
-    var color: String // Hex color string
+    var color: String  // Hex color string
     var order: Int
     var createdDate: Date
-    @Relationship(deleteRule: .nullify, inverse: \WorkoutEntity.folder) var workouts: [WorkoutEntity] = []
+    @Relationship(deleteRule: .nullify, inverse: \WorkoutEntity.folder) var workouts:
+        [WorkoutEntity] = []
 
     init(
         id: UUID = UUID(),
         name: String,
-        color: String = "#8B5CF6", // Default purple
+        color: String = "#8B5CF6",  // Default purple
         order: Int = 0,
         createdDate: Date = Date()
     ) {
@@ -140,12 +142,13 @@ final class WorkoutEntity {
     @Attribute(.unique) var id: UUID
     var name: String
     var date: Date
-    @Relationship(deleteRule: .cascade, inverse: \WorkoutExerciseEntity.workout) var exercises: [WorkoutExerciseEntity]
+    @Relationship(deleteRule: .cascade, inverse: \WorkoutExerciseEntity.workout) var exercises:
+        [WorkoutExerciseEntity]
     var defaultRestTime: TimeInterval
     var duration: TimeInterval?
     var notes: String
     var isFavorite: Bool
-    var isSampleWorkout: Bool? // Markiert Beispiel-Workouts für versioniertes Update (nil = alte Workouts)
+    var isSampleWorkout: Bool?  // Markiert Beispiel-Workouts für versioniertes Update (nil = alte Workouts)
 
     // Performance: Cached exercise count to avoid loading relationship
     var exerciseCount: Int = 0
@@ -185,7 +188,7 @@ final class WorkoutEntity {
     func updateExerciseCount() {
         exerciseCount = exercises.count
     }
-    
+
     /// Clean up any workout exercises that reference invalid exercise entities
     func cleanupInvalidExercises(modelContext: ModelContext) {
         let invalidExercises = exercises.filter { $0.exercise == nil }
@@ -193,20 +196,24 @@ final class WorkoutEntity {
             modelContext.delete(invalidExercise)
         }
         if !invalidExercises.isEmpty {
-            print("🧹 Cleaned up \(invalidExercises.count) invalid exercise references from workout: \(name)")
+            print(
+                "🧹 Cleaned up \(invalidExercises.count) invalid exercise references from workout: \(name)"
+            )
         }
     }
 }
 
-// MARK: - WorkoutSessionEntity (History)
+// MARK: - WorkoutSessionEntityV1 (History - V1 Legacy)
+// Renamed to avoid conflict with V2 Clean Architecture (Data/Entities/WorkoutSessionEntity.swift)
 @Model
-final class WorkoutSessionEntity {
+final class WorkoutSessionEntityV1 {
     @Attribute(.unique) var id: UUID
     // Optional link back to a template workout
     var templateId: UUID?
     var name: String
     var date: Date
-    @Relationship(deleteRule: .cascade, inverse: \WorkoutExerciseEntity.session) var exercises: [WorkoutExerciseEntity]
+    @Relationship(deleteRule: .cascade, inverse: \WorkoutExerciseEntity.session) var exercises:
+        [WorkoutExerciseEntity]
     var defaultRestTime: TimeInterval
     var duration: TimeInterval?
     var notes: String
@@ -249,25 +256,25 @@ final class ExerciseRecordEntity {
     @Attribute(.unique) var id: UUID
     var exerciseId: UUID
     var exerciseName: String
-    
+
     // Record types
     var maxWeight: Double
     var maxWeightReps: Int
     var maxWeightDate: Date
-    
+
     var maxReps: Int
     var maxRepsWeight: Double
     var maxRepsDate: Date
-    
+
     var bestEstimatedOneRepMax: Double
     var bestOneRepMaxWeight: Double
     var bestOneRepMaxReps: Int
     var bestOneRepMaxDate: Date
-    
+
     // Metadata
     var createdAt: Date
     var updatedAt: Date
-    
+
     init(
         id: UUID = UUID(),
         exerciseId: UUID,
@@ -311,7 +318,7 @@ final class UserProfileEntity {
     var birthDate: Date?
     var weight: Double?
     var height: Double?
-    var biologicalSexRaw: Int16 // HKBiologicalSex.rawValue
+    var biologicalSexRaw: Int16  // HKBiologicalSex.rawValue
     var healthKitSyncEnabled: Bool
     // Persist profile goal and preferences as raw values
     var goalRaw: String
@@ -320,10 +327,10 @@ final class UserProfileEntity {
     var preferredDurationRaw: Int
 
     var profileImageData: Data?
-    var lockerNumber: String? // Spintnummer
-    var hasExploredWorkouts: Bool // Onboarding: Beispielworkouts entdeckt
-    var hasCreatedFirstWorkout: Bool // Onboarding: Erstes Workout erstellt
-    var hasSetupProfile: Bool // Onboarding: Profil eingerichtet
+    var lockerNumber: String?  // Spintnummer
+    var hasExploredWorkouts: Bool  // Onboarding: Beispielworkouts entdeckt
+    var hasCreatedFirstWorkout: Bool  // Onboarding: Erstes Workout erstellt
+    var hasSetupProfile: Bool  // Onboarding: Profil eingerichtet
     var createdAt: Date
     var updatedAt: Date
 
@@ -333,7 +340,7 @@ final class UserProfileEntity {
         birthDate: Date? = nil,
         weight: Double? = nil,
         height: Double? = nil,
-        biologicalSexRaw: Int16 = 0, // HKBiologicalSex.notSet
+        biologicalSexRaw: Int16 = 0,  // HKBiologicalSex.notSet
         healthKitSyncEnabled: Bool = false,
         goalRaw: String = "general",
         experienceRaw: String = "intermediate",
@@ -372,23 +379,25 @@ final class UserProfileEntity {
 extension ExerciseEntity {
     /// Deprecated: Accessing via this property can crash if the entity instance is invalidated.
     /// Use direct access to muscleGroupsRaw or refetch the entity from context.
-    @available(*, deprecated, message: "Use direct access to muscleGroupsRaw or refetch the entity from context.")
+    @available(
+        *, deprecated,
+        message: "Use direct access to muscleGroupsRaw or refetch the entity from context."
+    )
     var muscleGroups: [String] { muscleGroupsRaw }
 }
 
 extension WorkoutExerciseEntity {
     /// Simple accessor that may return nil if invalidated - caller should handle gracefully
     var exerciseEntity: ExerciseEntity? { exercise }
-    
+
     /// Simple check - may return false if invalidated
     var hasExercise: Bool { exercise != nil }
-    
+
     /// Simple name accessor with fallback
     var exerciseName: String {
         exercise?.name ?? "Übung nicht verfügbar"
     }
 }
-
 
 // MARK: - Safe Entity Access Helpers
 
@@ -408,14 +417,14 @@ func fetchWorkout(by id: UUID, in context: ModelContext) -> WorkoutEntity? {
     return try? context.fetch(descriptor).first
 }
 
-/// Safely fetch a WorkoutSessionEntity by ID from the given context
+/// Safely fetch a WorkoutSessionEntityV1 by ID from the given context
 /// - Parameters:
 ///   - id: The UUID of the session to fetch
 ///   - context: The ModelContext to fetch from
-/// - Returns: The fresh WorkoutSessionEntity or nil if not found
-func fetchSession(by id: UUID, in context: ModelContext) -> WorkoutSessionEntity? {
-    let descriptor = FetchDescriptor<WorkoutSessionEntity>(
-        predicate: #Predicate<WorkoutSessionEntity> { entity in
+/// - Returns: The fresh WorkoutSessionEntityV1 or nil if not found
+func fetchSession(by id: UUID, in context: ModelContext) -> WorkoutSessionEntityV1? {
+    let descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
+        predicate: #Predicate<WorkoutSessionEntityV1> { entity in
             entity.id == id
         }
     )
@@ -424,16 +433,16 @@ func fetchSession(by id: UUID, in context: ModelContext) -> WorkoutSessionEntity
 
 // MARK: - Entity Creation Helpers
 
-
-
 extension WorkoutExerciseEntity {
     /// Create a new WorkoutExerciseEntity from a WorkoutExercise domain model
-    static func make(from workoutExercise: WorkoutExercise, using exerciseEntity: ExerciseEntity) -> WorkoutExerciseEntity {
+    static func make(from workoutExercise: WorkoutExercise, using exerciseEntity: ExerciseEntity)
+        -> WorkoutExerciseEntity
+    {
         let entity = WorkoutExerciseEntity(
             exercise: exerciseEntity,
             sets: []
         )
-        
+
         // Add sets
         for set in workoutExercise.sets {
             let setEntity = ExerciseSetEntity(
@@ -444,12 +453,11 @@ extension WorkoutExerciseEntity {
             )
             entity.sets.append(setEntity)
         }
-        
+
         return entity
     }
 }
 
-// Note: Additional convenience mapping methods between SwiftData entities and value types 
-// are defined in Workout+SwiftDataMapping.swift to keep this file focused on 
+// Note: Additional convenience mapping methods between SwiftData entities and value types
+// are defined in Workout+SwiftDataMapping.swift to keep this file focused on
 // entity definitions and safe access patterns.
-

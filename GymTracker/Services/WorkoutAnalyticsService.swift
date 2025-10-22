@@ -226,7 +226,7 @@ final class WorkoutAnalyticsService {
 
     private func sessionHistory(limit: Int = 100) -> [WorkoutSession] {
         guard let context = modelContext else { return [] }
-        var descriptor = FetchDescriptor<WorkoutSessionEntity>(
+        var descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         descriptor.fetchLimit = limit

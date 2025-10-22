@@ -41,7 +41,7 @@ struct DayStripView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var sessionEntities: [WorkoutSessionEntity]
+    private var sessionEntities: [WorkoutSessionEntityV1]
 
     /// Die letzten 7 Tage (heute bis vor 6 Tagen)
     private var last7Days: [Date] {
