@@ -1,9 +1,9 @@
 import SwiftUI
 
-typealias WorkoutSessionHandler = (WorkoutSession) -> Void
+typealias WorkoutSessionHandler = (WorkoutSessionV1) -> Void
 
 struct SessionActionButton<Label: View>: View {
-    let session: WorkoutSession
+    let session: WorkoutSessionV1
     let startAction: WorkoutSessionHandler
     let detailAction: WorkoutSessionHandler
     let deleteAction: WorkoutSessionHandler

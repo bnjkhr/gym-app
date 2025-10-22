@@ -1,7 +1,7 @@
 import Foundation
 
 // V1 Legacy Model - Renamed to avoid conflict with V2 Domain Entity
-// TODO: Migrate usages to V2 WorkoutSession (Domain/Entities/WorkoutSession.swift)
+// TODO: Migrate usages to V2 WorkoutSessionV1 (Domain/Entities/WorkoutSessionV1.swift)
 struct WorkoutSessionV1: Identifiable, Codable {
     let id: UUID
     let templateId: UUID?

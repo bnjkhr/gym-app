@@ -212,7 +212,7 @@ final class WorkoutAnalyticsService {
         return stats
     }
 
-    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
+    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSessionV1]] {
         let calendar = Calendar.current
         let sessionHistory = sessionHistory()
         return Dictionary(grouping: sessionHistory.filter { range.contains($0.date) }) { workout in
@@ -220,11 +220,11 @@ final class WorkoutAnalyticsService {
         }
     }
 
-    func getSessionHistory(limit: Int = 100) -> [WorkoutSession] {
+    func getSessionHistory(limit: Int = 100) -> [WorkoutSessionV1] {
         sessionHistory(limit: limit)
     }
 
-    private func sessionHistory(limit: Int = 100) -> [WorkoutSession] {
+    private func sessionHistory(limit: Int = 100) -> [WorkoutSessionV1] {
         guard let context = modelContext else { return [] }
         var descriptor = FetchDescriptor<WorkoutSessionEntityV1>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
@@ -232,7 +232,7 @@ final class WorkoutAnalyticsService {
         descriptor.fetchLimit = limit
         descriptor.includePendingChanges = false
         let entities = (try? context.fetch(descriptor)) ?? []
-        return entities.map { WorkoutSession(entity: $0) }
+        return entities.map { WorkoutSessionV1(entity: $0) }
     }
 
     private func estimateOneRepMax(weight: Double, reps: Int) -> Double {

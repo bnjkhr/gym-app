@@ -352,7 +352,7 @@ class HealthKitManager: ObservableObject {
 
     // MARK: - Workout Writing
     
-    func saveWorkout(_ workoutSession: WorkoutSession) async throws {
+    func saveWorkout(_ workoutSession: WorkoutSessionV1) async throws {
         guard isHealthDataAvailable else {
             throw HealthKitError.notAvailable
         }
@@ -391,13 +391,13 @@ class HealthKitManager: ObservableObject {
         }
     }
     
-    private func mapToHKWorkoutActivityType(from session: WorkoutSession) -> HKWorkoutActivityType {
+    private func mapToHKWorkoutActivityType(from session: WorkoutSessionV1) -> HKWorkoutActivityType {
         // Hier könnte man basierend auf den Übungen intelligenter mappen
         // Für jetzt verwenden wir einen generischen Typ
         .functionalStrengthTraining
     }
     
-    private func calculateEstimatedCalories(for session: WorkoutSession) -> Double {
+    private func calculateEstimatedCalories(for session: WorkoutSessionV1) -> Double {
         // Einfache Schätzung: 5-8 Kalorien pro Minute für Krafttraining
         guard let duration = session.duration else { return 0 }
         let minutes = duration / 60.0

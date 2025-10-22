@@ -747,10 +747,10 @@ struct Wrap<Content: View>: View {
 }
 
 struct RecentActivityCard: View {
-    let workouts: [WorkoutSession]
-    let startAction: (WorkoutSession) -> Void
-    let detailAction: (WorkoutSession) -> Void
-    let deleteSessionAction: (WorkoutSession) -> Void
+    let workouts: [WorkoutSessionV1]
+    let startAction: (WorkoutSessionV1) -> Void
+    let detailAction: (WorkoutSessionV1) -> Void
+    let deleteSessionAction: (WorkoutSessionV1) -> Void
     let enableActions: Bool
     let showHeader: Bool
 
@@ -766,7 +766,7 @@ struct RecentActivityCard: View {
                     .font(.headline)
                     .padding(.horizontal, 8)
             }
-            ForEach(workouts, id: \.id) { (session: WorkoutSession) in
+            ForEach(workouts, id: \.id) { (session: WorkoutSessionV1) in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.name)
@@ -1129,7 +1129,7 @@ struct SectionHeader: View {
 }
 
 struct WeekCalendarStrip: View {
-    let sessions: [WorkoutSession]
+    let sessions: [WorkoutSessionV1]
     let showCalendar: () -> Void
     @Environment(\.calendar) private var calendar
     @Environment(\.colorScheme) private var colorScheme

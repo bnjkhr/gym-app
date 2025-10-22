@@ -17,8 +17,8 @@ struct SmartTipsCard: View {
     @State private var feedbackGiven: Set<UUID> = []
     @State private var isRefreshing: Bool = false
 
-    private var displaySessions: [WorkoutSession] {
-        sessionEntities.map { WorkoutSession(entity: $0) }
+    private var displaySessions: [WorkoutSessionV1] {
+        sessionEntities.map { WorkoutSessionV1(entity: $0) }
     }
 
     var body: some View {

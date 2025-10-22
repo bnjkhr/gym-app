@@ -145,7 +145,7 @@ extension Exercise {
     }
 }
 
-extension WorkoutSession {
+extension WorkoutSessionV1 {
     init(entity: WorkoutSessionEntityV1) {
         self.init(
             id: entity.id,
@@ -163,7 +163,7 @@ extension WorkoutSession {
     }
 }
 
-extension WorkoutSession {
+extension WorkoutSessionV1 {
     init(entity: WorkoutSessionEntityV1, in context: ModelContext) {
         let sId = entity.id
         let sDesc = FetchDescriptor<WorkoutSessionEntityV1>(predicate: #Predicate { entity in
@@ -247,7 +247,7 @@ extension ExerciseEntity {
 }
 
 extension WorkoutSessionEntityV1 {
-    static func make(from session: WorkoutSession) -> WorkoutSessionEntityV1 {
+    static func make(from session: WorkoutSessionV1) -> WorkoutSessionEntityV1 {
         let exerciseEntities = session.exercises.enumerated().map { (index, exercise) in
             WorkoutExerciseEntity.make(from: exercise, order: index)
         }

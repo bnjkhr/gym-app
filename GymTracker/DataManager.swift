@@ -428,7 +428,7 @@ class DataManager: ObservableObject {
         return newExercise
     }
     
-    func recordSession(_ session: WorkoutSession, to context: ModelContext) throws -> WorkoutSessionEntityV1 {
+    func recordSession(_ session: WorkoutSessionV1, to context: ModelContext) throws -> WorkoutSessionEntityV1 {
         print("💾 Speichere Session: \(session.name) (ID: \(session.id.uuidString.prefix(8)))")
         
         let sessionEntity = WorkoutSessionEntity(

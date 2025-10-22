@@ -1666,8 +1666,8 @@ private struct ProgressOverviewCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
 
-    private var lastSession: WorkoutSession? {
-        let session = sessionEntities.first.map { WorkoutSession(entity: $0) }
+    private var lastSession: WorkoutSessionV1? {
+        let session = sessionEntities.first.map { WorkoutSessionV1(entity: $0) }
         // Debug information to verify imported sessions are included
         if let session = session {
             let isImported = session.notes.contains("Importiert aus")
@@ -1745,8 +1745,8 @@ private struct ProgressDeltaInfoCardView: View {
     @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
     private var sessionEntities: [WorkoutSessionEntityV1]
 
-    private var lastTwoSessions: [WorkoutSession] {
-        let sessions = sessionEntities.prefix(2).map { WorkoutSession(entity: $0) }
+    private var lastTwoSessions: [WorkoutSessionV1] {
+        let sessions = sessionEntities.prefix(2).map { WorkoutSessionV1(entity: $0) }
         // Debug information
         let importedCount = sessions.filter { $0.notes.contains("Importiert aus") }.count
         if importedCount > 0 {
@@ -1755,16 +1755,16 @@ private struct ProgressDeltaInfoCardView: View {
         return sessions
     }
 
-    private var lastSession: WorkoutSession? { lastTwoSessions.first }
-    private var prevSession: WorkoutSession? { lastTwoSessions.count > 1 ? lastTwoSessions[1] : nil }
+    private var lastSession: WorkoutSessionV1? { lastTwoSessions.first }
+    private var prevSession: WorkoutSessionV1? { lastTwoSessions.count > 1 ? lastTwoSessions[1] : nil }
 
-    private func volume(for session: WorkoutSession) -> Double {
+    private func volume(for session: WorkoutSessionV1) -> Double {
         session.exercises.reduce(0) { partial, ex in
             partial + ex.sets.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
         }
     }
 
-    private func reps(for session: WorkoutSession) -> Int {
+    private func reps(for session: WorkoutSessionV1) -> Int {
         session.exercises.reduce(0) { $0 + $1.sets.reduce(0) { $0 + $1.reps } }
     }
 

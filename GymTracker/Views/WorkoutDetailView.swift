@@ -703,7 +703,7 @@ struct WorkoutDetailView: View {
         return state.exerciseIndex == exerciseIndex && state.setIndex == setIndex
     }
 
-    private func previousSessionSwiftData() -> WorkoutSession? {
+    private func previousSessionSwiftData() -> WorkoutSessionV1? {
         let templateId: UUID? = workout.id
         let currentDate = workout.date
         let searchDate = isActiveSession ? Date() : currentDate
@@ -720,7 +720,7 @@ struct WorkoutDetailView: View {
         do {
             let entities = try modelContext.fetch(descriptor)
             if let entity = entities.first {
-                return WorkoutSession(entity: entity, in: modelContext)
+                return WorkoutSessionV1(entity: entity, in: modelContext)
             } else {
                 return nil
             }

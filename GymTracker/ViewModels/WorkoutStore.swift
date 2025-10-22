@@ -157,7 +157,7 @@ class WorkoutStore: ObservableObject {
         dataService.similarExercises(to: exercise, count: count, userLevel: userLevel)
     }
 
-    func getSessionHistory(limit: Int = 100) -> [WorkoutSession] {
+    func getSessionHistory(limit: Int = 100) -> [WorkoutSessionV1] {
         analyticsService.getSessionHistory(limit: limit)
     }
 
@@ -220,7 +220,7 @@ class WorkoutStore: ObservableObject {
 
         let sortedExercises = workout.exercises
 
-        let session = WorkoutSession(
+        let session = WorkoutSessionV1(
             templateId: workout.id,
             name: workout.name,
             date: workout.date,
@@ -266,7 +266,7 @@ class WorkoutStore: ObservableObject {
 
     // MARK: - Last-Used Metrics Management (Delegated to LastUsedMetricsService)
 
-    private func updateLastUsedMetrics(from session: WorkoutSession) {
+    private func updateLastUsedMetrics(from session: WorkoutSessionV1) {
         metricsService.updateLastUsedMetrics(from: session)
     }
 
@@ -429,7 +429,7 @@ class WorkoutStore: ObservableObject {
         }
     }
 
-    func saveWorkoutToHealthKit(_ workoutSession: WorkoutSession) async throws {
+    func saveWorkoutToHealthKit(_ workoutSession: WorkoutSessionV1) async throws {
         guard healthKitManager.isAuthorized else {
             throw HealthKitError.notAuthorized
         }
@@ -1006,7 +1006,7 @@ extension WorkoutStore {
         analyticsService.exerciseStats(for: exercise)
     }
 
-    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
+    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSessionV1]] {
         analyticsService.workoutsByDay(in: range)
     }
 
@@ -1283,7 +1283,7 @@ class WorkoutStoreCoordinator: ObservableObject {
         legacyStore.removeSession(with: id)
     }
 
-    func getSessionHistory() -> [WorkoutSession] {
+    func getSessionHistory() -> [WorkoutSessionV1] {
         legacyStore.getSessionHistory()
     }
 
@@ -1392,7 +1392,7 @@ class WorkoutStoreCoordinator: ObservableObject {
         legacyStore.exerciseStats(for: exercise)
     }
 
-    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSession]] {
+    func workoutsByDay(in range: ClosedRange<Date>) -> [Date: [WorkoutSessionV1]] {
         legacyStore.workoutsByDay(in: range)
     }
 

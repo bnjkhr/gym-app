@@ -39,7 +39,7 @@ final class WorkoutCoordinator: ObservableObject {
     @Published var selectedWorkout: Workout?
 
     /// Session history
-    @Published var sessionHistory: [WorkoutSession] = []
+    @Published var sessionHistory: [WorkoutSessionV1] = []
 
     // MARK: - Constants
 
@@ -229,7 +229,7 @@ final class WorkoutCoordinator: ObservableObject {
             return
         }
 
-        let session = WorkoutSession(
+        let session = WorkoutSessionV1(
             templateId: workout.id,
             name: workout.name,
             date: workout.date,
@@ -275,7 +275,7 @@ final class WorkoutCoordinator: ObservableObject {
     ///
     /// - Parameter limit: Maximum number of sessions to return (default: 100)
     /// - Returns: Array of workout sessions, sorted by date (newest first)
-    func getSessionHistory(limit: Int = 100) -> [WorkoutSession] {
+    func getSessionHistory(limit: Int = 100) -> [WorkoutSessionV1] {
         return analyticsService.getSessionHistory(limit: limit)
     }
 
@@ -285,7 +285,7 @@ final class WorkoutCoordinator: ObservableObject {
     ///   - templateId: The workout template ID
     ///   - limit: Maximum number of sessions to return
     /// - Returns: Array of sessions for this template
-    func getSessions(for templateId: UUID, limit: Int = 10) -> [WorkoutSession] {
+    func getSessions(for templateId: UUID, limit: Int = 10) -> [WorkoutSessionV1] {
         guard let context = modelContext else { return [] }
 
         do {
@@ -329,7 +329,7 @@ final class WorkoutCoordinator: ObservableObject {
     ///
     /// - Parameter days: Number of days to look back
     /// - Returns: Array of recent sessions
-    func recentSessions(days: Int) -> [WorkoutSession] {
+    func recentSessions(days: Int) -> [WorkoutSessionV1] {
         let startDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         return sessionHistory.filter { $0.date >= startDate }
     }

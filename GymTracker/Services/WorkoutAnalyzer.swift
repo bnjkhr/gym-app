@@ -97,7 +97,7 @@ struct WorkoutAnalyzer {
     // MARK: - Main Analysis Method
 
     func analyze(
-        sessions: [WorkoutSession],
+        sessions: [WorkoutSessionV1],
         profile: UserProfile,
         healthData: HealthData?
     ) -> AnalysisResult {
@@ -120,7 +120,7 @@ struct WorkoutAnalyzer {
 
     // MARK: - Progression Analysis
 
-    private func analyzeProgression(sessions: [WorkoutSession]) -> [ProgressionOpportunity] {
+    private func analyzeProgression(sessions: [WorkoutSessionV1]) -> [ProgressionOpportunity] {
         var opportunities: [ProgressionOpportunity] = []
 
         // Gruppiere Sessions nach Übungen
@@ -160,7 +160,7 @@ struct WorkoutAnalyzer {
         return opportunities
     }
 
-    private func groupByExercise(sessions: [WorkoutSession]) -> [String: [SessionExercise]] {
+    private func groupByExercise(sessions: [WorkoutSessionV1]) -> [String: [SessionExercise]] {
         var grouped: [String: [SessionExercise]] = [:]
 
         for session in sessions {
@@ -216,7 +216,7 @@ struct WorkoutAnalyzer {
 
     // MARK: - Muscle Balance Analysis
 
-    private func analyzeMuscleBalance(sessions: [WorkoutSession]) -> MuscleGroupBalance {
+    private func analyzeMuscleBalance(sessions: [WorkoutSessionV1]) -> MuscleGroupBalance {
         var muscleVolume: [MuscleGroup: Double] = [:]
         var totalVolume: Double = 0
 
@@ -302,7 +302,7 @@ struct WorkoutAnalyzer {
 
     // MARK: - Recovery Analysis
 
-    private func analyzeRecovery(sessions: [WorkoutSession]) -> RecoveryStatus {
+    private func analyzeRecovery(sessions: [WorkoutSessionV1]) -> RecoveryStatus {
         guard let lastWorkout = sessions.sorted(by: { $0.date > $1.date }).first else {
             return RecoveryStatus(
                 daysSinceLastWorkout: 999,
@@ -334,7 +334,7 @@ struct WorkoutAnalyzer {
 
     // MARK: - Consistency Analysis
 
-    private func analyzeConsistency(sessions: [WorkoutSession]) -> ConsistencyMetrics {
+    private func analyzeConsistency(sessions: [WorkoutSessionV1]) -> ConsistencyMetrics {
         guard !sessions.isEmpty else {
             return ConsistencyMetrics(
                 currentStreak: 0,
@@ -360,7 +360,7 @@ struct WorkoutAnalyzer {
         )
     }
 
-    private func calculateStreak(sessions: [WorkoutSession]) -> Int {
+    private func calculateStreak(sessions: [WorkoutSessionV1]) -> Int {
         guard !sessions.isEmpty else { return 0 }
 
         var streak = 0
@@ -382,7 +382,7 @@ struct WorkoutAnalyzer {
 
     // MARK: - Goal Alignment Analysis
 
-    private func analyzeGoalAlignment(sessions: [WorkoutSession], profile: UserProfile) -> GoalAlignment {
+    private func analyzeGoalAlignment(sessions: [WorkoutSessionV1], profile: UserProfile) -> GoalAlignment {
         guard !sessions.isEmpty else {
             return GoalAlignment(
                 goal: profile.goal,
@@ -460,7 +460,7 @@ struct WorkoutAnalyzer {
 
     // MARK: - Achievements
 
-    private func findRecentAchievements(sessions: [WorkoutSession]) -> [Achievement] {
+    private func findRecentAchievements(sessions: [WorkoutSessionV1]) -> [Achievement] {
         var achievements: [Achievement] = []
 
         // Finde Personal Records (letzten 2 Wochen)

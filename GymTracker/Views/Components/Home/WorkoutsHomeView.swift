@@ -98,7 +98,7 @@ struct WorkoutsHomeView: View {
 
     @State private var selectedWorkout: WorkoutSelection?
     @State private var editingWorkoutSelection: WorkoutSelection?
-    @State private var viewingSession: WorkoutSession?
+    @State private var viewingSession: WorkoutSessionV1?
     @State private var missingTemplateName: String?
     @State private var showingMissingTemplateAlert = false
 
@@ -113,7 +113,7 @@ struct WorkoutsHomeView: View {
 
     // Performance: Cache mapped entities to avoid re-mapping on every render
     @State private var cachedWorkouts: [Workout] = []
-    @State private var cachedSessions: [WorkoutSession] = []
+    @State private var cachedSessions: [WorkoutSessionV1] = []
 
     private var workoutActionService: WorkoutActionService {
         WorkoutActionService(modelContext: modelContext, workoutStore: workoutStore)
@@ -191,7 +191,7 @@ struct WorkoutsHomeView: View {
         cachedWorkouts
     }
 
-    private var displaySessions: [WorkoutSession] {
+    private var displaySessions: [WorkoutSessionV1] {
         cachedSessions
     }
 
@@ -204,7 +204,7 @@ struct WorkoutsHomeView: View {
     }
 
     // Precomputed helpers to reduce type-checking complexity
-    private var highlightSession: WorkoutSession? {
+    private var highlightSession: WorkoutSessionV1? {
         displaySessions.first
     }
 
@@ -559,7 +559,7 @@ struct WorkoutsHomeView: View {
     }
 
     @ViewBuilder
-    private func highlightSection(highlightSession: WorkoutSession?) -> some View {
+    private func highlightSection(highlightSession: WorkoutSessionV1?) -> some View {
         Group {
             if let session = highlightSession {
                 Button {
@@ -758,7 +758,7 @@ struct WorkoutsHomeView: View {
         }
     }
 
-    private func startSession(_ session: WorkoutSession) {
+    private func startSession(_ session: WorkoutSessionV1) {
         viewingSession = nil
         if let templateId = session.templateId,
             workoutEntities.contains(where: { $0.id == templateId })
@@ -771,7 +771,7 @@ struct WorkoutsHomeView: View {
         }
     }
 
-    private func viewSession(_ session: WorkoutSession) {
+    private func viewSession(_ session: WorkoutSessionV1) {
         viewingSession = session
     }
 
@@ -803,6 +803,6 @@ struct WorkoutsHomeView: View {
     /// Updates the session cache by mapping entities to domain models
     /// Only called when sessionEntities actually change, not on every render
     private func updateSessionCache(_ entities: [WorkoutSessionEntityV1]) {
-        cachedSessions = entities.map { WorkoutSession(entity: $0, in: modelContext) }
+        cachedSessions = entities.map { WorkoutSessionV1(entity: $0, in: modelContext) }
     }
 }

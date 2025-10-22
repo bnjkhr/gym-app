@@ -90,12 +90,12 @@ struct CalendarSessionsView: View {
 
     /// Gibt alle Trainings für ein bestimmtes Datum zurück
     /// - Parameter date: Das Datum
-    /// - Returns: Array von WorkoutSession-Objekten für diesen Tag
-    private func sessions(on date: Date) -> [WorkoutSession] {
+    /// - Returns: Array von WorkoutSessionV1-Objekten für diesen Tag
+    private func sessions(on date: Date) -> [WorkoutSessionV1] {
         let cal = Calendar.current
         let start = cal.startOfDay(for: date)
         let sameDay = sessionEntities.filter { cal.isDate($0.date, inSameDayAs: start) }
-        return sameDay.map { WorkoutSession(entity: $0, in: modelContext) }.sorted {
+        return sameDay.map { WorkoutSessionV1(entity: $0, in: modelContext) }.sorted {
             $0.date > $1.date
         }
     }

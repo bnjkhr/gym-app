@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct SessionDetailView: View {
-    let session: WorkoutSession
+    let session: WorkoutSessionV1
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var workoutStore: WorkoutStoreCoordinator

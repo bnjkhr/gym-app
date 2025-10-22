@@ -70,7 +70,7 @@ final class WorkoutSessionService {
     // MARK: - Session Recording
 
     /// Speichert eine abgeschlossene Workout-Session
-    /// - Parameter session: Die WorkoutSession zum Speichern
+    /// - Parameter session: Die WorkoutSessionV1 zum Speichern
     /// - Returns: Das gespeicherte WorkoutSessionEntityV1
     /// - Throws: SessionError bei Fehlern
     func recordSession(_ session: WorkoutSessionV1) throws -> WorkoutSessionEntityV1 {
@@ -174,8 +174,8 @@ final class WorkoutSessionService {
 
     /// Holt eine Session anhand der ID
     /// - Parameter id: Die Session-ID
-    /// - Returns: Die WorkoutSession oder nil
-    func getSession(with id: UUID) -> WorkoutSession? {
+    /// - Returns: Die WorkoutSessionV1 oder nil
+    func getSession(with id: UUID) -> WorkoutSessionV1? {
         guard let context = modelContext else { return nil }
 
         let descriptor = FetchDescriptor<WorkoutSessionEntity>(
@@ -188,13 +188,13 @@ final class WorkoutSessionService {
             return nil
         }
 
-        return WorkoutSession(entity: entity)
+        return WorkoutSessionV1(entity: entity)
     }
 
     /// Holt alle Sessions mit optionalem Limit
     /// - Parameter limit: Maximale Anzahl an Sessions (default: 100)
     /// - Returns: Array von WorkoutSessions
-    func getAllSessions(limit: Int = 100) -> [WorkoutSession] {
+    func getAllSessions(limit: Int = 100) -> [WorkoutSessionV1] {
         guard let context = modelContext else { return [] }
 
         var descriptor = FetchDescriptor<WorkoutSessionEntity>(
@@ -203,7 +203,7 @@ final class WorkoutSessionService {
         descriptor.fetchLimit = limit
 
         let entities = (try? context.fetch(descriptor)) ?? []
-        return entities.map { WorkoutSession(entity: $0) }
+        return entities.map { WorkoutSessionV1(entity: $0) }
     }
 
     /// Holt Sessions für ein bestimmtes Template
@@ -211,7 +211,7 @@ final class WorkoutSessionService {
     ///   - templateId: Die Template-ID
     ///   - limit: Maximale Anzahl (default: 50)
     /// - Returns: Array von WorkoutSessions
-    func getSessions(for templateId: UUID, limit: Int = 50) -> [WorkoutSession] {
+    func getSessions(for templateId: UUID, limit: Int = 50) -> [WorkoutSessionV1] {
         guard let context = modelContext else { return [] }
 
         var descriptor = FetchDescriptor<WorkoutSessionEntity>(
@@ -223,6 +223,6 @@ final class WorkoutSessionService {
         descriptor.fetchLimit = limit
 
         let entities = (try? context.fetch(descriptor)) ?? []
-        return entities.map { WorkoutSession(entity: $0) }
+        return entities.map { WorkoutSessionV1(entity: $0) }
     }
 }

@@ -153,7 +153,7 @@ final class AnalyticsCoordinator: ObservableObject {
     ///
     /// - Parameter sessions: Array of workout sessions
     /// - Returns: Number of consecutive days
-    private func calculateStreak(from sessions: [WorkoutSession]) -> Int {
+    private func calculateStreak(from sessions: [WorkoutSessionV1]) -> Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 

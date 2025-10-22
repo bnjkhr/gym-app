@@ -877,7 +877,7 @@ struct SettingsView: View {
                 workoutExercises.append(workoutExercise)
             }
 
-            let session = WorkoutSession(
+            let session = WorkoutSessionV1(
                 templateId: nil,  // Strong-Imports haben keine Template-ID
                 name: workoutData.name,
                 date: workoutData.date,
@@ -1093,7 +1093,7 @@ struct SettingsView: View {
                 workoutExercises.append(workoutExercise)
             }
 
-            let session = WorkoutSession(
+            let session = WorkoutSessionV1(
                 templateId: nil,
                 name: workoutData.title,
                 date: workoutData.startTime ?? Date(),

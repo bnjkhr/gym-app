@@ -173,7 +173,7 @@ final class HealthKitCoordinator: ObservableObject {
     ///
     /// - Parameter session: The workout session to export
     /// - Throws: HealthKitError if export fails
-    func saveWorkout(_ session: WorkoutSession) async throws {
+    func saveWorkout(_ session: WorkoutSessionV1) async throws {
         guard isAuthorized else {
             throw HealthKitError.notAuthorized
         }
@@ -199,7 +199,7 @@ final class HealthKitCoordinator: ObservableObject {
     ///
     /// - Parameter sessions: Array of workout sessions
     /// - Returns: Number of successfully synced workouts
-    func saveWorkouts(_ sessions: [WorkoutSession]) async -> Int {
+    func saveWorkouts(_ sessions: [WorkoutSessionV1]) async -> Int {
         guard isAuthorized else {
             AppLogger.app.warning("⚠️ HealthKit not authorized - skipping batch sync")
             return 0

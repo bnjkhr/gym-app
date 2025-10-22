@@ -125,7 +125,7 @@ final class HealthKitSyncService {
     // MARK: - Workout Export
 
     /// Exportiert eine Workout-Session zu HealthKit
-    /// - Parameter session: Die WorkoutSession zum Exportieren
+    /// - Parameter session: Die WorkoutSessionV1 zum Exportieren
     /// - Throws: HealthKitError bei Fehlern
     func saveWorkout(_ session: WorkoutSessionV1) async throws {
         guard healthKitManager.isAuthorized else {
@@ -146,7 +146,7 @@ final class HealthKitSyncService {
     /// Exportiert mehrere Sessions zu HealthKit
     /// - Parameter sessions: Array von WorkoutSessions
     /// - Returns: Anzahl erfolgreich exportierter Sessions
-    func saveWorkouts(_ sessions: [WorkoutSession]) async -> Int {
+    func saveWorkouts(_ sessions: [WorkoutSessionV1]) async -> Int {
         guard healthKitManager.isAuthorized else {
             print("❌ HealthKit nicht autorisiert")
             return 0

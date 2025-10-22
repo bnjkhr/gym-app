@@ -280,7 +280,7 @@ final class WorkoutStoreCoordinator: ObservableObject {
         return workoutCoordinator.previousWorkout(before: workout)
     }
 
-    func getSessionHistory(limit: Int = 100) -> [WorkoutSession] {
+    func getSessionHistory(limit: Int = 100) -> [WorkoutSessionV1] {
         return workoutCoordinator.getSessionHistory(limit: limit)
     }
 
@@ -356,7 +356,7 @@ final class WorkoutStoreCoordinator: ObservableObject {
         try await healthKitCoordinator.importProfile()
     }
 
-    func saveWorkoutToHealthKit(_ session: WorkoutSession) async throws {
+    func saveWorkoutToHealthKit(_ session: WorkoutSessionV1) async throws {
         try await healthKitCoordinator.saveWorkout(session)
     }
 
