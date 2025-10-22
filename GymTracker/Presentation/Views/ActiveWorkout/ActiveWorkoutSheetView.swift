@@ -65,8 +65,7 @@ struct ActiveWorkoutSheetView: View {
     @State private var exerciseSheetDetent: PresentationDetent = .large
     @State private var currentExerciseIndex: Int = 0  // Track current exercise for counter
     @State private var showAllExercises: Bool = false  // Toggle to show completed exercises
-    // TODO: Re-enable when InAppNotificationManager is migrated to V2
-    // @StateObject private var notificationManager = InAppNotificationManager.shared
+    @StateObject private var notificationManager = InAppNotificationManager.shared
 
     // MARK: - Computed Properties
 
@@ -163,8 +162,7 @@ struct ActiveWorkoutSheetView: View {
                 }
             }
             // Overlay: Universal In-App Notification
-            // TODO: Re-enable when InAppNotificationManager is migrated
-            // NotificationPill(manager: notificationManager)
+            NotificationPill(manager: notificationManager)
         }
         .background(Color.black)
         .presentationDetents([.large])
@@ -348,8 +346,7 @@ struct ActiveWorkoutSheetView: View {
             await sessionStore.completeSet(exerciseId: exerciseId, setId: setId)
 
             // Show completion notification
-            // TODO: Re-enable when InAppNotificationManager is migrated
-            // notificationManager.show("Set abgeschlossen", type: .success)
+            notificationManager.show("Set abgeschlossen", type: .success)
 
             // TODO: Start rest timer (migrate to Use Case)
             // For now, keep legacy rest timer integration
@@ -362,8 +359,7 @@ struct ActiveWorkoutSheetView: View {
                 let isLastSet = (setIndex == exercise.sets.count - 1)
 
                 if isLastSet {
-                    // TODO: Re-enable when InAppNotificationManager is migrated
-                    // notificationManager.show("Nächste Übung", type: .success)
+                    notificationManager.show("Nächste Übung", type: .success)
                 }
 
                 // Get rest time
