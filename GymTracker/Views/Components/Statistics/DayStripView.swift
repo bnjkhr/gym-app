@@ -129,7 +129,7 @@ struct DayStripView: View {
         ExerciseSetEntity.self,
         WorkoutExerciseEntity.self,
         WorkoutEntity.self,
-        WorkoutSessionEntity.self,
+        WorkoutSessionEntityV1.self,
         UserProfileEntity.self,
         configurations: config
     )

@@ -43,7 +43,7 @@ struct NotificationPill: View {
 }
 
 #Preview("Success") {
-    @Previewable @StateObject var manager = NotificationManager()
+    @Previewable @StateObject var manager = InAppNotificationManager.shared
 
     ZStack {
         Color.black.ignoresSafeArea()

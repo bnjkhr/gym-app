@@ -270,14 +270,14 @@ extension Calendar {
 
 // MARK: - Preview
 
-#Preview {
+#Preview("Calendar with Sessions") {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(
         for: ExerciseEntity.self,
         ExerciseSetEntity.self,
         WorkoutExerciseEntity.self,
         WorkoutEntity.self,
-        WorkoutSessionEntity.self,
+        WorkoutSessionEntityV1.self,
         UserProfileEntity.self,
         configurations: config
     )
