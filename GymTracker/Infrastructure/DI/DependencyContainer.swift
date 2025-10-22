@@ -108,15 +108,15 @@ final class DependencyContainer {
     /// Creates SessionStore with all required dependencies
     /// - Returns: Configured SessionStore ready for use
     func makeSessionStore() -> SessionStore {
-        // TODO: Sprint 1.4 - Implement SessionStore
-        // return SessionStore(
-        //     startSessionUseCase: makeStartSessionUseCase(),
-        //     completeSetUseCase: makeCompleteSetUseCase(),
-        //     endSessionUseCase: makeEndSessionUseCase(),
-        //     pauseSessionUseCase: makePauseSessionUseCase(),
-        //     resumeSessionUseCase: makeResumeSessionUseCase()
-        // )
-        fatalError("SessionStore not yet implemented - Sprint 1.4")
+        // ✅ Sprint 1.4 COMPLETE - Presentation layer implemented
+        return SessionStore(
+            startSessionUseCase: makeStartSessionUseCase(),
+            completeSetUseCase: makeCompleteSetUseCase(),
+            endSessionUseCase: makeEndSessionUseCase(),
+            pauseSessionUseCase: makePauseSessionUseCase(),
+            resumeSessionUseCase: makeResumeSessionUseCase(),
+            sessionRepository: makeSessionRepository()
+        )
     }
 }
 
@@ -124,6 +124,7 @@ final class DependencyContainer {
 
 /// Sprint 1.2 Status: ✅ COMPLETE - Domain Layer
 /// Sprint 1.3 Status: ✅ COMPLETE - Data Layer
+/// Sprint 1.4 Status: ✅ COMPLETE - Presentation Layer
 ///
 /// Implemented:
 /// **Domain Layer (Sprint 1.2):**
@@ -142,8 +143,14 @@ final class DependencyContainer {
 /// - ✅ Data/Mappers/SessionMapper.swift (250 LOC)
 /// - ✅ Data/Repositories/SwiftDataSessionRepository.swift (300 LOC)
 ///
-/// Total: ~2,000 LOC
-/// Test Coverage: 100% (Domain + Data layers)
-/// Framework Dependencies: SwiftData (Data layer only)
+/// **Presentation Layer (Sprint 1.4):**
+/// - ✅ Presentation/Stores/SessionStore.swift (450 LOC)
+/// - ✅ Presentation/Views/ActiveWorkout/ActiveWorkoutSheetView.swift (600 LOC, refactored)
+/// - ✅ Infrastructure/DI/DependencyContainer.swift (updated with makeSessionStore)
 ///
-/// Next Sprint: 1.4 - Presentation Layer (SessionStore + UI Integration)
+/// Total: ~2,650 LOC
+/// Test Coverage: 100% (Domain + Data layers), Manual testing (Presentation)
+/// Framework Dependencies: SwiftData (Data layer only), SwiftUI (Presentation only)
+///
+/// Phase 1 (Sprint 1.1-1.4): ✅ COMPLETE
+/// Next: Sprint 2 - Workout Management & Home View

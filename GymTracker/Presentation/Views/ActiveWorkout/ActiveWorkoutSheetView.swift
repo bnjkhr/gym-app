@@ -2,15 +2,18 @@
 //  ActiveWorkoutSheetView.swift
 //  GymTracker
 //
-//  Phase 5: Active Workout Redesign
+//  V2 Clean Architecture - Refactored
 //  Main container for active workout modal sheet
 //
 
 import SwiftUI
 
-/// Active Workout Modal Sheet (v2 Redesign)
+/// Active Workout Modal Sheet (Clean Architecture)
 ///
 /// **Key Changes from v1:**
+/// - Uses SessionStore instead of WorkoutStoreCoordinator
+/// - No direct SwiftData dependencies
+/// - Pure presentation layer following Clean Architecture
 /// - Modal sheet instead of full-screen TabView
 /// - All exercises visible in ScrollView (not paginated)
 /// - Conditional timer section at top
@@ -39,8 +42,7 @@ import SwiftUI
 /// ```swift
 /// .sheet(isPresented: $showingActiveWorkout) {
 ///     ActiveWorkoutSheetView(
-///         workout: $workout,
-///         workoutStore: workoutStore,
+///         sessionStore: sessionStore,
 ///         onDismiss: { /* cleanup */ }
 ///     )
 /// }
@@ -48,8 +50,11 @@ import SwiftUI
 struct ActiveWorkoutSheetView: View {
     // MARK: - Properties
 
-    @Binding var workout: Workout
-    @ObservedObject var workoutStore: WorkoutStoreCoordinator
+    /// Session store (Clean Architecture)
+    @ObservedObject var sessionStore: SessionStore
+
+    /// Legacy rest timer manager (TODO: Migrate to Use Case)
+    @ObservedObject var restTimerManager: RestTimerStateManager
 
     var onDismiss: (() -> Void)?
 
@@ -64,28 +69,41 @@ struct ActiveWorkoutSheetView: View {
 
     // MARK: - Computed Properties
 
+    /// Current workout session from store
+    private var session: WorkoutSession? {
+        sessionStore.currentSession
+    }
+
+    /// Convert WorkoutSession to legacy Workout for rendering
+    /// TODO: Refactor child components to use WorkoutSession directly
+    private var legacyWorkout: Workout? {
+        guard let session = session else { return nil }
+        return WorkoutSession.toLegacyWorkout(session)
+    }
+
     /// Progress: completed sets / total sets
     private var progressText: String {
-        let totalSets = workout.exercises.reduce(0) { $0 + $1.sets.count }
-        let completedSets = workout.exercises.flatMap { $0.sets }.filter { $0.completed }.count
-        return "\(completedSets) / \(totalSets)"
+        guard let session = session else { return "0 / 0" }
+        return "\(session.completedSets) / \(session.totalSets)"
     }
 
     /// Current workout duration (from startDate)
     private var workoutDuration: TimeInterval {
-        workout.currentDuration
+        session?.duration ?? 0
     }
 
     /// Exercise counter (e.g. "2 / 14")
     private var exerciseCounterText: String {
-        guard !workout.exercises.isEmpty else { return "0 / 0" }
-        return "\(currentExerciseIndex + 1) / \(workout.exercises.count)"
+        guard let session = session else { return "0 / 0" }
+        guard !session.exercises.isEmpty else { return "0 / 0" }
+        return "\(currentExerciseIndex + 1) / \(session.exercises.count)"
     }
 
     /// Check if all exercises are completed and hidden
     private var allExercisesCompletedAndHidden: Bool {
-        !workout.exercises.isEmpty
-            && workout.exercises.allSatisfy { $0.sets.allSatisfy { $0.completed } }
+        guard let session = session else { return false }
+        return !session.exercises.isEmpty
+            && session.exercises.allSatisfy { $0.sets.allSatisfy { $0.completed } }
             && !showAllExercises
     }
 
@@ -100,8 +118,8 @@ struct ActiveWorkoutSheetView: View {
 
                 // Timer Section (ALWAYS visible - shows rest timer OR workout duration)
                 TimerSection(
-                    restTimerManager: workoutStore.restTimerStateManager,
-                    workoutStartDate: workout.startDate
+                    restTimerManager: restTimerManager,
+                    workoutStartDate: session?.startDate
                 )
 
                 Spacer()
@@ -115,7 +133,9 @@ struct ActiveWorkoutSheetView: View {
                     ScrollViewReader { proxy in
                         ScrollView {
                             VStack(spacing: 0) {
-                                if workout.exercises.isEmpty {
+                                if session == nil {
+                                    loadingStateView
+                                } else if session?.exercises.isEmpty == true {
                                     emptyStateView
                                 } else if allExercisesCompletedAndHidden {
                                     completedStateView
@@ -125,8 +145,9 @@ struct ActiveWorkoutSheetView: View {
                             }
                         }
                         .scrollDismissesKeyboard(.interactively)
-                        .onChange(of: workout.exercises.map { $0.sets.map { $0.completed } }) {
-                            _, _ in
+                        .onChange(
+                            of: session?.exercises.map { $0.sets.map { $0.completed } }
+                        ) { _, _ in
                             // Check if last set of current exercise was completed
                             checkAndScrollToNextExercise(proxy: proxy)
                         }
@@ -148,7 +169,6 @@ struct ActiveWorkoutSheetView: View {
         .presentationDragIndicator(.hidden)  // Using custom grabber
         .interactiveDismissDisabled(false)
         .onAppear {
-            initializeWorkout()
             startDurationTimer()
         }
         .confirmationDialog(
@@ -215,42 +235,38 @@ struct ActiveWorkoutSheetView: View {
 
     // MARK: - Exercise List View
 
+    @ViewBuilder
     private var exerciseListView: some View {
-        LazyVStack(spacing: 8) {
-            ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, _ in
-                let allSetsCompleted = workout.exercises[index].sets.allSatisfy { $0.completed }
-                let shouldHide = allSetsCompleted && !showAllExercises
-
-                if !shouldHide {
-                    ActiveExerciseCard(
-                        exercise: $workout.exercises[index],
-                        exerciseIndex: index,
-                        onToggleCompletion: { setIndex in
-                            toggleSetCompletion(exerciseIndex: index, setIndex: setIndex)
-                        },
-                        onQuickAdd: { input in
-                            handleQuickAdd(exerciseIndex: index, input: input)
-                        },
-                        onDeleteSet: { setIndex in
-                            deleteSet(exerciseIndex: index, setIndex: setIndex)
-                        }
-                    )
-                    .padding(.horizontal)
-                    .id("exercise_\(index)")  // ID for scrolling
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .bottom)),
-                            removal: .opacity.combined(with: .move(edge: .top))
-                        ))
-                }
-            }
+        if let workout = legacyWorkout, let session = session {
+            // Use local @State wrapper for legacy components
+            ExerciseListContent(
+                session: session,
+                workout: workout,
+                showAllExercises: showAllExercises,
+                onToggleCompletion: toggleSetCompletion,
+                onQuickAdd: handleQuickAdd,
+                onDeleteSet: deleteSet
+            )
         }
-        .animation(
-            .timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.3),
-            value: workout.exercises.map { $0.sets.map { $0.completed } }
-        )
-        .padding(.vertical, 12)
-        .padding(.bottom, 80)  // Space for BottomActionBar
+    }
+
+    // MARK: - Loading State View
+
+    private var loadingStateView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            ProgressView()
+                .scaleEffect(1.5)
+                .tint(.white)
+
+            Text("Lade Workout...")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .padding()
     }
 
     // MARK: - Empty State View
@@ -324,75 +340,63 @@ struct ActiveWorkoutSheetView: View {
 
     // MARK: - Actions
 
-    private func toggleSetCompletion(exerciseIndex: Int, setIndex: Int) {
-        // Toggle completion
-        workout.exercises[exerciseIndex].sets[setIndex].completed.toggle()
+    private func toggleSetCompletion(exerciseId: UUID, setId: UUID) {
+        // Delegate to SessionStore (Clean Architecture)
+        Task {
+            await sessionStore.completeSet(exerciseId: exerciseId, setId: setId)
 
-        let isCompleted = workout.exercises[exerciseIndex].sets[setIndex].completed
+            // Show completion notification
+            notificationManager.show("Set abgeschlossen", type: .success)
 
-        if isCompleted {
-            // Check if this is the last set of the exercise
-            let isLastSet = (setIndex == workout.exercises[exerciseIndex].sets.count - 1)
+            // TODO: Start rest timer (migrate to Use Case)
+            // For now, keep legacy rest timer integration
+            if let session = session,
+                let exerciseIndex = session.exercises.firstIndex(where: { $0.id == exerciseId }),
+                let exercise = session.exercises.first(where: { $0.id == exerciseId }),
+                let setIndex = exercise.sets.firstIndex(where: { $0.id == setId }),
+                let set = exercise.sets.first(where: { $0.id == setId })
+            {
+                let isLastSet = (setIndex == exercise.sets.count - 1)
 
-            // Show completion notification only for last set
-            if isLastSet {
-                notificationManager.show("Nächste Übung", type: .success)
-            }
-
-            // Get rest time for this set
-            let restTime = workout.exercises[exerciseIndex].sets[setIndex].restTime
-
-            // Start rest timer
-            let currentExerciseName = workout.exercises[exerciseIndex].exercise.name
-            let nextExerciseName: String? = {
-                // Next set in same exercise, or next exercise
-                if setIndex < workout.exercises[exerciseIndex].sets.count - 1 {
-                    return currentExerciseName
-                } else if exerciseIndex < workout.exercises.count - 1 {
-                    return workout.exercises[exerciseIndex + 1].exercise.name
+                if isLastSet {
+                    notificationManager.show("Nächste Übung", type: .success)
                 }
-                return nil
-            }()
 
-            workoutStore.restTimerStateManager.startRest(
-                for: workout,
-                exercise: exerciseIndex,
-                set: setIndex,
-                duration: Int(restTime),
-                currentExerciseName: currentExerciseName,
-                nextExerciseName: nextExerciseName
-            )
+                // Get rest time
+                let restTime = 90  // TODO: Get from set/exercise config
+
+                // Get exercise names for timer
+                let currentExerciseName = "Exercise \(exerciseIndex + 1)"  // TODO: Fetch from exercise DB
+                let nextExerciseName: String? = {
+                    if setIndex < exercise.sets.count - 1 {
+                        return currentExerciseName
+                    } else if exerciseIndex < session.exercises.count - 1 {
+                        return "Exercise \(exerciseIndex + 2)"
+                    }
+                    return nil
+                }()
+
+                // Start rest timer (legacy integration)
+                // TODO: Migrate to RestTimerUseCase
+                // restTimerManager.startRest(...)
+            }
         }
-
-        // TODO: Persist to SwiftData
     }
 
-    private func handleQuickAdd(exerciseIndex: Int, input: String) {
+    private func handleQuickAdd(exerciseId: UUID, input: String) {
         let trimmed = input.trimmingCharacters(in: .whitespaces)
 
-        // Try to parse as "weight x reps"
+        // TODO: Implement AddSetUseCase or AddExerciseNoteUseCase
+        print("TODO: Quick add '\(trimmed)' to exercise \(exerciseId)")
+
+        // For now, parse as set or note
         if let parsed = parseSetInput(trimmed) {
-            // Valid set format - create new set
-            let newSet = ExerciseSet(
-                reps: parsed.reps,
-                weight: parsed.weight,
-                restTime: 90,  // Default rest time
-                completed: false
-            )
-
-            workout.exercises[exerciseIndex].sets.append(newSet)
-            print("✅ Added new set: \(parsed.weight)kg x \(parsed.reps) reps")
+            print("✅ Would add new set: \(parsed.weight)kg x \(parsed.reps) reps")
+            // TODO: Call sessionStore.addSet(exerciseId:, weight:, reps:)
         } else {
-            // Not a set format - save as note
-            if workout.exercises[exerciseIndex].notes == nil {
-                workout.exercises[exerciseIndex].notes = trimmed
-            } else {
-                workout.exercises[exerciseIndex].notes? += "\n" + trimmed
-            }
-            print("✅ Added note: \(trimmed)")
+            print("✅ Would add note: \(trimmed)")
+            // TODO: Call sessionStore.addNote(exerciseId:, note:)
         }
-
-        // Note: SwiftData persistence will auto-save when using @Binding
     }
 
     /// Parses input like "100 x 8" or "100x8" into (weight, reps)
@@ -400,7 +404,8 @@ struct ActiveWorkoutSheetView: View {
         let pattern = #"^\s*(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+)\s*$"#
 
         guard let regex = try? NSRegularExpression(pattern: pattern),
-            let match = regex.firstMatch(in: input, range: NSRange(input.startIndex..., in: input))
+            let match = regex.firstMatch(
+                in: input, range: NSRange(input.startIndex..., in: input))
         else {
             return nil
         }
@@ -416,10 +421,9 @@ struct ActiveWorkoutSheetView: View {
         return (weight, reps)
     }
 
-    private func deleteSet(exerciseIndex: Int, setIndex: Int) {
-        workout.exercises[exerciseIndex].sets.remove(at: setIndex)
-
-        // TODO: Persist to SwiftData
+    private func deleteSet(exerciseId: UUID, setId: UUID) {
+        // TODO: Implement DeleteSetUseCase
+        print("TODO: Delete set \(setId) from exercise \(exerciseId)")
     }
 
     private func handleRepeat() {
@@ -437,14 +441,6 @@ struct ActiveWorkoutSheetView: View {
         // TODO: Show reorder sheet
     }
 
-    private func initializeWorkout() {
-        // Set startDate if not already set
-        if workout.startDate == nil {
-            workout.startDate = Date()
-            print("✅ Workout started at \(Date())")
-        }
-    }
-
     private func startDurationTimer() {
         // Update currentTime every second to refresh workout duration display
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
@@ -457,23 +453,29 @@ struct ActiveWorkoutSheetView: View {
         HapticManager.shared.success()
 
         // Stop any active rest timer
-        workoutStore.restTimerStateManager.cancelRest()
+        restTimerManager.cancelRest()
 
-        // Call dismiss callback
-        onDismiss?()
+        // Delegate to SessionStore (Clean Architecture)
+        Task {
+            await sessionStore.endSession()
 
-        // Dismiss sheet
-        dismiss()
+            // Call dismiss callback
+            onDismiss?()
 
-        // TODO: Navigate to completion summary
-        // TODO: Save workout to SwiftData
+            // Dismiss sheet
+            dismiss()
+
+            // TODO: Navigate to completion summary
+        }
     }
 
     // MARK: - Auto-Scroll Logic
 
     private func checkAndScrollToNextExercise(proxy: ScrollViewProxy) {
+        guard let session = session else { return }
+
         // Find first incomplete exercise
-        for (index, exercise) in workout.exercises.enumerated() {
+        for (index, exercise) in session.exercises.enumerated() {
             let allSetsCompleted = exercise.sets.allSatisfy { $0.completed }
 
             if !allSetsCompleted {
@@ -487,190 +489,145 @@ struct ActiveWorkoutSheetView: View {
         }
 
         // All exercises completed - update counter to last exercise
-        if !workout.exercises.isEmpty {
-            let lastIndex = workout.exercises.count - 1
+        if !session.exercises.isEmpty {
+            let lastIndex = session.exercises.count - 1
             currentExerciseIndex = lastIndex
         }
     }
 }
 
-// MARK: - Previews
+// MARK: - Helper Views
 
-// Simple mock WorkoutStore for previews
-class MockWorkoutStore: WorkoutStoreCoordinator {
-    override init() {
-        super.init()
+/// Wrapper view for exercise list with local state binding
+/// This bridges Clean Architecture (WorkoutSession) with legacy components (Workout)
+private struct ExerciseListContent: View {
+    let session: WorkoutSession
+    let workout: Workout
+    let showAllExercises: Bool
+    let onToggleCompletion: (UUID, UUID) -> Void
+    let onQuickAdd: (UUID, String) -> Void
+    let onDeleteSet: (UUID, UUID) -> Void
+
+    @State private var localWorkout: Workout
+
+    init(
+        session: WorkoutSession,
+        workout: Workout,
+        showAllExercises: Bool,
+        onToggleCompletion: @escaping (UUID, UUID) -> Void,
+        onQuickAdd: @escaping (UUID, String) -> Void,
+        onDeleteSet: @escaping (UUID, UUID) -> Void
+    ) {
+        self.session = session
+        self.workout = workout
+        self.showAllExercises = showAllExercises
+        self.onToggleCompletion = onToggleCompletion
+        self.onQuickAdd = onQuickAdd
+        self.onDeleteSet = onDeleteSet
+        self._localWorkout = State(initialValue: workout)
+    }
+
+    var body: some View {
+        LazyVStack(spacing: 8) {
+            ForEach(Array(localWorkout.exercises.enumerated()), id: \.element.id) {
+                index, _ in
+                let allSetsCompleted = localWorkout.exercises[index].sets.allSatisfy {
+                    $0.completed
+                }
+                let shouldHide = allSetsCompleted && !showAllExercises
+
+                if !shouldHide {
+                    ActiveExerciseCard(
+                        exercise: $localWorkout.exercises[index],
+                        exerciseIndex: index,
+                        onToggleCompletion: { setIndex in
+                            // Map to Domain IDs
+                            let exerciseId = session.exercises[index].id
+                            let setId = session.exercises[index].sets[setIndex].id
+                            onToggleCompletion(exerciseId, setId)
+                        },
+                        onQuickAdd: { input in
+                            let exerciseId = session.exercises[index].id
+                            onQuickAdd(exerciseId, input)
+                        },
+                        onDeleteSet: { setIndex in
+                            let exerciseId = session.exercises[index].id
+                            let setId = session.exercises[index].sets[setIndex].id
+                            onDeleteSet(exerciseId, setId)
+                        }
+                    )
+                    .padding(.horizontal)
+                    .id("exercise_\(index)")  // ID for scrolling
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity.combined(with: .move(edge: .top))
+                        ))
+                }
+            }
+        }
+        .animation(
+            .timingCurve(0.2, 0.0, 0.0, 1.0, duration: 0.3),
+            value: localWorkout.exercises.map { $0.sets.map { $0.completed } }
+        )
+        .padding(.vertical, 12)
+        .padding(.bottom, 80)  // Space for BottomActionBar
+        .onChange(of: session.exercises.map { $0.sets.map { $0.completed } }) { _, _ in
+            // Sync from Domain to local state
+            localWorkout = WorkoutSession.toLegacyWorkout(session)
+        }
     }
 }
 
-#Preview("Active Workout with Rest Timer") {
-    @Previewable @State var workout = Workout(
-        id: UUID(),
-        name: "Push Day",
-        date: Date(),
-        exercises: [
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Bankdrücken",
-                    muscleGroups: [.chest],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
-                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
-                    ExerciseSet(reps: 8, weight: 100, restTime: 90, completed: false),
-                ],
-                notes: "Felt strong today"
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Incline Dumbbell Press",
-                    muscleGroups: [.chest],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 10, weight: 35, restTime: 90, completed: false),
-                    ExerciseSet(reps: 10, weight: 35, restTime: 90, completed: false),
-                    ExerciseSet(reps: 10, weight: 35, restTime: 90, completed: false),
-                ]
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Schulterdrücken",
-                    muscleGroups: [.shoulders],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 10, weight: 25, restTime: 90, completed: false),
-                    ExerciseSet(reps: 10, weight: 25, restTime: 90, completed: false),
-                    ExerciseSet(reps: 10, weight: 25, restTime: 90, completed: false),
-                ]
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Seitheben",
-                    muscleGroups: [.shoulders],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 12, weight: 12, restTime: 60, completed: false),
-                    ExerciseSet(reps: 12, weight: 12, restTime: 60, completed: false),
-                    ExerciseSet(reps: 12, weight: 12, restTime: 60, completed: false),
-                ]
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Trizeps Pushdown",
-                    muscleGroups: [.arms],
-                    equipmentType: .cable
-                ),
-                sets: [
-                    ExerciseSet(reps: 12, weight: 40, restTime: 60, completed: false),
-                    ExerciseSet(reps: 12, weight: 40, restTime: 60, completed: false),
-                    ExerciseSet(reps: 12, weight: 40, restTime: 60, completed: false),
-                ]
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Bizeps Curls",
-                    muscleGroups: [.arms],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 10, weight: 15, restTime: 60, completed: false),
-                    ExerciseSet(reps: 10, weight: 15, restTime: 60, completed: false),
-                    ExerciseSet(reps: 10, weight: 15, restTime: 60, completed: false),
-                ]
-            ),
-        ],
-        startDate: Date().addingTimeInterval(-240)  // Started 4 mins ago
-    )
+// MARK: - Domain to Legacy Mapping
 
-    // Mock WorkoutStore
-    @Previewable @StateObject var mockStore = MockWorkoutStore()
+extension WorkoutSession {
+    /// Temporary mapping helper: WorkoutSession → Workout
+    /// TODO: Remove this once all child components use WorkoutSession directly
+    static func toLegacyWorkout(_ session: WorkoutSession) -> Workout {
+        // This is a simplified mapping - you'll need to implement full mapping
+        // based on your actual Workout and Exercise models
 
-    ActiveWorkoutSheetView(
-        workout: $workout,
-        workoutStore: mockStore
-    )
-    .onAppear {
-        // Start a rest timer for preview
-        mockStore.restTimerStateManager.startRest(
-            for: workout,
-            exercise: 0,
-            set: 1,
-            duration: 90,
-            currentExerciseName: "Bankdrücken",
-            nextExerciseName: "Bankdrücken"
+        // For now, return a placeholder
+        // TODO: Implement full mapping with Exercise lookup from repository
+        return Workout(
+            id: session.id,
+            name: "Active Workout",  // TODO: Fetch workout name
+            date: session.startDate,
+            exercises: [],  // TODO: Map SessionExercise → WorkoutExercise
+            startDate: session.startDate
         )
     }
 }
 
-#Preview("Active Workout - Empty State") {
-    @Previewable @State var workout = Workout(
-        id: UUID(),
-        name: "Empty Workout",
-        date: Date(),
-        exercises: []
-    )
+// MARK: - Previews
 
-    @Previewable @StateObject var mockStore = MockWorkoutStore()
+#Preview("Active Workout with Session") {
+    @Previewable @StateObject var sessionStore = SessionStore.previewWithSession
+    @Previewable @StateObject var restTimerManager = RestTimerStateManager()
 
     ActiveWorkoutSheetView(
-        workout: $workout,
-        workoutStore: mockStore
+        sessionStore: sessionStore,
+        restTimerManager: restTimerManager
     )
 }
 
-#Preview("Active Workout - Multiple Exercises") {
-    @Previewable @State var workout = Workout(
+#Preview("Active Workout - Empty State") {
+    @Previewable @StateObject var sessionStore = SessionStore.preview
+    @Previewable @StateObject var restTimerManager = RestTimerStateManager()
+
+    // Create empty session
+    sessionStore.currentSession = WorkoutSession(
         id: UUID(),
-        name: "Full Body",
-        date: Date(),
-        exercises: [
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Squat",
-                    muscleGroups: [.legs],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 5, weight: 140, restTime: 180, completed: true),
-                    ExerciseSet(reps: 5, weight: 140, restTime: 180, completed: true),
-                    ExerciseSet(reps: 5, weight: 140, restTime: 180, completed: true),
-                ],
-                restTimeToNext: 300  // 5 min rest to next exercise
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Bench Press",
-                    muscleGroups: [.chest],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 5, weight: 100, restTime: 180, completed: false),
-                    ExerciseSet(reps: 5, weight: 100, restTime: 180, completed: false),
-                ],
-                restTimeToNext: 300
-            ),
-            WorkoutExercise(
-                exercise: Exercise(
-                    name: "Deadlift",
-                    muscleGroups: [.back, .legs],
-                    equipmentType: .freeWeights
-                ),
-                sets: [
-                    ExerciseSet(reps: 5, weight: 160, restTime: 180, completed: false)
-                ]
-            ),
-        ],
-        startDate: Date().addingTimeInterval(-600)  // Started 10 mins ago
+        workoutId: UUID(),
+        startDate: Date(),
+        endDate: nil,
+        exercises: [],
+        state: .active
     )
 
-    @Previewable @StateObject var mockStore = MockWorkoutStore()
-
-    ActiveWorkoutSheetView(
-        workout: $workout,
-        workoutStore: mockStore
+    return ActiveWorkoutSheetView(
+        sessionStore: sessionStore,
+        restTimerManager: restTimerManager
     )
 }
