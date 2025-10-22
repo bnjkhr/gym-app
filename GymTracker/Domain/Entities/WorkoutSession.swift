@@ -1,5 +1,5 @@
 //
-//  WorkoutSession.swift
+//  DomainWorkoutSession.swift
 //  GymTracker
 //
 //  Created on 2025-10-22.
@@ -8,10 +8,12 @@
 
 import Foundation
 
-/// Domain Entity representing an active or completed workout session
+/// Domain Entity representing an active or completed workout session (V2 Clean Architecture)
 ///
 /// This is a pure Swift struct with no framework dependencies. It represents
 /// the core business logic of a workout session in the Domain layer.
+///
+/// **Naming:** Renamed to `DomainWorkoutSession` to avoid conflict with V1 `DomainWorkoutSession` struct
 ///
 /// **Design Decisions:**
 /// - `struct` instead of `class` - Value semantics, immutability by default
@@ -21,14 +23,14 @@ import Foundation
 ///
 /// **Usage:**
 /// ```swift
-/// let session = WorkoutSession(
+/// let session = DomainWorkoutSession(
 ///     id: UUID(),
 ///     workoutId: workout.id,
 ///     startDate: Date(),
 ///     exercises: []
 /// )
 /// ```
-struct WorkoutSession: Identifiable, Equatable {
+struct DomainWorkoutSession: Identifiable, Equatable {
 
     // MARK: - Properties
 
@@ -45,7 +47,7 @@ struct WorkoutSession: Identifiable, Equatable {
     var endDate: Date?
 
     /// List of exercises in this session
-    var exercises: [SessionExercise]
+    var exercises: [DomainSessionExercise]
 
     /// Current state of the session
     var state: SessionState
@@ -140,7 +142,7 @@ struct WorkoutSession: Identifiable, Equatable {
         workoutId: UUID,
         startDate: Date = Date(),
         endDate: Date? = nil,
-        exercises: [SessionExercise] = [],
+        exercises: [DomainSessionExercise] = [],
         state: SessionState = .active
     ) {
         self.id = id
@@ -154,7 +156,7 @@ struct WorkoutSession: Identifiable, Equatable {
     // MARK: - Equatable
 
     /// Equality based on ID only (value semantics for other properties)
-    static func == (lhs: WorkoutSession, rhs: WorkoutSession) -> Bool {
+    static func == (lhs: DomainWorkoutSession, rhs: DomainWorkoutSession) -> Bool {
         lhs.id == rhs.id
     }
 }
@@ -162,10 +164,10 @@ struct WorkoutSession: Identifiable, Equatable {
 // MARK: - Preview Helpers
 
 #if DEBUG
-    extension WorkoutSession {
+    extension DomainWorkoutSession {
         /// Sample active session for previews/testing
-        static var preview: WorkoutSession {
-            WorkoutSession(
+        static var preview: DomainWorkoutSession {
+            DomainWorkoutSession(
                 workoutId: UUID(),
                 exercises: [
                     .preview,
@@ -176,8 +178,8 @@ struct WorkoutSession: Identifiable, Equatable {
         }
 
         /// Sample completed session for previews/testing
-        static var previewCompleted: WorkoutSession {
-            var session = WorkoutSession.preview
+        static var previewCompleted: DomainWorkoutSession {
+            var session = DomainWorkoutSession.preview
             session.endDate = Date().addingTimeInterval(3600)  // 1 hour later
             session.state = .completed
             return session

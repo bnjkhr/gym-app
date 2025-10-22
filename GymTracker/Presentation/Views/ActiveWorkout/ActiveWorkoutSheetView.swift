@@ -70,15 +70,15 @@ struct ActiveWorkoutSheetView: View {
     // MARK: - Computed Properties
 
     /// Current workout session from store
-    private var session: WorkoutSession? {
+    private var session: DomainWorkoutSession? {
         sessionStore.currentSession
     }
 
-    /// Convert WorkoutSession to legacy Workout for rendering
-    /// TODO: Refactor child components to use WorkoutSession directly
+    /// Convert DomainWorkoutSession to legacy Workout for rendering
+    /// TODO: Refactor child components to use DomainWorkoutSession directly
     private var legacyWorkout: Workout? {
         guard let session = session else { return nil }
-        return WorkoutSession.toLegacyWorkout(session)
+        return DomainWorkoutSession.toLegacyWorkout(session)
     }
 
     /// Progress: completed sets / total sets
@@ -499,9 +499,9 @@ struct ActiveWorkoutSheetView: View {
 // MARK: - Helper Views
 
 /// Wrapper view for exercise list with local state binding
-/// This bridges Clean Architecture (WorkoutSession) with legacy components (Workout)
+/// This bridges Clean Architecture (DomainWorkoutSession) with legacy components (Workout)
 private struct ExerciseListContent: View {
-    let session: WorkoutSession
+    let session: DomainWorkoutSession
     let workout: Workout
     let showAllExercises: Bool
     let onToggleCompletion: (UUID, UUID) -> Void
@@ -511,7 +511,7 @@ private struct ExerciseListContent: View {
     @State private var localWorkout: Workout
 
     init(
-        session: WorkoutSession,
+        session: DomainWorkoutSession,
         workout: Workout,
         showAllExercises: Bool,
         onToggleCompletion: @escaping (UUID, UUID) -> Void,
@@ -574,17 +574,17 @@ private struct ExerciseListContent: View {
         .padding(.bottom, 80)  // Space for BottomActionBar
         .onChange(of: session.exercises.map { $0.sets.map { $0.completed } }) { _, _ in
             // Sync from Domain to local state
-            localWorkout = WorkoutSession.toLegacyWorkout(session)
+            localWorkout = DomainWorkoutSession.toLegacyWorkout(session)
         }
     }
 }
 
 // MARK: - Domain to Legacy Mapping
 
-extension WorkoutSession {
-    /// Temporary mapping helper: WorkoutSession → Workout
-    /// TODO: Remove this once all child components use WorkoutSession directly
-    static func toLegacyWorkout(_ session: WorkoutSession) -> Workout {
+extension DomainWorkoutSession {
+    /// Temporary mapping helper: DomainWorkoutSession → Workout
+    /// TODO: Remove this once all child components use DomainWorkoutSession directly
+    static func toLegacyWorkout(_ session: DomainWorkoutSession) -> Workout {
         // This is a simplified mapping - you'll need to implement full mapping
         // based on your actual Workout and Exercise models
 
@@ -594,7 +594,7 @@ extension WorkoutSession {
             id: session.id,
             name: "Active Workout",  // TODO: Fetch workout name
             date: session.startDate,
-            exercises: [],  // TODO: Map SessionExercise → WorkoutExercise
+            exercises: [],  // TODO: Map DomainSessionExercise → WorkoutExercise
             startDate: session.startDate
         )
     }
@@ -617,7 +617,7 @@ extension WorkoutSession {
     @Previewable @StateObject var restTimerManager = RestTimerStateManager()
 
     // Create empty session
-    sessionStore.currentSession = WorkoutSession(
+    sessionStore.currentSession = DomainWorkoutSession(
         id: UUID(),
         workoutId: UUID(),
         startDate: Date(),

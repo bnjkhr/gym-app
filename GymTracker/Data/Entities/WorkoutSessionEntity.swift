@@ -9,16 +9,16 @@
 import Foundation
 import SwiftData
 
-/// SwiftData persistence entity for WorkoutSession
+/// SwiftData persistence entity for DomainWorkoutSession
 ///
 /// **Design Decisions:**
 /// - `@Model` class for SwiftData persistence
-/// - Mirrors Domain/Entities/WorkoutSession structure
+/// - Mirrors Domain/Entities/DomainWorkoutSession structure
 /// - Uses primitive types compatible with SwiftData
 /// - Relationships to SessionExerciseEntity
 ///
 /// **Mapping:**
-/// - Maps to/from Domain's `WorkoutSession` via `SessionMapper`
+/// - Maps to/from Domain's `DomainWorkoutSession` via `SessionMapper`
 /// - No business logic here - pure data storage
 ///
 /// **Usage:**

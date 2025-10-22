@@ -12,8 +12,8 @@ import SwiftData
 /// SwiftData implementation of SessionRepositoryProtocol
 ///
 /// **Responsibility:**
-/// - Persist WorkoutSession to SwiftData
-/// - Fetch WorkoutSession from SwiftData
+/// - Persist DomainWorkoutSession to SwiftData
+/// - Fetch DomainWorkoutSession from SwiftData
 /// - Convert between Domain and Data entities using SessionMapper
 ///
 /// **Design Decisions:**
@@ -44,7 +44,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
 
     // MARK: - Create & Update
 
-    func save(_ session: WorkoutSession) async throws {
+    func save(_ session: DomainWorkoutSession) async throws {
         do {
             let entity = mapper.toEntity(session)
             modelContext.insert(entity)
@@ -54,7 +54,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
     }
 
-    func update(_ session: WorkoutSession) async throws {
+    func update(_ session: DomainWorkoutSession) async throws {
         do {
             // Fetch existing entity
             guard let entity = try await fetchEntity(id: session.id) else {
@@ -75,7 +75,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
 
     // MARK: - Read
 
-    func fetch(id: UUID) async throws -> WorkoutSession? {
+    func fetch(id: UUID) async throws -> DomainWorkoutSession? {
         do {
             guard let entity = try await fetchEntity(id: id) else {
                 return nil
@@ -86,7 +86,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
     }
 
-    func fetchActiveSession() async throws -> WorkoutSession? {
+    func fetchActiveSession() async throws -> DomainWorkoutSession? {
         do {
             let descriptor = FetchDescriptor<WorkoutSessionEntity>(
                 predicate: #Predicate { $0.state == "active" }
@@ -111,7 +111,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
     }
 
-    func fetchSessions(for workoutId: UUID) async throws -> [WorkoutSession] {
+    func fetchSessions(for workoutId: UUID) async throws -> [DomainWorkoutSession] {
         do {
             let descriptor = FetchDescriptor<WorkoutSessionEntity>(
                 predicate: #Predicate { $0.workoutId == workoutId },
@@ -125,7 +125,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
     }
 
-    func fetchRecentSessions(limit: Int) async throws -> [WorkoutSession] {
+    func fetchRecentSessions(limit: Int) async throws -> [DomainWorkoutSession] {
         do {
             var descriptor = FetchDescriptor<WorkoutSessionEntity>(
                 sortBy: [SortDescriptor(\.startDate, order: .reverse)]

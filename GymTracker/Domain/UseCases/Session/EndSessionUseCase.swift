@@ -33,7 +33,7 @@ protocol EndSessionUseCase {
     /// - Parameter sessionId: ID of the session to end
     /// - Returns: The completed session with updated statistics
     /// - Throws: UseCaseError if session cannot be ended
-    func execute(sessionId: UUID) async throws -> WorkoutSession
+    func execute(sessionId: UUID) async throws -> DomainWorkoutSession
 }
 
 // MARK: - Implementation
@@ -56,7 +56,7 @@ final class DefaultEndSessionUseCase: EndSessionUseCase {
 
     // MARK: - Execute
 
-    func execute(sessionId: UUID) async throws -> WorkoutSession {
+    func execute(sessionId: UUID) async throws -> DomainWorkoutSession {
         // Fetch session
         guard var session = try await sessionRepository.fetch(id: sessionId) else {
             throw UseCaseError.sessionNotFound(sessionId)

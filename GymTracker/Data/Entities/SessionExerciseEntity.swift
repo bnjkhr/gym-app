@@ -9,7 +9,7 @@
 import Foundation
 import SwiftData
 
-/// SwiftData persistence entity for SessionExercise
+/// SwiftData persistence entity for DomainSessionExercise
 ///
 /// **Design Decisions:**
 /// - `@Model` class for SwiftData persistence

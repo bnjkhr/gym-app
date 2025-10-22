@@ -1,5 +1,5 @@
 //
-//  SessionExercise.swift
+//  DomainSessionExercise.swift
 //  GymTracker
 //
 //  Created on 2025-10-22.
@@ -19,15 +19,15 @@ import Foundation
 ///
 /// **Usage:**
 /// ```swift
-/// let exercise = SessionExercise(
+/// let exercise = DomainSessionExercise(
 ///     exerciseId: benchPress.id,
 ///     sets: [
-///         SessionSet(weight: 100, reps: 8),
-///         SessionSet(weight: 100, reps: 8)
+///         DomainSessionSet(weight: 100, reps: 8),
+///         DomainSessionSet(weight: 100, reps: 8)
 ///     ]
 /// )
 /// ```
-struct SessionExercise: Identifiable, Equatable {
+struct DomainSessionExercise: Identifiable, Equatable {
 
     // MARK: - Properties
 
@@ -38,7 +38,7 @@ struct SessionExercise: Identifiable, Equatable {
     let exerciseId: UUID
 
     /// List of sets for this exercise
-    var sets: [SessionSet]
+    var sets: [DomainSessionSet]
 
     /// Optional user notes for this exercise during the session
     /// Example: "Felt heavy today", "Form was good"
@@ -103,7 +103,7 @@ struct SessionExercise: Identifiable, Equatable {
     init(
         id: UUID = UUID(),
         exerciseId: UUID,
-        sets: [SessionSet] = [],
+        sets: [DomainSessionSet] = [],
         notes: String? = nil,
         restTimeToNext: TimeInterval? = nil
     ) {
@@ -118,7 +118,7 @@ struct SessionExercise: Identifiable, Equatable {
 
     /// Add a new set to this exercise
     /// - Parameter set: The set to add
-    mutating func addSet(_ set: SessionSet) {
+    mutating func addSet(_ set: DomainSessionSet) {
         sets.append(set)
     }
 
@@ -150,7 +150,7 @@ struct SessionExercise: Identifiable, Equatable {
     // MARK: - Equatable
 
     /// Equality based on ID only
-    static func == (lhs: SessionExercise, rhs: SessionExercise) -> Bool {
+    static func == (lhs: DomainSessionExercise, rhs: DomainSessionExercise) -> Bool {
         lhs.id == rhs.id
     }
 }
@@ -158,27 +158,27 @@ struct SessionExercise: Identifiable, Equatable {
 // MARK: - Preview Helpers
 
 #if DEBUG
-    extension SessionExercise {
+    extension DomainSessionExercise {
         /// Sample exercise for previews/testing
-        static var preview: SessionExercise {
-            SessionExercise(
+        static var preview: DomainSessionExercise {
+            DomainSessionExercise(
                 exerciseId: UUID(),
                 sets: [
-                    SessionSet(weight: 100, reps: 8, completed: true),
-                    SessionSet(weight: 100, reps: 8, completed: true),
-                    SessionSet(weight: 100, reps: 7, completed: false),
+                    DomainSessionSet(weight: 100, reps: 8, completed: true),
+                    DomainSessionSet(weight: 100, reps: 8, completed: true),
+                    DomainSessionSet(weight: 100, reps: 7, completed: false),
                 ],
                 restTimeToNext: 180  // 3 minutes
             )
         }
 
         /// Sample exercise with notes for previews/testing
-        static var previewWithNotes: SessionExercise {
-            SessionExercise(
+        static var previewWithNotes: DomainSessionExercise {
+            DomainSessionExercise(
                 exerciseId: UUID(),
                 sets: [
-                    SessionSet(weight: 80, reps: 10, completed: true),
-                    SessionSet(weight: 80, reps: 9, completed: false),
+                    DomainSessionSet(weight: 80, reps: 10, completed: true),
+                    DomainSessionSet(weight: 80, reps: 9, completed: false),
                 ],
                 notes: "Felt heavy today, might need to deload next week",
                 restTimeToNext: 120  // 2 minutes
@@ -186,13 +186,13 @@ struct SessionExercise: Identifiable, Equatable {
         }
 
         /// Sample completed exercise for previews/testing
-        static var previewCompleted: SessionExercise {
-            SessionExercise(
+        static var previewCompleted: DomainSessionExercise {
+            DomainSessionExercise(
                 exerciseId: UUID(),
                 sets: [
-                    SessionSet(weight: 120, reps: 6, completed: true),
-                    SessionSet(weight: 120, reps: 6, completed: true),
-                    SessionSet(weight: 120, reps: 5, completed: true),
+                    DomainSessionSet(weight: 120, reps: 6, completed: true),
+                    DomainSessionSet(weight: 120, reps: 6, completed: true),
+                    DomainSessionSet(weight: 120, reps: 5, completed: true),
                 ]
             )
         }

@@ -30,12 +30,12 @@ import SwiftData
 /// ```
 struct SessionMapper {
 
-    // MARK: - WorkoutSession Mapping
+    // MARK: - DomainWorkoutSession Mapping
 
-    /// Convert Domain WorkoutSession to SwiftData Entity
+    /// Convert Domain DomainWorkoutSession to SwiftData Entity
     /// - Parameter domain: Domain entity
     /// - Returns: SwiftData entity ready for persistence
-    func toEntity(_ domain: WorkoutSession) -> WorkoutSessionEntity {
+    func toEntity(_ domain: DomainWorkoutSession) -> WorkoutSessionEntity {
         let entity = WorkoutSessionEntity(
             id: domain.id,
             workoutId: domain.workoutId,
@@ -55,17 +55,17 @@ struct SessionMapper {
         return entity
     }
 
-    /// Convert SwiftData Entity to Domain WorkoutSession
+    /// Convert SwiftData Entity to Domain DomainWorkoutSession
     /// - Parameter entity: SwiftData entity
     /// - Returns: Domain entity for business logic
-    func toDomain(_ entity: WorkoutSessionEntity) -> WorkoutSession {
-        WorkoutSession(
+    func toDomain(_ entity: WorkoutSessionEntity) -> DomainWorkoutSession {
+        DomainWorkoutSession(
             id: entity.id,
             workoutId: entity.workoutId,
             startDate: entity.startDate,
             endDate: entity.endDate,
             exercises: entity.exercises.map { toDomain($0) },
-            state: WorkoutSession.SessionState(rawValue: entity.state) ?? .active
+            state: DomainWorkoutSession.SessionState(rawValue: entity.state) ?? .active
         )
     }
 
@@ -73,7 +73,7 @@ struct SessionMapper {
     /// - Parameters:
     ///   - entity: Existing SwiftData entity to update
     ///   - domain: Domain entity with new data
-    func updateEntity(_ entity: WorkoutSessionEntity, from domain: WorkoutSession) {
+    func updateEntity(_ entity: WorkoutSessionEntity, from domain: DomainWorkoutSession) {
         entity.workoutId = domain.workoutId
         entity.startDate = domain.startDate
         entity.endDate = domain.endDate
@@ -94,10 +94,10 @@ struct SessionMapper {
         }
     }
 
-    // MARK: - SessionExercise Mapping
+    // MARK: - DomainSessionExercise Mapping
 
-    /// Convert Domain SessionExercise to SwiftData Entity
-    func toEntity(_ domain: SessionExercise) -> SessionExerciseEntity {
+    /// Convert Domain DomainSessionExercise to SwiftData Entity
+    func toEntity(_ domain: DomainSessionExercise) -> SessionExerciseEntity {
         let entity = SessionExerciseEntity(
             id: domain.id,
             exerciseId: domain.exerciseId,
@@ -116,9 +116,9 @@ struct SessionMapper {
         return entity
     }
 
-    /// Convert SwiftData Entity to Domain SessionExercise
-    func toDomain(_ entity: SessionExerciseEntity) -> SessionExercise {
-        SessionExercise(
+    /// Convert SwiftData Entity to Domain DomainSessionExercise
+    func toDomain(_ entity: SessionExerciseEntity) -> DomainSessionExercise {
+        DomainSessionExercise(
             id: entity.id,
             exerciseId: entity.exerciseId,
             sets: entity.sets.map { toDomain($0) },
@@ -127,10 +127,10 @@ struct SessionMapper {
         )
     }
 
-    // MARK: - SessionSet Mapping
+    // MARK: - DomainSessionSet Mapping
 
-    /// Convert Domain SessionSet to SwiftData Entity
-    func toEntity(_ domain: SessionSet) -> SessionSetEntity {
+    /// Convert Domain DomainSessionSet to SwiftData Entity
+    func toEntity(_ domain: DomainSessionSet) -> SessionSetEntity {
         SessionSetEntity(
             id: domain.id,
             weight: domain.weight,
@@ -140,9 +140,9 @@ struct SessionMapper {
         )
     }
 
-    /// Convert SwiftData Entity to Domain SessionSet
-    func toDomain(_ entity: SessionSetEntity) -> SessionSet {
-        SessionSet(
+    /// Convert SwiftData Entity to Domain DomainSessionSet
+    func toDomain(_ entity: SessionSetEntity) -> DomainSessionSet {
+        DomainSessionSet(
             id: entity.id,
             weight: entity.weight,
             reps: entity.reps,
@@ -156,12 +156,12 @@ struct SessionMapper {
 
 extension SessionMapper {
     /// Batch convert multiple entities to domain
-    func toDomain(_ entities: [WorkoutSessionEntity]) -> [WorkoutSession] {
+    func toDomain(_ entities: [WorkoutSessionEntity]) -> [DomainWorkoutSession] {
         entities.map { toDomain($0) }
     }
 
     /// Batch convert multiple domain objects to entities
-    func toEntity(_ domains: [WorkoutSession]) -> [WorkoutSessionEntity] {
+    func toEntity(_ domains: [DomainWorkoutSession]) -> [WorkoutSessionEntity] {
         domains.map { toEntity($0) }
     }
 }

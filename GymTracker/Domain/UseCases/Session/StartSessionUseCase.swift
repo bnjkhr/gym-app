@@ -11,7 +11,7 @@ import Foundation
 /// Use Case for starting a new workout session
 ///
 /// **Responsibility:**
-/// - Create a new WorkoutSession from a workout template
+/// - Create a new DomainWorkoutSession from a workout template
 /// - Load exercises from workout template
 /// - Ensure no other active sessions exist
 /// - Save session to repository
@@ -32,7 +32,7 @@ protocol StartSessionUseCase {
     /// - Parameter workoutId: ID of the workout template to use
     /// - Returns: The newly created session
     /// - Throws: UseCaseError if session cannot be started
-    func execute(workoutId: UUID) async throws -> WorkoutSession
+    func execute(workoutId: UUID) async throws -> DomainWorkoutSession
 }
 
 // MARK: - Implementation
@@ -55,7 +55,7 @@ final class DefaultStartSessionUseCase: StartSessionUseCase {
 
     // MARK: - Execute
 
-    func execute(workoutId: UUID) async throws -> WorkoutSession {
+    func execute(workoutId: UUID) async throws -> DomainWorkoutSession {
         // BUSINESS RULE: Only one active session allowed
         if let existingSession = try await sessionRepository.fetchActiveSession() {
             throw UseCaseError.activeSessionExists(existingSession.id)
@@ -69,7 +69,7 @@ final class DefaultStartSessionUseCase: StartSessionUseCase {
 
         // TEMPORARY: Create session with empty exercises
         // Will be replaced when WorkoutRepository is implemented
-        let session = WorkoutSession(
+        let session = DomainWorkoutSession(
             workoutId: workoutId,
             startDate: Date(),
             exercises: [],  // TODO: Load from workout template

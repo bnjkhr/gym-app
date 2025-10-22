@@ -128,9 +128,9 @@ final class DependencyContainer {
 ///
 /// Implemented:
 /// **Domain Layer (Sprint 1.2):**
-/// - ✅ Domain/Entities/WorkoutSession.swift (170 LOC)
-/// - ✅ Domain/Entities/SessionExercise.swift (150 LOC)
-/// - ✅ Domain/Entities/SessionSet.swift (150 LOC)
+/// - ✅ Domain/Entities/DomainWorkoutSession.swift (170 LOC)
+/// - ✅ Domain/Entities/DomainSessionExercise.swift (150 LOC)
+/// - ✅ Domain/Entities/DomainSessionSet.swift (150 LOC)
 /// - ✅ Domain/RepositoryProtocols/SessionRepositoryProtocol.swift (200 LOC)
 /// - ✅ Domain/UseCases/Session/StartSessionUseCase.swift (180 LOC)
 /// - ✅ Domain/UseCases/Session/CompleteSetUseCase.swift (150 LOC)

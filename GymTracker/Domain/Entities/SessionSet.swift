@@ -1,5 +1,5 @@
 //
-//  SessionSet.swift
+//  DomainSessionSet.swift
 //  GymTracker
 //
 //  Created on 2025-10-22.
@@ -19,13 +19,13 @@ import Foundation
 ///
 /// **Usage:**
 /// ```swift
-/// let set = SessionSet(
+/// let set = DomainSessionSet(
 ///     weight: 100.0,
 ///     reps: 8,
 ///     completed: false
 /// )
 /// ```
-struct SessionSet: Identifiable, Equatable {
+struct DomainSessionSet: Identifiable, Equatable {
 
     // MARK: - Properties
 
@@ -131,14 +131,14 @@ struct SessionSet: Identifiable, Equatable {
     // MARK: - Equatable
 
     /// Equality based on ID only
-    static func == (lhs: SessionSet, rhs: SessionSet) -> Bool {
+    static func == (lhs: DomainSessionSet, rhs: DomainSessionSet) -> Bool {
         lhs.id == rhs.id
     }
 }
 
 // MARK: - Validation
 
-extension SessionSet {
+extension DomainSessionSet {
     /// Check if this set has valid values
     /// - Returns: True if weight > 0 and reps > 0
     var isValid: Bool {
@@ -175,10 +175,10 @@ extension SessionSet {
 // MARK: - Preview Helpers
 
 #if DEBUG
-    extension SessionSet {
+    extension DomainSessionSet {
         /// Sample set for previews/testing
-        static var preview: SessionSet {
-            SessionSet(
+        static var preview: DomainSessionSet {
+            DomainSessionSet(
                 weight: 100.0,
                 reps: 8,
                 completed: false
@@ -186,8 +186,8 @@ extension SessionSet {
         }
 
         /// Sample completed set for previews/testing
-        static var previewCompleted: SessionSet {
-            SessionSet(
+        static var previewCompleted: DomainSessionSet {
+            DomainSessionSet(
                 weight: 100.0,
                 reps: 8,
                 completed: true,
@@ -196,8 +196,8 @@ extension SessionSet {
         }
 
         /// Sample set with decimal weight for previews/testing
-        static var previewDecimal: SessionSet {
-            SessionSet(
+        static var previewDecimal: DomainSessionSet {
+            DomainSessionSet(
                 weight: 62.5,
                 reps: 10,
                 completed: false
@@ -205,8 +205,8 @@ extension SessionSet {
         }
 
         /// Sample just completed set for previews/testing
-        static var previewJustCompleted: SessionSet {
-            SessionSet(
+        static var previewJustCompleted: DomainSessionSet {
+            DomainSessionSet(
                 weight: 120.0,
                 reps: 5,
                 completed: true,

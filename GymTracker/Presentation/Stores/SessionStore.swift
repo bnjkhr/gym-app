@@ -42,7 +42,7 @@ final class SessionStore: ObservableObject {
     // MARK: - Published State
 
     /// Currently active workout session (nil if no active session)
-    @Published var currentSession: WorkoutSession?
+    @Published var currentSession: DomainWorkoutSession?
 
     /// Loading state for async operations
     @Published var isLoading: Bool = false

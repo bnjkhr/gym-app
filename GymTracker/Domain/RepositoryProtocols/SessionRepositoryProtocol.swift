@@ -32,12 +32,12 @@ protocol SessionRepositoryProtocol {
     /// Save a new session to persistence
     /// - Parameter session: The session to save
     /// - Throws: RepositoryError if save fails
-    func save(_ session: WorkoutSession) async throws
+    func save(_ session: DomainWorkoutSession) async throws
 
     /// Update an existing session
     /// - Parameter session: The session with updated data
     /// - Throws: RepositoryError if update fails or session not found
-    func update(_ session: WorkoutSession) async throws
+    func update(_ session: DomainWorkoutSession) async throws
 
     // MARK: - Read
 
@@ -45,24 +45,24 @@ protocol SessionRepositoryProtocol {
     /// - Parameter id: The session's unique identifier
     /// - Returns: The session if found, nil otherwise
     /// - Throws: RepositoryError if fetch fails
-    func fetch(id: UUID) async throws -> WorkoutSession?
+    func fetch(id: UUID) async throws -> DomainWorkoutSession?
 
     /// Fetch the currently active session (if any)
     /// - Returns: The active session if one exists, nil otherwise
     /// - Throws: RepositoryError if fetch fails
-    func fetchActiveSession() async throws -> WorkoutSession?
+    func fetchActiveSession() async throws -> DomainWorkoutSession?
 
     /// Fetch all sessions for a specific workout template
     /// - Parameter workoutId: ID of the workout template
     /// - Returns: Array of sessions (may be empty)
     /// - Throws: RepositoryError if fetch fails
-    func fetchSessions(for workoutId: UUID) async throws -> [WorkoutSession]
+    func fetchSessions(for workoutId: UUID) async throws -> [DomainWorkoutSession]
 
     /// Fetch recent sessions (last N sessions)
     /// - Parameter limit: Maximum number of sessions to fetch
     /// - Returns: Array of sessions, sorted by startDate descending
     /// - Throws: RepositoryError if fetch fails
-    func fetchRecentSessions(limit: Int) async throws -> [WorkoutSession]
+    func fetchRecentSessions(limit: Int) async throws -> [DomainWorkoutSession]
 
     // MARK: - Delete
 
@@ -130,7 +130,7 @@ enum RepositoryError: Error, LocalizedError {
     final class MockSessionRepository: SessionRepositoryProtocol {
 
         /// In-memory storage
-        private var sessions: [UUID: WorkoutSession] = [:]
+        private var sessions: [UUID: DomainWorkoutSession] = [:]
 
         /// Flag to simulate errors (for testing error handling)
         var shouldThrowError: Bool = false
@@ -138,12 +138,12 @@ enum RepositoryError: Error, LocalizedError {
         /// Error to throw when shouldThrowError is true
         var errorToThrow: RepositoryError = .fetchFailed(NSError(domain: "Mock", code: -1))
 
-        func save(_ session: WorkoutSession) async throws {
+        func save(_ session: DomainWorkoutSession) async throws {
             if shouldThrowError { throw errorToThrow }
             sessions[session.id] = session
         }
 
-        func update(_ session: WorkoutSession) async throws {
+        func update(_ session: DomainWorkoutSession) async throws {
             if shouldThrowError { throw errorToThrow }
             guard sessions[session.id] != nil else {
                 throw RepositoryError.sessionNotFound(session.id)
@@ -151,12 +151,12 @@ enum RepositoryError: Error, LocalizedError {
             sessions[session.id] = session
         }
 
-        func fetch(id: UUID) async throws -> WorkoutSession? {
+        func fetch(id: UUID) async throws -> DomainWorkoutSession? {
             if shouldThrowError { throw errorToThrow }
             return sessions[id]
         }
 
-        func fetchActiveSession() async throws -> WorkoutSession? {
+        func fetchActiveSession() async throws -> DomainWorkoutSession? {
             if shouldThrowError { throw errorToThrow }
             let activeSessions = sessions.values.filter { $0.state == .active }
 
@@ -167,14 +167,14 @@ enum RepositoryError: Error, LocalizedError {
             return activeSessions.first
         }
 
-        func fetchSessions(for workoutId: UUID) async throws -> [WorkoutSession] {
+        func fetchSessions(for workoutId: UUID) async throws -> [DomainWorkoutSession] {
             if shouldThrowError { throw errorToThrow }
             return sessions.values
                 .filter { $0.workoutId == workoutId }
                 .sorted { $0.startDate > $1.startDate }
         }
 
-        func fetchRecentSessions(limit: Int) async throws -> [WorkoutSession] {
+        func fetchRecentSessions(limit: Int) async throws -> [DomainWorkoutSession] {
             if shouldThrowError { throw errorToThrow }
             return sessions.values
                 .sorted { $0.startDate > $1.startDate }
