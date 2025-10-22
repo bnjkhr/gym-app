@@ -32,6 +32,7 @@
 - **Minimale Taps** von Home bis Training: **2 Taps**
 - **Keine Ablenkungen** während des Workouts
 - **Schneller Zugriff** auf häufige Aktionen
+- **App übernimmt die Arbeit:** Auswertungen, Progression, Empfehlungen automatisch
 
 #### 2. **Progressive Disclosure**
 > "Zeige nur, was jetzt relevant ist"
@@ -112,6 +113,9 @@
 
 **Icon:** `house.fill`
 **Primäre Funktion:** Dashboard & Schnellzugriff
+
+> ⚠️ **HINWEIS:** Dieser Tab ist aktuell zu voll und wird noch vereinfacht.
+> Prinzip: "So einfach wie möglich - App übernimmt die Arbeit"
 
 **Inhalt:**
 ```
@@ -798,27 +802,45 @@ Gesamt-Taps: 3 (Langes Drücken → Tauschen → Auswählen)
 | **KI-Coach Tipps** | USP der App | Start/Fortschritt |
 | **HealthKit-Integration** | iOS-Standard | Profil |
 | **Profil-Verwaltung** | Personalisierung | Profil |
+| **Offline-Modus** | Zuverlässigkeit im Studio | Universal |
 
 ### ⭐ Nice-to-Have Features (v2.1+)
 
 | Feature | Warum Nice | Priorität |
 |---------|------------|-----------|
+| **Supersatz-Unterstützung** | Fortgeschrittenes Training | Hoch |
+| **Workout-Erinnerungen** | Konstanz fördern | Mittel |
 | **Soziales Teilen** | Community-Aspekt | Mittel |
 | **Workout-Herausforderungen** | Gamification | Mittel |
-| **Apple Watch App** | Komfort im Studio | Hoch |
-| **Supersatz-Unterstützung** | Fortgeschrittenes Training | Hoch |
 | **Sprachsteuerung** | Freihändig | Niedrig |
-| **Übungs-Videos** | Form-Anleitung | Hoch |
-| **Offline-Modus** | Zuverlässigkeit | Hoch |
-| **Workout-Erinnerungen** | Konstanz | Mittel |
 
 ### ❌ Out of Scope (v2.0)
 
+- **Apple Watch App** (v2.1+)
+- **Übungs-Videos** (v2.1+)
 - Soziales Netzwerk / Freunde
 - Mahlzeiten-Tracking / Ernährung
 - Workout-Klassen / Videos
-- Wearables außer Apple Watch
+- Wearables (außer iPhone HealthKit)
 - Premium / Abo-Modell
+
+### 📱 Offline-Modus (Must-Have v2.0)
+
+**Warum Critical:**
+- Fitnessstudios haben oft schlechten Empfang (Keller, dicke Wände)
+- Workout darf NIEMALS wegen fehlender Verbindung unterbrochen werden
+- Nutzer muss sich auf die App verlassen können
+
+**Technische Anforderungen:**
+- Alle Workout-Daten lokal in SwiftData gespeichert
+- Keine Netzwerk-Calls während aktivem Workout
+- Sync zu HealthKit erfolgt im Hintergrund (auch offline möglich)
+- KI-Tipps werden vorab geladen und gecacht
+- Nur für optionale Features (z.B. Teilen) ist Internet nötig
+
+**UX-Hinweis:**
+- Nutzer merkt idealerweise nicht, ob online oder offline
+- Kein "Offline-Modus Badge" → einfach funktioniert es
 
 ---
 
@@ -1127,14 +1149,19 @@ Start Tab mit 3 generierten Workouts
 
 ---
 
-**Fragen zur Diskussion:**
+**Entscheidungen getroffen:**
 
-1. **Tab-Reihenfolge:** Start → Training → Fortschritt → Profil OK? Oder anders?
-2. **KI-Assistent:** Soll der IMMER prominent sein oder nur für neue Nutzer?
-3. **Übungs-Videos:** v2.0 oder v2.1?
-4. **Apple Watch:** Priorität für v2.0?
-5. **Offline-Modus:** Wie wichtig?
+1. ✅ **Tab-Reihenfolge:** Home → Train → Progress → Profile (bestätigt)
+2. ✅ **KI-Assistent:** Nur in "Training → Erstellen" als Auswahl, kein extra Button
+3. ✅ **Übungs-Videos:** v2.1+ (nicht v2.0)
+4. ✅ **Apple Watch:** v2.1+ (nicht v2.0)
+5. ✅ **Offline-Modus:** Must-Have für v2.0 (wichtig!)
+
+**Offene Punkte:**
+
+- ⚠️ **Home Tab zu voll:** Vereinfachung notwendig - wird noch überarbeitet
+- 📌 **Grundprinzip:** So einfach wie möglich, App übernimmt die Arbeit (Auswertungen, Progression, etc.)
 
 ---
 
-**Lass uns diskutieren! 🚀**
+**Bereit für Implementation! 🚀**
