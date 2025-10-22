@@ -138,76 +138,7 @@ enum UseCaseError: Error, LocalizedError {
     }
 }
 
+
 // MARK: - Tests
-
-#if DEBUG
-    import XCTest
-
-    /// Unit tests for StartSessionUseCase
-    final class StartSessionUseCaseTests: XCTestCase {
-
-        var repository: MockSessionRepository!
-        var useCase: DefaultStartSessionUseCase!
-
-        override func setUp() {
-            super.setUp()
-            repository = MockSessionRepository()
-            useCase = DefaultStartSessionUseCase(sessionRepository: repository)
-        }
-
-        override func tearDown() {
-            repository = nil
-            useCase = nil
-            super.tearDown()
-        }
-
-        func testExecute_CreatesNewSession() async throws {
-            // Given
-            let workoutId = UUID()
-
-            // When
-            let session = try await useCase.execute(workoutId: workoutId)
-
-            // Then
-            XCTAssertEqual(session.workoutId, workoutId)
-            XCTAssertEqual(session.state, .active)
-            XCTAssertNil(session.endDate)
-
-            // Verify session was saved to repository
-            let savedSession = try await repository.fetch(id: session.id)
-            XCTAssertEqual(savedSession?.id, session.id)
-        }
-
-        func testExecute_ThrowsErrorWhenActiveSessionExists() async throws {
-            // Given
-            let existingSession = WorkoutSession(workoutId: UUID())
-            try await repository.save(existingSession)
-
-            // When/Then
-            do {
-                _ = try await useCase.execute(workoutId: UUID())
-                XCTFail("Expected error to be thrown")
-            } catch UseCaseError.activeSessionExists(let id) {
-                XCTAssertEqual(id, existingSession.id)
-            } catch {
-                XCTFail("Unexpected error: \(error)")
-            }
-        }
-
-        func testExecute_ThrowsErrorWhenSaveFails() async throws {
-            // Given
-            repository.shouldThrowError = true
-            repository.errorToThrow = .saveFailed(NSError(domain: "Test", code: -1))
-
-            // When/Then
-            do {
-                _ = try await useCase.execute(workoutId: UUID())
-                XCTFail("Expected error to be thrown")
-            } catch UseCaseError.saveFailed {
-                // Success - expected error
-            } catch {
-                XCTFail("Unexpected error: \(error)")
-            }
-        }
-    }
-#endif
+// TODO: Move inline tests to separate Test target file
+// Tests were removed from production code to avoid XCTest import issues
