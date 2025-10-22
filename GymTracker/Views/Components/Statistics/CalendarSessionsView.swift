@@ -298,7 +298,7 @@ extension Calendar {
     let benchWE = WorkoutExerciseEntity(id: UUID(), exercise: bench, sets: [benchSet1])
 
     // Session heute
-    let session1 = WorkoutSessionEntity(
+    let session1 = WorkoutSessionEntityV1(
         id: UUID(),
         templateId: UUID(),
         name: "Push Day",
@@ -310,7 +310,7 @@ extension Calendar {
     )
 
     // Session vor 3 Tagen
-    let session2 = WorkoutSessionEntity(
+    let session2 = WorkoutSessionEntityV1(
         id: UUID(),
         templateId: UUID(),
         name: "Leg Day",
@@ -322,7 +322,7 @@ extension Calendar {
     )
 
     // Session vor 7 Tagen
-    let session3 = WorkoutSessionEntity(
+    let session3 = WorkoutSessionEntityV1(
         id: UUID(),
         templateId: UUID(),
         name: "Pull Day",
@@ -338,6 +338,6 @@ extension Calendar {
     container.mainContext.insert(session2)
     container.mainContext.insert(session3)
 
-    return CalendarSessionsView()
+    CalendarSessionsView()
         .modelContainer(container)
 }

@@ -8,9 +8,9 @@
 import SwiftUI
 
 /// Universal notification pill that displays in-app notifications
-/// Automatically shown/hidden by NotificationManager
+/// Automatically shown/hidden by InAppNotificationManager
 struct NotificationPill: View {
-    @ObservedObject var manager: NotificationManager
+    @ObservedObject var manager: InAppNotificationManager
 
     var body: some View {
         VStack {

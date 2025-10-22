@@ -149,7 +149,7 @@ struct DayStripView: View {
     let benchWE = WorkoutExerciseEntity(id: UUID(), exercise: bench, sets: [benchSet1])
 
     // Session heute
-    let sessionToday = WorkoutSessionEntity(
+    let sessionToday = WorkoutSessionEntityV1(
         id: UUID(),
         templateId: UUID(),
         name: "Push Day",
@@ -161,7 +161,7 @@ struct DayStripView: View {
     )
 
     // Session vor 2 Tagen
-    let session2DaysAgo = WorkoutSessionEntity(
+    let session2DaysAgo = WorkoutSessionEntityV1(
         id: UUID(),
         templateId: UUID(),
         name: "Leg Day",
@@ -173,7 +173,7 @@ struct DayStripView: View {
     )
 
     // Session vor 5 Tagen
-    let session5DaysAgo = WorkoutSessionEntity(
+    let session5DaysAgo = WorkoutSessionEntityV1(
         id: UUID(),
         templateId: UUID(),
         name: "Pull Day",
@@ -189,7 +189,7 @@ struct DayStripView: View {
     container.mainContext.insert(session2DaysAgo)
     container.mainContext.insert(session5DaysAgo)
 
-    return VStack {
+    VStack {
         Text("7-Tage Übersicht")
             .font(.headline)
             .padding()

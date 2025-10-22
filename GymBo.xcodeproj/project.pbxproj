@@ -96,6 +96,8 @@
 		AD79474E2EA92D72001A1128 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7947312EA92D72001A1128 /* SessionStore.swift */; };
 		AD79474F2EA92D72001A1128 /* ExerciseSeparator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7947382EA92D72001A1128 /* ExerciseSeparator.swift */; };
 		AD7947502EA92D72001A1128 /* SessionExercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7947252EA92D72001A1128 /* SessionExercise.swift */; };
+		AD7947EA2EA930BB001A1128 /* InAppNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7947E92EA930BB001A1128 /* InAppNotificationManager.swift */; };
+		AD7947EC2EA930CC001A1128 /* NotificationPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7947EB2EA930CC001A1128 /* NotificationPill.swift */; };
 		AD87F84F2E955F89001A4033 /* SessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD87F84E2E955F89001A4033 /* SessionDetailView.swift */; };
 		AD87F8502E955F89001A4033 /* SessionDetailComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD87F84D2E955F89001A4033 /* SessionDetailComponents.swift */; };
 		AD87F8522E955F97001A4033 /* SessionStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD87F8512E955F97001A4033 /* SessionStatistics.swift */; };
@@ -298,6 +300,8 @@
 		AD7947372EA92D72001A1128 /* ExerciseCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseCard.swift; sourceTree = "<group>"; };
 		AD7947382EA92D72001A1128 /* ExerciseSeparator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSeparator.swift; sourceTree = "<group>"; };
 		AD7947392EA92D72001A1128 /* TimerSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerSection.swift; sourceTree = "<group>"; };
+		AD7947E92EA930BB001A1128 /* InAppNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppNotificationManager.swift; sourceTree = "<group>"; };
+		AD7947EB2EA930CC001A1128 /* NotificationPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPill.swift; sourceTree = "<group>"; };
 		AD87F84D2E955F89001A4033 /* SessionDetailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailComponents.swift; sourceTree = "<group>"; };
 		AD87F84E2E955F89001A4033 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
 		AD87F8512E955F97001A4033 /* SessionStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStatistics.swift; sourceTree = "<group>"; };
@@ -626,6 +630,7 @@
 		AD2A83CA2E942EA000A6ADBE /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				AD7947EB2EA930CC001A1128 /* NotificationPill.swift */,
 				ADD4F4932EA4314900E585B2 /* Common */,
 				ADD4F35E2EA3B75000E585B2 /* AddWorkoutOptionsSheet.swift */,
 				ADD4F35F2EA3B75000E585B2 /* EmptyWorkoutsView.swift */,
@@ -874,6 +879,7 @@
 		ADD4F48F2EA4313400E585B2 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				AD7947E92EA930BB001A1128 /* InAppNotificationManager.swift */,
 				ADD4F48E2EA4313400E585B2 /* InputValidation.swift */,
 			);
 			path = Utilities;
@@ -1069,6 +1075,7 @@
 				ADDD04092E9E52E50080B745 /* NotificationSettingsView.swift in Sources */,
 				ADDD040A2E9E52E50080B745 /* DebugMenuView.swift in Sources */,
 				11E7491C2C9E4CFD00AB1234 /* WorkoutActivityAttributes.swift in Sources */,
+				AD7947EC2EA930CC001A1128 /* NotificationPill.swift in Sources */,
 				ADB19F592E9D83D1004BE444 /* HapticManager.swift in Sources */,
 				AD03A7832E858B920005AE79 /* ProfileEditView.swift in Sources */,
 				3A4DFFD15FC1443C9EA5BC9C /* WorkoutLiveActivityController.swift in Sources */,
@@ -1112,6 +1119,7 @@
 				AD52FECF2E8B32640048DF0F /* SwiftDataEntities.swift in Sources */,
 				11E749072C9E4BA500AB1234 /* WorkoutsView.swift in Sources */,
 				ADFE12382EA1D3A500ABCDE /* WorkoutDataService.swift in Sources */,
+				AD7947EA2EA930BB001A1128 /* InAppNotificationManager.swift in Sources */,
 				ADFE12352EA1C92800ABCDE /* WorkoutAnalyticsService.swift in Sources */,
 				ADFE123B2EA1DE1200ABCDE /* ProfileService.swift in Sources */,
 				ADFE12312EA1B0AA00ABCDE /* WorkoutActionService.swift in Sources */,

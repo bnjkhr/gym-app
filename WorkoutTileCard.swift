@@ -15,8 +15,8 @@ struct WorkoutTileCard: View {
     var onRemoveFromFolder: (() -> Void)? = nil
     var isInFolder: Bool = false
 
-    @Query(sort: [SortDescriptor(\WorkoutSessionEntity.date, order: .reverse)])
-    private var allSessions: [WorkoutSessionEntity]
+    @Query(sort: [SortDescriptor(\WorkoutSessionEntityV1.date, order: .reverse)])
+    private var allSessions: [WorkoutSessionEntityV1]
 
     @Query(sort: [SortDescriptor(\WorkoutFolderEntity.order, order: .forward)])
     private var folders: [WorkoutFolderEntity]
